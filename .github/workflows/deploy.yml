@@ -1,0 +1,98 @@
+name: Deploy to Azure Server
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PROJECT_NAME: ezekl-budget
+  DEPLOY_PORT: 8001
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Deploy to Azure Server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          # Configurar variables
+          PROJECT_NAME="${{ env.PROJECT_NAME }}"
+          DEPLOY_PORT="${{ env.DEPLOY_PORT }}"
+          PROJECT_PATH="/home/azureuser/projects/$PROJECT_NAME"
+          
+          echo "🚀 Iniciando deployment de $PROJECT_NAME en puerto $DEPLOY_PORT"
+          
+          # Crear directorio base si no existe
+          mkdir -p /home/azureuser/projects
+          
+          # Clonar o actualizar repositorio
+          if [ -d "$PROJECT_PATH" ]; then
+            echo "📁 Actualizando repositorio existente..."
+            cd $PROJECT_PATH
+            git fetch origin
+            git reset --hard origin/main
+          else
+            echo "📥 Clonando repositorio..."
+            cd /home/azureuser/projects
+            git clone https://github.com/${{ github.repository }}.git $PROJECT_NAME
+            cd $PROJECT_PATH
+          fi
+          
+          # Crear archivo .env si no existe
+          if [ ! -f .env ]; then
+            echo "📝 Creando archivo .env..."
+            cat > .env << EOF
+          AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT_NAME=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+          PORT=$DEPLOY_PORT
+          EOF
+          fi
+          
+          # Detener contenedor anterior si existe
+          echo "🛑 Deteniendo contenedor anterior..."
+          docker stop $PROJECT_NAME || true
+          docker rm $PROJECT_NAME || true
+          
+          # Limpiar imágenes antiguas
+          echo "🧹 Limpiando imágenes antiguas..."
+          docker image prune -f
+          
+          # Construir y ejecutar nuevo contenedor
+          echo "🔨 Construyendo imagen Docker..."
+          docker build -t $PROJECT_NAME .
+          
+          echo "▶️  Ejecutando contenedor en puerto $DEPLOY_PORT..."
+          docker run -d \
+            --name $PROJECT_NAME \
+            --restart unless-stopped \
+            -p $DEPLOY_PORT:$DEPLOY_PORT \
+            --env-file .env \
+            $PROJECT_NAME
+          
+          # Verificar que el contenedor esté corriendo
+          echo "✅ Verificando deployment..."
+          sleep 10
+          
+          if docker ps | grep -q $PROJECT_NAME; then
+            echo "🎉 Deployment exitoso! $PROJECT_NAME corriendo en puerto $DEPLOY_PORT"
+            echo "🌐 Accede en: http://20.246.83.239:$DEPLOY_PORT"
+          else
+            echo "❌ Error en deployment"
+            docker logs $PROJECT_NAME
+            exit 1
+          fi
+          
+          # Mostrar estado final
+          echo "📊 Contenedores activos:"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
