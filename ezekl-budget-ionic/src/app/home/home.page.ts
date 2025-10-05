@@ -1,5 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subject, Observable } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import {
   IonHeader,
   IonToolbar,
@@ -13,7 +15,11 @@ import {
   IonChip,
   IonLabel,
   IonIcon,
-  IonButton
+  IonButton,
+  IonAvatar,
+  IonItem,
+  AlertController,
+  ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -22,8 +28,16 @@ import {
   refresh,
   pulse,
   chatbubble,
-  trash
+  trash,
+  person,
+  logOut,
+  mail,
+  call,
+  card,
+  shield
 } from 'ionicons/icons';
+import { AuthService } from '../services/auth.service';
+import { AuthUser, AuthState } from '../models/auth.models';
 
 interface WebSocketMessage {
   id: string;
@@ -52,10 +66,17 @@ type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
     IonChip,
     IonLabel,
     IonIcon,
-    IonButton
+    IonButton,
+    IonAvatar,
+    IonItem
   ],
 })
 export class HomePage implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
+  // Estado de autenticación
+  authState$: Observable<AuthState>;
+  currentUser: AuthUser | undefined;
   // Estado del WebSocket
   connectionStatus: ConnectionStatus = 'disconnected';
   ws: WebSocket | null = null;
@@ -74,9 +95,29 @@ export class HomePage implements OnInit, OnDestroy {
   messages: WebSocketMessage[] = [];
   maxMessages: number = 10;
 
-  constructor() {
+  constructor(
+    private authService: AuthService,
+    private alertController: AlertController,
+    private toastController: ToastController
+  ) {
     // Registrar iconos
-    addIcons({ wifi, cloudOffline, refresh, pulse, chatbubble, trash });
+    addIcons({
+      wifi,
+      cloudOffline,
+      refresh,
+      pulse,
+      chatbubble,
+      trash,
+      person,
+      logOut,
+      mail,
+      call,
+      card,
+      shield
+    });
+
+    // Configurar observables de autenticación
+    this.authState$ = this.authService.authState;
 
     // Configurar URL del WebSocket
     this.setupWebSocketUrl();
@@ -84,11 +125,21 @@ export class HomePage implements OnInit, OnDestroy {
 
   ngOnInit() {
     console.log('🏠 HomePage iniciando...');
+
+    // Suscribirse al estado de autenticación
+    this.authState$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(state => {
+        this.currentUser = state.user;
+      });
+
     this.connect();
   }
 
   ngOnDestroy() {
     console.log('🏠 HomePage destruyendo...');
+    this.destroy$.next();
+    this.destroy$.complete();
     this.disconnect();
   }
 
@@ -304,5 +355,92 @@ export class HomePage implements OnInit, OnDestroy {
 
   trackByMessage(index: number, message: WebSocketMessage): string {
     return message.id;
+  }
+
+  // ================================
+  // Métodos de autenticación
+  // ================================
+
+  /**
+   * Confirmar y ejecutar logout
+   */
+  async confirmLogout() {
+    const alert = await this.alertController.create({
+      header: 'Cerrar Sesión',
+      message: '¿Estás seguro de que deseas cerrar tu sesión?',
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+        },
+        {
+          text: 'Cerrar Sesión',
+          role: 'confirm',
+          handler: () => {
+            this.logout();
+          },
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  /**
+   * Ejecutar logout
+   */
+  private async logout() {
+    try {
+      await this.authService.logout();
+
+      const toast = await this.toastController.create({
+        message: 'Sesión cerrada exitosamente',
+        duration: 2000,
+        color: 'success',
+        position: 'bottom',
+      });
+      await toast.present();
+
+    } catch (error) {
+      console.error('Error en logout:', error);
+
+      const toast = await this.toastController.create({
+        message: 'Error cerrando sesión',
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom',
+      });
+      await toast.present();
+    }
+  }
+
+  /**
+   * Obtener iniciales del usuario para el avatar
+   */
+  getUserInitials(user: AuthUser): string {
+    if (!user?.nameLogin) return '?';
+
+    const names = user.nameLogin.split(' ');
+    if (names.length >= 2) {
+      return names[0][0] + names[1][0];
+    }
+    return user.nameLogin[0] || '?';
+  }
+
+  /**
+   * Formatear tiempo de expiración del token
+   */
+  formatTokenExpiry(expiresAt?: Date): string {
+    if (!expiresAt) return 'Desconocido';
+
+    const now = new Date();
+    const diff = expiresAt.getTime() - now.getTime();
+
+    if (diff <= 0) return 'Expirado';
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${hours}h ${minutes}m`;
   }
 }

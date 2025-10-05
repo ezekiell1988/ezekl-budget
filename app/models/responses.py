@@ -4,7 +4,7 @@ Contiene todas las estructuras de datos para las respuestas salientes.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 class CredentialsResponse(BaseModel):
@@ -78,7 +78,7 @@ class HealthCheckResponse(BaseModel):
     Modelo de respuesta para el health check del sistema.
     
     Proporciona información detallada sobre el estado de la aplicación
-    y sus componentes críticos.
+    y sus componentes críticos, incluyendo estadísticas de email queue.
     """
     
     status: str = Field(
@@ -95,6 +95,26 @@ class HealthCheckResponse(BaseModel):
         description="Versión actual de la aplicación",
         examples=["1.0.0", "1.2.3"]
     )
+    
+    environment: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Información del entorno de ejecución"
+    )
+    
+    database: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Estado de la conexión a base de datos"
+    )
+    
+    email_queue: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Estadísticas de la cola de emails en background"
+    )
+    
+    components: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Estado de componentes individuales del sistema"
+    )
 
     class Config:
         """Configuración del modelo Pydantic."""
@@ -102,7 +122,19 @@ class HealthCheckResponse(BaseModel):
             "example": {
                 "status": "healthy",
                 "message": "Ezekl Budget API está funcionando correctamente",
-                "version": "1.0.0"
+                "version": "1.0.0",
+                "email_queue": {
+                    "is_running": True,
+                    "queue_size": 0,
+                    "processed_count": 5,
+                    "failed_count": 0,
+                    "success_rate": 100.0
+                },
+                "components": {
+                    "api": "healthy",
+                    "database": "healthy", 
+                    "email_queue": "healthy"
+                }
             }
         }
 

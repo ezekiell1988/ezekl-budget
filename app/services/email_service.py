@@ -199,7 +199,9 @@ async def send_notification_email(
     to: List[str],
     subject: str,
     message: str,
-    is_html: bool = False
+    is_html: bool = False,
+    cc: Optional[List[str]] = None,
+    bcc: Optional[List[str]] = None
 ) -> EmailSendResponse:
     """
     Función de conveniencia para enviar emails de notificación simples.
@@ -209,11 +211,13 @@ async def send_notification_email(
         subject: Asunto del email
         message: Contenido del mensaje
         is_html: Si True, trata el mensaje como HTML; si False, como texto plano
+        cc: Lista de destinatarios en copia (opcional)
+        bcc: Lista de destinatarios en copia oculta (opcional)
         
     Returns:
         EmailSendResponse: Resultado del envío
     """
     if is_html:
-        return await send_email(to=to, subject=subject, html_content=message)
+        return await send_email(to=to, subject=subject, html_content=message, cc=cc, bcc=bcc)
     else:
-        return await send_email(to=to, subject=subject, text_content=message)
+        return await send_email(to=to, subject=subject, text_content=message, cc=cc, bcc=bcc)

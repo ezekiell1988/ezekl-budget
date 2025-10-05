@@ -16,7 +16,8 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **WebSocket en tiempo real** con ping-pong y reconexión automática
 - **Cliente HTTP asíncrono** con `aiohttp` y soporte completo para todos los verbos HTTP
 - **Procesamiento de emails** via Azure Event Grid con descarga asíncrona de contenido MIME
-- **Autenticación JWT** integrada con Microsoft
+- **Sistema de autenticación completo** - 2 pasos con tokens por email + JWT/JWE
+- **Cola de emails en background** - Envío asíncrono sin bloquear API
 - **Azure OpenAI** integration
 - **SQL Server** con conexiones asíncronas y stored procedures
 - **Detección automática** de ambiente (localhost en producción, IP externa en desarrollo)
@@ -173,6 +174,33 @@ La aplicación detecta automáticamente si está en producción y usa `localhost
 - **Collation**: `SQL_Latin1_General_CP1_CI_AS` (soporte para español y emojis)
 - **Usuario**: `budgetuser` (permisos limitados)
 - **Puerto**: 1433 (estándar SQL Server)
+
+#### Sistema de Autenticación Implementado
+
+La aplicación incluye un **sistema completo de autenticación de dos factores**:
+
+##### Arquitectura de Autenticación
+- **Paso 1**: Usuario solicita acceso con `codeLogin`
+- **Paso 2**: Sistema genera token temporal y lo envía por email
+- **Paso 3**: Usuario verifica token y recibe JWT para sesiones
+- **JWT Format**: JWE (JSON Web Encryption) para mayor seguridad
+
+##### Stored Procedures de Autenticación
+```sql
+-- Generar token y enviarlo por email
+EXEC spLoginTokenAdd @json = '{"codeLogin": "S"}'
+
+-- Verificar token y autenticar usuario  
+EXEC spLoginAuth @json = '{"codeLogin": "S", "token": "123456"}'
+```
+
+##### Características de Seguridad
+- ✅ **Tokens temporales** - Expiración en 10 minutos
+- ✅ **JWE encryption** - No solo firmado, sino encriptado
+- ✅ **Email queue** - Envío asíncrono en background
+- ✅ **Rate limiting** - Prevención de spam de tokens
+- ✅ **Logout seguro** - Invalidación de JWT
+- ✅ **Base de datos** - Validación mediante stored procedures
 
 ### 4.5. Cliente HTTP Asíncrono (HTTPClient)
 
@@ -1212,6 +1240,12 @@ El Nginx está configurado con headers de seguridad:
 - `POST /api/email/webhook` → Webhook para recibir eventos de email desde Azure Event Grid
 - `POST /api/email/send` → Endpoint para enviar emails usando Azure Communication Services
 
+### Autenticación (Sistema de Login)
+
+- `POST /api/auth/request-token` → Solicita token de autenticación por email
+- `POST /api/auth/verify-token` → Verifica token y genera JWT de acceso
+- `POST /api/auth/logout` → Cierra sesión invalidando el JWT
+
 ### Integración con Azure Event Grid (Emails)
 
 El webhook `/api/email/webhook` maneja eventos de Azure Event Grid para procesamiento de emails:
@@ -1292,14 +1326,90 @@ El endpoint `/api/email/send` permite enviar emails usando Azure Communication S
 - ✅ **Respuestas limpias** - Sin campos null innecesarios
 - ✅ **Manejo robusto de errores** sin afectar la API
 
+### Sistema de Autenticación (JWT con Email)
+
+El sistema implementa autenticación de dos pasos con tokens enviados por email y JWT para sesiones.
+
+#### Flujo de Autenticación
+
+**1. Solicitar Token de Acceso**
+```bash
+curl -X POST https://budget.ezekl.com/api/auth/request-token \
+  -H "Content-Type: application/json" \
+  -d '{"codeLogin": "S"}'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Token enviado por email exitosamente",
+  "tokenGenerated": true
+}
+```
+
+**2. Verificar Token y Obtener JWT**
+```bash
+curl -X POST https://budget.ezekl.com/api/auth/verify-token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "codeLogin": "S",
+    "token": "123456"
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Autenticación exitosa",
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer",
+  "expires_in": 3600
+}
+```
+
+**3. Usar JWT en Peticiones Protegidas**
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." \
+  https://budget.ezekl.com/api/protected-endpoint
+```
+
+**4. Cerrar Sesión**
+```bash
+curl -X POST https://budget.ezekl.com/api/auth/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+```
+
+#### Características del Sistema de Auth
+
+- ✅ **Autenticación de 2 pasos** - Token por email + verificación
+- ✅ **Tokens temporales** - Expiración configurable (por defecto 10 minutos)
+- ✅ **JWT seguros** - Con JWE (encriptación) no solo JWT (firmado)
+- ✅ **Email en background** - Envío asíncrono sin bloquear API
+- ✅ **Base de datos integrada** - Stored procedures para validación
+- ✅ **Logout seguro** - Invalidación de tokens
+- ✅ **Rate limiting** - Protección contra spam de tokens
+
 ### Testing de Endpoints
 
 ```bash
-# Health check (incluye estado de base de datos)
+# Health check (incluye estado de base de datos y cola de emails)
 curl https://budget.ezekl.com/api/health
 
 # Credenciales (sin mostrar API key)
 curl https://budget.ezekl.com/api/credentials
+
+# Test completo de autenticación
+# 1. Solicitar token
+curl -X POST http://localhost:8001/api/auth/request-token \
+  -H "Content-Type: application/json" \
+  -d '{"codeLogin": "S"}'
+
+# 2. Verificar en email y usar token recibido
+curl -X POST http://localhost:8001/api/auth/verify-token \
+  -H "Content-Type: application/json" \
+  -d '{"codeLogin": "S", "token": "TOKEN_DEL_EMAIL"}'
 
 # Documentación interactiva
 open https://budget.ezekl.com/docs

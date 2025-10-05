@@ -1,13 +1,31 @@
 import { Routes } from '@angular/router';
+import { AuthGuard, GuestGuard, AuthCheckGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  {
-    path: 'home',
-    loadComponent: () => import('./home/home.page').then((m) => m.HomePage),
-  },
+  // Ruta raíz - redirige a home directamente
   {
     path: '',
     redirectTo: 'home',
-    pathMatch: 'full',
+    pathMatch: 'full'
   },
+
+  // Ruta de login - solo accesible si NO está autenticado
+  {
+    path: 'login',
+    loadComponent: () => import('./login/login.page').then(m => m.LoginPage),
+    canActivate: [GuestGuard]
+  },
+
+  // Ruta home - protegida, requiere autenticación
+  {
+    path: 'home',
+    loadComponent: () => import('./home/home.page').then(m => m.HomePage),
+    canActivate: [AuthGuard]
+  },
+
+  // Ruta wildcard - redirige a home (que a su vez verificará autenticación)
+  {
+    path: '**',
+    redirectTo: 'home'
+  }
 ];

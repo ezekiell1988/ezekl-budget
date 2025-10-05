@@ -8,12 +8,14 @@ from app.core.config import settings
 from app.database.connection import test_db_connection
 from app.models.responses import CredentialsResponse, HealthCheckResponse
 from .email import router as email_router
+from .auth import router as auth_router
 
 # Router principal para todos los endpoints de la API
 router = APIRouter()
 
 # Incluir routers de módulos específicos
 router.include_router(email_router, prefix="/email", tags=["email"])
+router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 
 
 @router.get(
@@ -95,10 +97,48 @@ async def health_check():
     Endpoint de salud para verificar que la API y la base de datos están funcionando.
 
     Returns:
-        dict: Estado de la aplicación incluyendo conexión a base de datos
+        dict: Estado de la aplicación incluyendo conexión a base de datos y cola de emails
     """
+    import asyncio
+    
     # Verificar conexión a base de datos de forma asíncrona
     db_status = "healthy" if await test_db_connection() else "unhealthy"
+    
+    # Obtener estadísticas de la cola de emails con timeout
+    email_queue_stats = None
+    email_queue_status = "unknown"
+    
+    try:
+        # Import local para evitar problemas circulares
+        from app.services.email_queue import email_queue
+        
+        # Usar wait_for con timeout de 2 segundos para evitar deadlock
+        email_queue_stats = await asyncio.wait_for(
+            email_queue.get_stats(), 
+            timeout=2.0
+        )
+        email_queue_status = "healthy" if email_queue_stats["is_running"] else "unhealthy"
+        
+    except asyncio.TimeoutError:
+        email_queue_stats = {
+            "error": "Timeout accessing queue",
+            "is_running": False,
+            "queue_size": 0,
+            "processed_count": 0,
+            "failed_count": 0,
+            "success_rate": 0.0
+        }
+        email_queue_status = "timeout"
+    except Exception as e:
+        email_queue_stats = {
+            "error": str(e),
+            "is_running": False,
+            "queue_size": 0,
+            "processed_count": 0,
+            "failed_count": 0,
+            "success_rate": 0.0
+        }
+        email_queue_status = "error"
 
     # Si la BD no está disponible, devolver error 503
     if db_status == "unhealthy":
@@ -121,8 +161,18 @@ async def health_check():
             "host": settings.effective_db_host,
             "database": settings.db_name,
         },
-        "components": {"api": "healthy", "database": db_status},
+        "email_queue": email_queue_stats,
+        "components": {
+            "api": "healthy", 
+            "database": db_status,
+            "email_queue": email_queue_status
+        },
     }
+
+
+
+
+
 
 
 # 🚀 Estructura futura para escalar:

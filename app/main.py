@@ -4,21 +4,47 @@ Punto de entrada principal que configura la aplicación y monta los módulos API
 """
 
 from pathlib import Path
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from app.core.config import settings
 from app.api import api_router, websockets_router_with_prefix
+from app.services.email_queue import email_queue
+import logging
+
+# Configurar logging
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Maneja el ciclo de vida de la aplicación usando el nuevo patrón lifespan.
+    Reemplaza los deprecated on_event("startup") y on_event("shutdown").
+    """
+    # Startup
+    logger.info("🚀 Iniciando servicios de la aplicación...")
+    await email_queue.start()
+    logger.info("✅ Servicios iniciados exitosamente")
+    
+    yield  # Aquí la aplicación está ejecutándose
+    
+    # Shutdown  
+    logger.info("⏹️ Cerrando servicios de la aplicación...")
+    await email_queue.stop()
+    logger.info("✅ Servicios cerrados exitosamente")
 
 
 # Configurar rutas para archivos estáticos del frontend Ionic
 FRONTEND_BUILD_PATH = Path(__file__).parent.parent / "ezekl-budget-ionic" / "www"
 
-# Inicializar la aplicación FastAPI
+# Inicializar la aplicación FastAPI con lifespan
 app = FastAPI(
     title="Ezekl Budget API",
     description="API híbrida para gestión de presupuesto con frontend Ionic Angular y autenticación Microsoft",
     version="1.0.0",
+    lifespan=lifespan
 )
 
 # 🔧 Configurar módulos de la API (estándar FastAPI)

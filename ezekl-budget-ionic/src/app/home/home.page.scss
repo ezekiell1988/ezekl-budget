@@ -87,7 +87,52 @@
   }
 }
 
-// Responsive
+/* Card del usuario */
+.user-card {
+  margin-bottom: 1rem;
+
+  .user-header {
+    display: flex; align-items: center; gap: 1rem;
+
+    .user-avatar {
+      width: 60px; height: 60px;
+      background: linear-gradient(135deg, var(--ion-color-primary), var(--ion-color-secondary));
+      display: flex; align-items: center; justify-content: center;
+
+      .avatar-text { color: white; font-size: 1.5rem; font-weight: 600; }
+    }
+
+    .user-info {
+      flex: 1;
+
+      ion-card-title { margin: 0; font-size: 1.25rem; font-weight: 600; }
+      ion-card-subtitle { margin: 0.25rem 0 0 0; color: var(--ion-color-medium); }
+    }
+  }
+}
+
+.user-details {
+  margin-top: 1rem;
+
+  ion-item {
+    --background: transparent;
+    --inner-padding-end: 0;
+    --inner-padding-start: 0;
+    margin-bottom: 0.5rem;
+
+    ion-label p { font-size: 0.8rem; color: var(--ion-color-medium); }
+    ion-label h3 { margin: 0; color: var(--ion-color-dark); }
+  }
+}
+
+.session-info {
+  margin-top: 1.5rem; padding: 1rem;
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-radius: 8px; border-left: 4px solid var(--ion-color-primary);
+
+  h4 { margin: 0 0 0.5rem 0; font-weight: 600; color: var(--ion-color-primary); }
+  p { margin: 0; }
+}// Responsive
 @media (min-width: 768px) {
   #container {
     padding: 24px;

@@ -1,0 +1,169 @@
+/* Estilos compactos para login */
+.login-content {
+  --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+  margin: 0 auto;
+}
+
+.logo-section {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: white;
+
+  ion-icon { font-size: 4rem; margin-bottom: 1rem; }
+  h1 { font-size: 2rem; font-weight: 600; margin: 0.5rem 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+  p { opacity: 0.9; margin: 0; }
+}
+
+ion-card {
+  margin: 0;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  background: rgba(255,255,255,0.95);
+
+  ion-card-header {
+    padding-bottom: 0;
+
+    ion-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--ion-color-primary);
+
+      ion-icon { font-size: 1.5rem; }
+    }
+
+    ion-card-subtitle { color: var(--ion-color-medium); margin-top: 0.5rem; }
+  }
+}
+
+.input-item {
+  --border-radius: 12px;
+  --background: rgba(248,250,252,0.8);
+  --border-color: var(--ion-color-light-shade);
+  margin-bottom: 1rem;
+
+  ion-label { font-weight: 500; color: var(--ion-color-dark); }
+  ion-input { --color: var(--ion-color-dark); }
+  &.ion-focused { --border-color: var(--ion-color-primary); }
+}
+
+.user-info {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-radius: 12px;
+  border-left: 4px solid var(--ion-color-primary);
+
+  ion-item { --background: transparent; --border-color: transparent; }
+  ion-avatar {
+    width: 48px; height: 48px;
+    background: var(--ion-color-primary);
+    display: flex; align-items: center; justify-content: center;
+
+    ion-icon { color: white; font-size: 1.5rem; }
+  }
+}
+
+.token-input-container {
+  margin-bottom: 1.5rem;
+
+  ion-label {
+    display: block; font-weight: 600;
+    color: var(--ion-color-dark); margin-bottom: 1rem;
+  }
+}
+
+.token-inputs {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  ion-input.token-digit {
+    --background: white;
+    --border-radius: 12px;
+    --border-width: 2px;
+    --border-color: var(--ion-color-light);
+    --color: var(--ion-color-dark);
+    flex: 1; text-align: center;
+    font-size: 1.5rem; font-weight: 600;
+    height: 56px; max-width: 56px;
+    transition: all 0.2s ease;
+
+    &.ion-focused {
+      --border-color: var(--ion-color-primary);
+      --border-width: 3px;
+      transform: scale(1.05);
+    }
+
+    input { text-align: center !important; }
+  }
+}
+
+.login-button {
+  --border-radius: 12px;
+  --box-shadow: 0 4px 16px rgba(var(--ion-color-primary-rgb), 0.4);
+  --background: var(--ion-color-primary);
+  --color: white;
+  margin-top: 1rem; height: 48px;
+  font-weight: 600; transition: all 0.2s ease;
+
+  &:not([disabled]):hover {
+    --box-shadow: 0 6px 20px rgba(var(--ion-color-primary-rgb), 0.6);
+    transform: translateY(-1px);
+  }
+}
+
+.auto-copy-button {
+  --border-radius: 12px;
+  --border-color: var(--ion-color-primary);
+  --color: var(--ion-color-primary);
+  margin-bottom: 1rem; height: 44px;
+}
+
+.action-buttons {
+  display: flex; gap: 0.75rem; margin-top: 1rem;
+
+  ion-button {
+    --border-radius: 12px; height: 44px;
+    &:first-child { flex: 0 0 auto; --color: var(--ion-color-medium); }
+    &:nth-child(2) { flex: 0 0 auto; --color: var(--ion-color-warning); }
+    &:last-child { flex: 1; }
+  }
+}
+
+.error-message {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin: 1rem 0; padding: 0.75rem;
+  background: rgba(var(--ion-color-danger-rgb), 0.1);
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.3);
+  border-radius: 8px;
+
+  ion-icon { color: var(--ion-color-danger); }
+}
+
+@media (max-width: 480px) {
+  .login-container { padding: 16px; }
+  .token-inputs { gap: 0.25rem; }
+  .token-inputs ion-input.token-digit { height: 48px; max-width: 48px; }
+  .action-buttons { flex-direction: column; }
+}
+
+ion-card { animation: slideInUp 0.4s ease-out; }
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
