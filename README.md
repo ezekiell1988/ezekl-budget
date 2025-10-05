@@ -15,6 +15,8 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **Servidor híbrido** que sirve tanto API como frontend
 - **Autenticación JWT** integrada con Microsoft
 - **Azure OpenAI** integration
+- **SQL Server** con conexiones asíncronas y stored procedures
+- **Detección automática** de ambiente (localhost en producción, IP externa en desarrollo)
 
 ### DevOps
 - **Docker** multi-stage build optimizado
@@ -43,6 +45,8 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - Node.js 20+ (para compilar Ionic en CI/CD)
 - Nginx
 - Certbot (Let's Encrypt)
+- SQL Server 2022 Developer Edition
+- ODBC Driver 18 for SQL Server
 
 ## 🛠️ Configuración Inicial
 
@@ -100,9 +104,44 @@ AZURE_TENANT_ID=your-tenant-id-from-azure-ad
 DEPLOY_HOST=20.246.83.239
 DEPLOY_USER=azureuser
 DEPLOY_BASE_PATH=/home/azureuser/projects
+
+# Configuración de Base de Datos SQL Server
+# En desarrollo (local): usar IP del servidor Azure
+# En producción: usar localhost o conexión local (detectado automáticamente)
+DB_HOST=20.246.83.239
+DB_PORT=1433
+DB_NAME=budgetdb
+DB_USER=budgetuser
+DB_PASSWORD=your-database-password
+DB_DRIVER=ODBC Driver 18 for SQL Server
+DB_TRUST_CERT=yes
 ```
 
-### 4. Configurar GitHub Secrets
+### 4. Configuración de Base de Datos
+
+La aplicación utiliza **SQL Server 2022** con un patrón específico de stored procedures:
+
+#### Arquitectura de Base de Datos
+- **Usuario limitado**: `budgetuser` con permisos solo para ejecutar stored procedures
+- **Patrón de comunicación**: Todos los endpoints se comunican con la BD mediante stored procedures
+- **Formato JSON**: Cada SP recibe un JSON como parámetro único y responde un JSON en columna "json"
+- **Conexiones asíncronas**: Utiliza `aioodbc` para mejor rendimiento
+
+#### Detección Automática de Ambiente
+```python
+# En desarrollo (tu Mac): DB_HOST=20.246.83.239 (IP externa)
+# En producción (servidor): DB_HOST=localhost (automático)
+```
+
+La aplicación detecta automáticamente si está en producción y usa `localhost` para mejor rendimiento.
+
+#### Base de Datos Configurada
+- **Nombre**: `budgetdb`
+- **Collation**: `SQL_Latin1_General_CP1_CI_AS` (soporte para español y emojis)
+- **Usuario**: `budgetuser` (permisos limitados)
+- **Puerto**: 1433 (estándar SQL Server)
+
+### 5. Configurar GitHub Secrets
 
 En tu repositorio de GitHub, ve a **Settings → Secrets and variables → Actions** y agrega:
 
@@ -113,6 +152,7 @@ SSH_USER=azureuser
 AZURE_OPENAI_ENDPOINT=tu_endpoint_de_azure
 AZURE_OPENAI_API_KEY=tu_api_key_de_azure
 AZURE_OPENAI_DEPLOYMENT_NAME=tu_deployment_name
+DB_PASSWORD=tu_contraseña_de_base_de_datos
 ```
 
 ## 🖥️ Desarrollo Local
@@ -602,23 +642,26 @@ El Nginx está configurado con headers de seguridad:
 - `GET /` → Redirige a `/docs`
 - `GET /docs` → Documentación interactiva Swagger
 - `GET /redoc` → Documentación ReDoc
-- `GET /health` → Health check del servicio
+- `GET /api/health` → Health check del servicio y conexión a base de datos
 
 ### Específicos del Proyecto
 
-- `GET /credentials` → Obtiene credenciales de Azure OpenAI (sin API key)
+- `GET /api/credentials` → Obtiene credenciales de Azure OpenAI (sin API key)
 
 ### Testing de Endpoints
 
 ```bash
-# Health check
-curl https://budget.ezekl.com/health
+# Health check (incluye estado de base de datos)
+curl https://budget.ezekl.com/api/health
 
 # Credenciales (sin mostrar API key)
-curl https://budget.ezekl.com/credentials
+curl https://budget.ezekl.com/api/credentials
 
 # Documentación interactiva
 open https://budget.ezekl.com/docs
+
+# Testing local con detección de ambiente
+curl http://localhost:8001/api/health
 ```
 
 ## 🤝 Contribuir
@@ -649,7 +692,8 @@ ezekl-budget/
 │   └── capacitor.config.ts           # Configuración Capacitor
 ├── app/                              # ⚡ Backend FastAPI
 │   ├── main.py                       # Servidor híbrido (API + static files)
-│   └── settings.py                   # Configuración con pydantic-settings
+│   ├── settings.py                   # Configuración con pydantic-settings
+│   └── database.py                   # Conexiones asíncronas a SQL Server
 ├── .env                              # Variables de entorno (no commitear)
 ├── .env.example                      # Template de variables de entorno
 ├── .dockerignore                     # Archivos excluidos del build Docker
@@ -695,6 +739,9 @@ ezekl-budget/
 
 - **Frontend**: Ionic Angular 8 + Standalone Components ✅
 - **Backend**: FastAPI con servidor híbrido ✅
+- **Base de Datos**: SQL Server 2022 con conexiones asíncronas ✅
+- **Usuario BD**: `budgetuser` con permisos limitados ✅
+- **Detección de Ambiente**: Automática (localhost/IP externa) ✅
 - **Autenticación**: Microsoft Azure AD (en implementación) 🔄
 - **Dominio**: budget.ezekl.com ✅
 - **SSL**: Let's Encrypt válido hasta 2026-01-02 ✅

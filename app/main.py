@@ -4,11 +4,12 @@ Aplicación FastAPI híbrida para ezekl-budget con frontend Ionic Angular.
 
 import os
 from pathlib import Path
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 from app.settings import settings
+from app.database import test_db_connection
 
 
 # Configurar rutas para archivos estáticos del frontend Ionic
@@ -50,15 +51,39 @@ async def get_credentials():
 @api_router.get("/health")
 async def health_check():
     """
-    Endpoint de salud para verificar que la API está funcionando.
+    Endpoint de salud para verificar que la API y la base de datos están funcionando.
     
     Returns:
-        dict: Estado de la aplicación
+        dict: Estado de la aplicación incluyendo conexión a base de datos
     """
+    # Verificar conexión a base de datos de forma asíncrona
+    db_status = "healthy" if await test_db_connection() else "unhealthy"
+    
+    # Si la BD no está disponible, devolver error 503
+    if db_status == "unhealthy":
+        raise HTTPException(
+            status_code=503, 
+            detail="Servicio no disponible: Error de conexión a base de datos"
+        )
+    
     return {
         "status": "healthy",
         "message": "Ezekl Budget API está funcionando correctamente",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "environment": {
+            "is_production": settings.is_production,
+            "configured_host": settings.db_host,
+            "effective_host": settings.effective_db_host
+        },
+        "database": {
+            "status": db_status,
+            "host": settings.effective_db_host,
+            "database": settings.db_name
+        },
+        "components": {
+            "api": "healthy",
+            "database": db_status
+        }
     }
 
 
