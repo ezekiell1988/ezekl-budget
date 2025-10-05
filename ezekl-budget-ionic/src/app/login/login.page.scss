@@ -1,21 +1,13 @@
-/* Estilos mínimos usando variables de Ionic */
-ion-content {
-  --background: linear-gradient(
-    135deg,
-    var(--ion-color-primary),
-    var(--ion-color-secondary)
-  );
+/* Contenedor para centrar verticalmente */
+.login-container {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
 }
 
-/* Solo estilos esenciales para inputs de token */
+/* Estilos mínimos para inputs de token - respeta dark mode automáticamente */
 ion-input[formControlName^="digit"] {
   text-align: center;
   font-weight: bold;
   font-size: 1.5rem;
-}
-
-/* Avatar personalizado */
-ion-avatar {
-  --background: var(--ion-color-primary);
-  color: white;
 }

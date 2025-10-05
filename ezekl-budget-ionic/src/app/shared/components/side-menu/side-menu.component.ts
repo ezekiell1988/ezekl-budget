@@ -36,6 +36,7 @@ import {
   settings,
   helpCircle,
   close,
+  pulse,
 } from 'ionicons/icons';
 import { AuthService } from '../../../services/auth.service';
 import { AuthUser, AuthState } from '../../../models/auth.models';
@@ -89,6 +90,7 @@ export class SideMenuComponent implements OnInit {
       settings,
       helpCircle,
       close,
+      pulse,
     });
 
     // Configurar observables de autenticación

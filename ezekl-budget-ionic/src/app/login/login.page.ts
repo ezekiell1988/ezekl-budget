@@ -19,9 +19,6 @@ import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import {
   IonContent,
-  IonHeader,
-  IonTitle,
-  IonToolbar,
   IonCard,
   IonCardHeader,
   IonCardTitle,
@@ -37,6 +34,9 @@ import {
   IonGrid,
   IonRow,
   IonCol,
+  IonText,
+  IonNote,
+  IonChip,
   ToastController,
   AlertController,
   ViewWillLeave,
@@ -62,7 +62,7 @@ import {
   LoginStep,
   LoginWizardState,
 } from '../models/auth.models';
-import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
+
 
 @Component({
   selector: 'app-login',
@@ -88,7 +88,9 @@ import { AppHeaderComponent } from '../shared/components/app-header/app-header.c
     IonGrid,
     IonRow,
     IonCol,
-    AppHeaderComponent,
+    IonText,
+    IonNote,
+    IonChip,
   ],
 })
 export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave {

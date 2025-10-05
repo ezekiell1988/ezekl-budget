@@ -3,11 +3,12 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { IonApp, IonRouterOutlet, ToastController } from '@ionic/angular/standalone';
 import { AuthService } from './services/auth.service';
+import { SideMenuComponent } from './shared/components/side-menu/side-menu.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet],
+  imports: [IonApp, IonRouterOutlet, SideMenuComponent],
 })
 export class AppComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();

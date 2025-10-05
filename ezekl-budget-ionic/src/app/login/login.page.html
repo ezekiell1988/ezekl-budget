@@ -1,18 +1,19 @@
-<app-header title="Ezekl Budget" [showLogout]="false"></app-header>
+<ion-content [fullscreen]="true" class="ion-padding">
+  <div class="login-container">
+    <ion-grid fixed>
+      <ion-row class="ion-justify-content-center">
+        <ion-col size="12" size-md="6" size-lg="4">
 
-<ion-content [fullscreen]="true">
-  <ion-grid fixed>
-    <ion-row class="ion-justify-content-center ion-align-items-center" style="min-height: 100vh;">
-      <ion-col size="12" size-md="6" size-lg="4">
-
-        <!-- Logo y bienvenida -->
-        <ion-item lines="none" class="ion-text-center ion-margin-bottom">
-          <ion-label>
-            <ion-icon name="wallet" color="primary" style="font-size: 4rem;"></ion-icon>
+        <!-- Logo y bienvenida usando ion-text y ion-note -->
+        <div class="ion-text-center ion-margin-bottom">
+          <ion-icon name="wallet" color="primary" size="large" style="font-size: 4rem;"></ion-icon>
+          <ion-text color="primary">
             <h1>Ezekl Budget</h1>
+          </ion-text>
+          <ion-note color="medium">
             <p>Gestión inteligente de presupuesto</p>
-          </ion-label>
-        </ion-item>
+          </ion-note>
+        </div>
 
         <!-- Wizard Step 1: Solicitar código de usuario -->
         @if ((wizardState$ | async)?.currentStep === loginSteps.REQUEST_TOKEN) {
@@ -38,10 +39,10 @@
 
               <!-- Mensaje de error -->
               @if ((wizardState$ | async)?.error) {
-              <ion-item lines="none" color="danger" fill="outline">
-                <ion-icon name="alert-circle" slot="start"></ion-icon>
-                <ion-label>{{ (wizardState$ | async)?.error }}</ion-label>
-              </ion-item>
+              <ion-note color="danger" class="ion-margin-top">
+                <ion-icon name="alert-circle"></ion-icon>
+                {{ (wizardState$ | async)?.error }}
+              </ion-note>
               }
 
               <!-- Botón continuar -->
@@ -75,23 +76,26 @@
           <ion-card-content>
             <!-- Información del usuario -->
             @if ((wizardState$ | async)?.user; as user) {
-            <ion-item lines="none" fill="outline" color="primary" class="ion-margin-bottom">
-              <ion-avatar slot="start">
-                <ion-icon name="person" size="large"></ion-icon>
-              </ion-avatar>
-              <ion-label>
-                <h3>{{ user.nameLogin }}</h3>
-                <p>{{ user.emailLogin }}</p>
-              </ion-label>
-            </ion-item>
+            <div class="ion-text-center ion-margin-bottom">
+              <ion-chip color="primary" outline="true">
+                <ion-avatar>
+                  <ion-icon name="person"></ion-icon>
+                </ion-avatar>
+                <ion-label>{{ user.nameLogin }}</ion-label>
+              </ion-chip>
+              <br>
+              <ion-note color="medium">{{ user.emailLogin }}</ion-note>
+            </div>
             }
 
             <form [formGroup]="step2Form" (ngSubmit)="login()">
 
               <!-- Token inputs usando ion-grid -->
-              <ion-item lines="none" class="ion-margin-bottom">
-                <ion-label position="stacked" color="primary">Código de verificación:</ion-label>
-              </ion-item>
+              <div class="ion-margin-bottom ion-text-center">
+                <ion-text color="primary">
+                  <h3>Código de verificación:</h3>
+                </ion-text>
+              </div>
 
               <ion-grid>
                 <ion-row class="ion-justify-content-center">
@@ -111,18 +115,18 @@
               </ion-grid>
 
               <!-- Auto-copy button -->
-              <ion-button fill="outline" expand="block" (click)="tryAutoCopy()"
-                [disabled]="(wizardState$ | async)?.isLoading" class="ion-margin-vertical">
+              <ion-button fill="clear" expand="block" (click)="tryAutoCopy()"
+                [disabled]="(wizardState$ | async)?.isLoading" class="ion-margin-vertical" color="medium">
                 <ion-icon name="clipboard" slot="start"></ion-icon>
                 Pegar desde portapapeles
               </ion-button>
 
               <!-- Mensaje de error -->
               @if ((wizardState$ | async)?.error) {
-              <ion-item lines="none" color="danger" fill="outline" class="ion-margin-bottom">
-                <ion-icon name="alert-circle" slot="start"></ion-icon>
-                <ion-label>{{ (wizardState$ | async)?.error }}</ion-label>
-              </ion-item>
+              <ion-note color="danger" class="ion-margin-top">
+                <ion-icon name="alert-circle"></ion-icon>
+                {{ (wizardState$ | async)?.error }}
+              </ion-note>
               }
 
               <!-- Botones de acción usando ion-grid -->
@@ -162,7 +166,8 @@
         </ion-card>
         }
 
-      </ion-col>
-    </ion-row>
-  </ion-grid>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </div>
 </ion-content>

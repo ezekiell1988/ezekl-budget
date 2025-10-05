@@ -23,7 +23,15 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta demo-websocket - protegida, requiere autenticación
+  {
+    path: 'demo-websocket',
+    loadComponent: () => import('./demo-websocket/demo-websocket.page').then( m => m.DemoWebsocketPage),
+    canActivate: [AuthGuard]
+  },
+
   // Ruta wildcard - redirige a home (que a su vez verificará autenticación)
+  // IMPORTANTE: Esta debe ir SIEMPRE al final
   {
     path: '**',
     redirectTo: 'home'

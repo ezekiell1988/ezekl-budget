@@ -1,0 +1,46 @@
+/* Solo estilos realmente usados para WebSocket */
+
+.messages-container {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.message-item {
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-left: 4px solid var(--ion-color-medium);
+}
+
+/* Solo tipos de mensajes que realmente se usan */
+.message-ping {
+  border-left-color: var(--ion-color-success);
+  background: var(--ion-color-success-tint);
+}
+
+.message-welcome {
+  border-left-color: var(--ion-color-primary);
+  background: var(--ion-color-primary-tint);
+}
+
+.message-error {
+  border-left-color: var(--ion-color-danger);
+  background: var(--ion-color-danger-tint);
+}
+
+.message-echo {
+  border-left-color: var(--ion-color-warning);
+  background: var(--ion-color-warning-tint);
+}
+
+.message-time {
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+  margin-bottom: 4px;
+}
+
+.no-messages {
+  text-align: center;
+  color: var(--ion-color-medium);
+  font-style: italic;
+}
