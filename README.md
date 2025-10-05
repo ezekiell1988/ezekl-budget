@@ -14,6 +14,8 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **FastAPI** con documentación automática
 - **Servidor híbrido** que sirve tanto API como frontend
 - **WebSocket en tiempo real** con ping-pong y reconexión automática
+- **Cliente HTTP asíncrono** con `aiohttp` y soporte completo para todos los verbos HTTP
+- **Procesamiento de emails** via Azure Event Grid con descarga asíncrona de contenido MIME
 - **Autenticación JWT** integrada con Microsoft
 - **Azure OpenAI** integration
 - **SQL Server** con conexiones asíncronas y stored procedures
@@ -172,7 +174,106 @@ La aplicación detecta automáticamente si está en producción y usa `localhost
 - **Usuario**: `budgetuser` (permisos limitados)
 - **Puerto**: 1433 (estándar SQL Server)
 
-### 4.5. WebSocket en Tiempo Real
+### 4.5. Cliente HTTP Asíncrono (HTTPClient)
+
+La aplicación incluye un **cliente HTTP asíncrono** robusto basado en `aiohttp`:
+
+#### Características del Cliente HTTP
+- **Soporte completo**: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
+- **Configuración flexible**: URL base, timeouts, headers por defecto
+- **Logging automático**: Peticiones y respuestas con detalles
+- **Manejo de errores**: Captura y logging de excepciones HTTP
+- **Métodos de conveniencia**: `get_json()`, `get_text()`, `get_bytes()`
+- **Session management**: Automático con context managers
+
+#### Uso del Cliente HTTP
+
+```python
+from app.core.http_request import HTTPClient, get_text, get_json
+
+# Cliente con configuración específica
+client = HTTPClient(
+    base_url="https://api.ejemplo.com",
+    timeout=30,
+    default_headers={"Authorization": "Bearer token"}
+)
+
+# Realizar peticiones
+response = await client.get("/endpoint")
+data = await client.get_json("/api/data")
+
+# Funciones de conveniencia (cliente global)
+content = await get_text("https://ejemplo.com/mime-content")
+api_data = await get_json("https://api.ejemplo.com/data")
+```
+
+#### Integración en el Proyecto
+
+El cliente HTTP se utiliza en:
+- **Procesamiento de emails**: Descarga asíncrona de contenido MIME
+- **Integraciones futuras**: APIs externas, webhooks, servicios de terceros
+- **Centralización**: Un punto único para todas las peticiones HTTP
+
+### 4.6. Servicios de Negocio (Services)
+
+La aplicación implementa una **arquitectura de servicios** para organizar la lógica de negocio:
+
+#### Estructura de Services
+
+```
+app/services/
+├── __init__.py           # Módulo de servicios
+└── email_service.py      # Servicio centralizado para envío de emails
+```
+
+#### EmailService - Gestión Centralizada de Emails
+
+El `EmailService` proporciona funcionalidad reutilizable para el envío de emails desde cualquier parte de la aplicación:
+
+**Características principales:**
+- ✅ **Cliente Azure lazy-loaded** - Inicialización bajo demanda
+- ✅ **Múltiples métodos de envío** - Desde objetos Request o parámetros directos  
+- ✅ **Soporte dual de contenido** - HTML y texto plano
+- ✅ **Múltiples destinatarios** - Lista de emails en una sola operación
+- ✅ **Configuración flexible** - Remitente personalizable
+- ✅ **Manejo robusto de errores** - Sin excepciones, respuestas estructuradas
+- ✅ **Logging detallado** - Para debugging y auditoria
+
+**Uso del servicio:**
+
+```python
+from app.services.email_service import email_service, send_email
+
+# Usando la instancia global del servicio
+response = await email_service.send_email(
+    to=["user@example.com"],
+    subject="Notificación importante",
+    html_content="<h1>Mensaje HTML</h1>",
+    text_content="Mensaje en texto plano"
+)
+
+# Usando función de conveniencia
+response = await send_email(
+    to=["user@example.com"], 
+    subject="Test",
+    text_content="Mensaje simple"
+)
+```
+
+#### Arquitectura de Separación de Responsabilidades
+
+- **`core/`** → Infraestructura y configuración (config.py, http_request.py)
+- **`services/`** → Lógica de negocio y servicios (email_service.py)
+- **`api/routes/`** → Endpoints que usan los services
+- **`models/`** → Modelos de datos y validación
+
+Esta separación permite:
+- ✅ **Reutilización** - Los servicios se pueden usar desde múltiples endpoints
+- ✅ **Testabilidad** - Fácil testing unitario de lógica de negocio
+- ✅ **Mantenibilidad** - Código organizado por responsabilidades
+- ✅ **Escalabilidad** - Agregar nuevos servicios es directo
+
+### 4.7. WebSocket en Tiempo Real
 
 La aplicación incluye **WebSocket** para comunicación en tiempo real entre cliente y servidor:
 
@@ -232,6 +333,9 @@ SSH_USER=azureuser
 AZURE_OPENAI_ENDPOINT=tu_endpoint_de_azure
 AZURE_OPENAI_API_KEY=tu_api_key_de_azure
 AZURE_OPENAI_DEPLOYMENT_NAME=tu_deployment_name
+AZURE_COMMUNICATION_ENDPOINT=tu_endpoint_de_communication_services
+AZURE_COMMUNICATION_KEY=tu_primary_key_de_communication_services
+AZURE_COMMUNICATION_SENDER_ADDRESS=noreply@tudominio.com
 DB_PASSWORD=tu_contraseña_de_base_de_datos
 ```
 
@@ -609,6 +713,87 @@ sudo journalctl -u docker -f
 ```
 
 ## 🔧 Cambios Recientes (Octubre 2025)
+
+### 🚀 Nueva Funcionalidad: Cliente HTTP Asíncrono, Procesamiento y Envío de Emails
+
+**Nuevas características implementadas**:
+
+#### 1. **Cliente HTTP Asíncrono Robusto** (`app/core/http_request.py`)
+- ✅ **Clase HTTPClient** con soporte completo para todos los verbos HTTP
+- ✅ **Funciones de conveniencia** para uso rápido (`get()`, `post()`, etc.)
+- ✅ **Métodos especializados** para respuestas (`get_json()`, `get_text()`, `get_bytes()`)
+- ✅ **Configuración flexible** (URL base, timeouts, headers por defecto)
+- ✅ **Logging automático** de peticiones y respuestas
+- ✅ **Manejo robusto de errores** con captura de excepciones específicas
+
+#### 2. **Procesamiento de Emails via Azure Event Grid** (`app/api/routes/email.py`)
+- ✅ **Endpoint POST /api/email/receive** para Azure Event Grid
+- ✅ **Validación automática de suscripción** de Azure Event Grid
+- ✅ **Procesamiento asíncrono** de emails entrantes
+- ✅ **Descarga de contenido MIME** usando el cliente HTTP asíncrono
+- ✅ **Parsing completo** de emails (texto plano, HTML, adjuntos)
+- ✅ **Manejo de reportes** de entrega y rebotes
+- ✅ **Logging detallado** para debugging y monitoreo
+
+#### 3. **Envío de Emails con Azure Communication Services** (`app/api/routes/email.py`)
+- ✅ **Endpoint POST /api/email/send** para enviar emails
+- ✅ **Azure Communication Services SDK** integrado
+- ✅ **Validación de emails** con Pydantic EmailStr
+- ✅ **Soporte dual** para contenido HTML y texto plano
+- ✅ **Múltiples destinatarios** por petición
+- ✅ **Tracking de mensajes** con message_id y operation_id
+- ✅ **Configuración flexible** del remitente
+
+#### 3. **Arquitectura Modular Mejorada**
+```
+app/api/
+├── routes/
+│   ├── __init__.py     # Health check, credentials
+│   └── email.py        # Procesamiento de emails (NUEVO)
+└── websockets/
+    └── __init__.py     # WebSockets en tiempo real
+```
+
+#### 4. **Dependencias Actualizadas**
+```python
+# Cliente HTTP asíncrono
+aiohttp==3.12.15        # Cliente HTTP asíncrono
+aiohappyeyeballs==2.6.1 # Optimización de conexiones DNS
+aiosignal==1.4.0        # Manejo de signals asincrónicos
+multidict==6.6.4        # Estructuras de datos para HTTP
+yarl==1.20.1           # Parsing y manipulación de URLs
+
+# Azure Communication Services para envío de emails
+azure-communication-email==1.0.0  # SDK oficial de Azure
+azure-core==1.35.1                # Funcionalidades core de Azure
+azure-mgmt-core==1.6.0            # Gestión de recursos Azure
+msrest==0.7.1                     # Cliente REST para Microsoft
+
+# Validación de emails
+email-validator==2.3.0            # Validación robusta de emails
+dnspython==2.8.0                  # DNS lookups para validación
+```
+
+#### 5. **Beneficios de la Implementación**
+- 🔄 **100% asíncrono**: Todas las operaciones HTTP mantienen el event loop
+- 📈 **Mejor rendimiento**: Sin bloqueos en descargas de contenido
+- 🔧 **Reutilizable**: Cliente HTTP centralizado para futuras integraciones
+- 🐛 **Debugging mejorado**: Logging detallado de todas las operaciones HTTP
+- 📧 **Preparado para producción**: Manejo completo del ciclo de vida de emails
+
+#### 6. **Ejemplo de Uso en Producción**
+```python
+# Configuración de Azure Event Grid Subscription:
+# Webhook URL: https://budget.ezekl.com/api/email/webhook
+# Event Types: Microsoft.Communication.InboundEmailReceived
+# 
+# El endpoint maneja automáticamente:
+# 1. Validación de suscripción (primer evento)
+# 2. Descarga asíncrona de contenido MIME
+# 3. Parsing de headers y cuerpo del email
+# 4. Logging para auditoria y debugging
+# 5. Procesamiento de adjuntos (preparado)
+```
 
 ### ✅ Resolución de Error 502 - Missing ODBC Drivers
 
@@ -1064,6 +1249,83 @@ El Nginx está configurado con headers de seguridad:
 ### Específicos del Proyecto
 
 - `GET /api/credentials` → Obtiene credenciales de Azure OpenAI (sin API key)
+- `POST /api/email/webhook` → Webhook para recibir eventos de email desde Azure Event Grid
+- `POST /api/email/send` → Endpoint para enviar emails usando Azure Communication Services
+
+### Integración con Azure Event Grid (Emails)
+
+El webhook `/api/email/webhook` maneja eventos de Azure Event Grid para procesamiento de emails:
+
+#### Tipos de eventos soportados:
+
+**1. Validación de suscripción**
+```json
+{
+  "aeg-event-type": "SubscriptionValidation",
+  "data": [
+    {
+      "validationCode": "12345678-abcd-1234-abcd-123456789012"
+    }
+  ]
+}
+```
+
+**2. Emails entrantes**
+```json
+{
+  "aeg-event-type": "Notification",
+  "eventType": "Microsoft.Communication.InboundEmailReceived",
+  "data": {
+    "to": ["recipient@example.com"],
+    "from": "sender@example.com",
+    "subject": "Asunto del email",
+    "emailContentUrl": "https://storage.azure.com/path/to/mime/content"
+  }
+}
+```
+
+#### Características del procesamiento:
+
+- ✅ **Descarga asíncrona** de contenido MIME usando `aiohttp`
+- ✅ **Parsing completo** de emails (texto plano, HTML, adjuntos)
+- ✅ **Logging detallado** de todos los eventos
+- ✅ **Manejo robusto de errores** sin afectar Azure Event Grid
+- ✅ **Procesamiento de adjuntos** (preparado para implementación)
+- ✅ **Reportes de entrega** y manejo de rebotes
+
+### Envío de Emails (Azure Communication Services)
+
+El endpoint `/api/email/send` permite enviar emails usando Azure Communication Services:
+
+#### Request Body:
+```json
+{
+  "to": ["recipient1@example.com", "recipient2@example.com"],
+  "subject": "Asunto del email",
+  "html_content": "<h1>Contenido HTML</h1><p>Este es un email con formato.</p>",
+  "text_content": "Contenido en texto plano como alternativa",
+  "from_address": "noreply@ezekl.com"
+}
+```
+
+#### Response:
+```json
+{
+  "success": true,
+  "message": "Email enviado exitosamente",
+  "message_id": "12345678-abcd-1234-abcd-123456789012",
+  "operation_id": "operation-abcd-1234"
+}
+```
+
+#### Características del envío:
+
+- ✅ **Validación automática** de direcciones de email usando Pydantic
+- ✅ **Soporte dual** para contenido HTML y texto plano
+- ✅ **Múltiples destinatarios** en una sola petición
+- ✅ **Dirección remitente configurable** o usa la por defecto
+- ✅ **Tracking del mensaje** con message_id único
+- ✅ **Manejo robusto de errores** sin afectar la API
 
 ### Testing de Endpoints
 
@@ -1118,9 +1380,17 @@ ezekl-budget/
 ├── app/                              # ⚡ Backend FastAPI (Estructura Refactorizada)
 │   ├── __init__.py                   # Módulo principal de la aplicación
 │   ├── main.py                       # Servidor híbrido (API + static files)
-│   ├── core/                         # 🔧 Configuración central
+│   ├── api/                          # 🌐 API modular con routers estándar FastAPI
+│   │   ├── __init__.py               # Routers con prefijos: /api y /ws
+│   │   ├── routes/                   # �️ REST API endpoints
+│   │   │   ├── __init__.py           # Router base (health, credentials)
+│   │   │   └── email.py              # Endpoints de procesamiento de emails
+│   │   └── websockets/               # 📡 WebSockets en tiempo real
+│   │       └── __init__.py           # Router base (sin prefijo)
+│   ├── core/                         # �🔧 Configuración central
 │   │   ├── __init__.py               # Módulo core
-│   │   └── config.py                 # Configuración con pydantic-settings
+│   │   ├── config.py                 # Configuración con pydantic-settings
+│   │   └── http_request.py           # Cliente HTTP asíncrono con aiohttp
 │   ├── database/                     # 💾 Capa de acceso a datos
 │   │   ├── __init__.py               # Módulo database
 │   │   └── connection.py             # Conexiones asíncronas a SQL Server

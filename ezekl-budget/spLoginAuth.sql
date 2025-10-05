@@ -18,7 +18,7 @@ BEGIN
     FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
   ));
   SET @json = JSON_QUERY((
-    SELECT CAST(IIF(@user IS NULL, 0, 1) AS BIT) ok
+    SELECT CAST(IIF(@user IS NULL, 0, 1) AS BIT) success
     , JSON_QUERY(@user) auth
     FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
   ));

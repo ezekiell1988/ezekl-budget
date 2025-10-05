@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     azure_openai_api_key: str
     azure_openai_deployment_name: str
     
+    # Azure Communication Services Configuration
+    azure_communication_endpoint: str
+    azure_communication_key: str
+    azure_communication_sender_address: str
+    
     # Configuración de deployment
     deploy_host: Optional[str] = None
     deploy_user: Optional[str] = None

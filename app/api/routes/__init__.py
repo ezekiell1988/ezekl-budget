@@ -7,9 +7,13 @@ from fastapi import APIRouter, HTTPException
 from app.core.config import settings
 from app.database.connection import test_db_connection
 from app.models.responses import CredentialsResponse
+from .email import router as email_router
 
 # Router principal para todos los endpoints de la API
 router = APIRouter()
+
+# Incluir routers de módulos específicos
+router.include_router(email_router, prefix="/email", tags=["email"])
 
 
 @router.get("/credentials", response_model=CredentialsResponse)
