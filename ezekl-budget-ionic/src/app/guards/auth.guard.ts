@@ -22,21 +22,27 @@ export class AuthGuard implements CanActivate {
    * Redirige a /login si no está autenticado
    */
   canActivate(): Observable<boolean> {
-    // Esperar la inicialización y verificar con el servidor
+    // Esperar la inicialización
     return from(this.authService.ensureInitialized()).pipe(
       take(1),
       switchMap(() => {
+        // Verificar estado local primero (más rápido para navegación interna)
+        const isAuthenticated = this.authService.isAuthenticated;
         const token = this.authService.currentToken;
+
         // Si no hay token inicial, ir a login directamente
-        if (!token) {
+        if (!token || !isAuthenticated) {
           this.router.navigate(['/login']);
           return of(false);
         }
 
-        // Verificar token con el servidor
-        return from(this.authService.verifyToken()).pipe(
-          map(isValid => {
-            if (isValid) {
+        // Si ya está autenticado localmente, permitir navegación
+        // Solo verificar con el servidor si es realmente necesario
+        const currentState = this.authService.authState;
+        return currentState.pipe(
+          take(1),
+          map(state => {
+            if (state.isAuthenticated && state.token) {
               return true;
             } else {
               this.router.navigate(['/login']);
@@ -69,16 +75,18 @@ export class GuestGuard implements CanActivate {
     // Esperar la inicialización
     return from(this.authService.ensureInitialized()).pipe(
       take(1),
-      map(() => {
-        const isAuth = this.authService.isAuthenticated;
+      switchMap(() => {
         // Verificar el estado local primero (más rápido)
-        if (isAuth) {
+        const isAuth = this.authService.isAuthenticated;
+        const token = this.authService.currentToken;
+
+        if (isAuth && token) {
           // Usuario autenticado, redirigir a home
           this.router.navigate(['/home']);
-          return false;
+          return of(false);
         } else {
           // No autenticado, permitir acceso a login
-          return true;
+          return of(true);
         }
       }),
       catchError(() => {
