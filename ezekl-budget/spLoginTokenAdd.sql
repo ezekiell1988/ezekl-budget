@@ -19,7 +19,12 @@ BEGIN
   -- Validar que el usuario existe
   IF @user IS NULL
   BEGIN
-    THROW 50001, N'Usuario no encontrado con el código proporcionado', 1;
+    SET @json = JSON_QUERY((
+      SELECT 0 as success, 'Usuario no encontrado con el código proporcionado' as message
+      FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
+    ));
+    SELECT JSON_QUERY(@json) json;
+    RETURN;
   END
   
   DECLARE @token VARCHAR(5) = RIGHT('00000' + CAST(ABS(CHECKSUM(NEWID())) % 100000 AS VARCHAR(5)), 5);
@@ -27,14 +32,15 @@ BEGIN
     JSON_VALUE(@user, '$.idLogin'), @token
   );
   SET @json = JSON_QUERY((
-    SELECT SCOPE_IDENTITY() idLoginToken
+    SELECT 1 as success, 'Token generado exitosamente' as message,
+           SCOPE_IDENTITY() idLoginToken
     , @token token, JSON_QUERY(@user) auth
     FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
   ));
-  --Query Pagination
+  
   SELECT JSON_QUERY(@json) json;
 END
 GO
-BEGIN TRAN
+
+-- Probar el procedimiento corregido
 EXEC spLoginTokenAdd @json = N'{"codeLogin":"S"}';
-ROLLBACK TRAN

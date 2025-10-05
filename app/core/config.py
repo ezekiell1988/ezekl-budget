@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     azure_client_id: Optional[str] = None
     azure_tenant_id: Optional[str] = None
     
-    # Configuración de autenticación JWE
-    jwe_secret_key: str = "your-256-bit-secret-key-change-in-production-ezekl-budget-2024!"
+    # Configuración de autenticación JWE (debe ser exactamente 32 bytes)
+    jwe_secret_key: str = "ezekl-budget-2024-jwe-secret-32b"  # Exactamente 32 bytes
     
     # Configuración de Base de Datos SQL Server
     db_host: str

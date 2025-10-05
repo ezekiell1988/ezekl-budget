@@ -1242,9 +1242,10 @@ El Nginx está configurado con headers de seguridad:
 
 ### Autenticación (Sistema de Login)
 
-- `POST /api/auth/request-token` → Solicita token de autenticación por email
-- `POST /api/auth/verify-token` → Verifica token y genera JWT de acceso
-- `POST /api/auth/logout` → Cierra sesión invalidando el JWT
+- `POST /api/auth/request-token` → Solicita token de autenticación por email (con modelos Pydantic)
+- `POST /api/auth/login` → Completa autenticación con token y genera JWE de acceso
+- `GET /api/auth/verify-token` → **[PRIVADO]** Obtiene datos del usuario autenticado 
+- `POST /api/auth/logout` → Cierra sesión (limpieza del lado cliente)
 
 ### Integración con Azure Event Grid (Emails)
 
@@ -1326,9 +1327,9 @@ El endpoint `/api/email/send` permite enviar emails usando Azure Communication S
 - ✅ **Respuestas limpias** - Sin campos null innecesarios
 - ✅ **Manejo robusto de errores** sin afectar la API
 
-### Sistema de Autenticación (JWT con Email)
+### Sistema de Autenticación (JWE con Email) - **ACTUALIZADO**
 
-El sistema implementa autenticación de dos pasos con tokens enviados por email y JWT para sesiones.
+El sistema implementa autenticación de dos pasos con tokens enviados por email y **JWE (JSON Web Encryption)** para sesiones seguras. Todos los endpoints usan **modelos Pydantic** para validación automática y documentación completa.
 
 #### Flujo de Autenticación
 
@@ -1348,48 +1349,98 @@ Response:
 }
 ```
 
-**2. Verificar Token y Obtener JWT**
+**2. Completar Login y Obtener JWE**
 ```bash
-curl -X POST https://budget.ezekl.com/api/auth/verify-token \
+curl -X POST https://budget.ezekl.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "codeLogin": "S",
-    "token": "123456"
+    "token": "12345"
   }'
 ```
 
-Response:
+Response (LoginResponse):
 ```json
 {
   "success": true,
   "message": "Autenticación exitosa",
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "token_type": "bearer",
-  "expires_in": 3600
+  "user": {
+    "idLogin": 1,
+    "codeLogin": "S",
+    "nameLogin": "Ezequiel Baltodano Cubillo",
+    "phoneLogin": "50683681485",
+    "emailLogin": "ezekiell1988@hotmail.com"
+  },
+  "accessToken": "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0...",
+  "expiresAt": "2025-10-06T19:10:00.646981+00:00"
 }
 ```
 
-**3. Usar JWT en Peticiones Protegidas**
+**3. Verificar Sesión y Obtener Datos del Usuario (Endpoint Privado)**
 ```bash
-curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." \
-  https://budget.ezekl.com/api/protected-endpoint
+curl -X GET https://budget.ezekl.com/api/auth/verify-token \
+  -H "Authorization: Bearer eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0..."
+```
+
+Response (VerifyTokenResponse):
+```json
+{
+  "user": {
+    "idLogin": 1,
+    "codeLogin": "S", 
+    "nameLogin": "Ezequiel Baltodano Cubillo",
+    "phoneLogin": "50683681485",
+    "emailLogin": "ezekiell1988@hotmail.com"
+  },
+  "expiresAt": "2025-10-06T19:10:00+00:00",
+  "issuedAt": "2025-10-05T19:10:00+00:00"
+}
 ```
 
 **4. Cerrar Sesión**
 ```bash
-curl -X POST https://budget.ezekl.com/api/auth/logout \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+curl -X POST https://budget.ezekl.com/api/auth/logout
 ```
 
-#### Características del Sistema de Auth
+Response (LogoutResponse):
+```json
+{
+  "success": true,
+  "message": "Sesión cerrada exitosamente"
+}
+```
+
+#### Características del Sistema de Auth **[ACTUALIZADO 2025]**
 
 - ✅ **Autenticación de 2 pasos** - Token por email + verificación
-- ✅ **Tokens temporales** - Expiración configurable (por defecto 10 minutos)
-- ✅ **JWT seguros** - Con JWE (encriptación) no solo JWT (firmado)
-- ✅ **Email en background** - Envío asíncrono sin bloquear API
-- ✅ **Base de datos integrada** - Stored procedures para validación
-- ✅ **Logout seguro** - Invalidación de tokens
-- ✅ **Rate limiting** - Protección contra spam de tokens
+- ✅ **Tokens temporales** - Expiración configurable (30 minutos por defecto)  
+- ✅ **JWE seguros** - Encriptación completa con algoritmo A256KW + A256GCM
+- ✅ **Email en background** - Cola asíncrona sin bloquear API (1 segundo vs 5-10s antes)
+- ✅ **Modelos Pydantic** - Validación automática y documentación completa
+- ✅ **Base de datos integrada** - Stored procedures con SQL Server
+- ✅ **Endpoint privado** - `GET /verify-token` con autenticación Bearer
+- ✅ **Tokens de un solo uso** - Se eliminan automáticamente después del login
+- ✅ **Clave de 256 bits** - Configuración segura para algoritmos JWE
+- ✅ **Documentación automática** - Swagger/OpenAPI con todos los esquemas
+
+#### Modelos Pydantic de Autenticación
+
+El sistema usa modelos Pydantic profesionales ubicados en `/app/models/auth.py`:
+
+- **`RequestTokenRequest`** - Solicitud de token temporal
+- **`RequestTokenResponse`** - Respuesta de token generado  
+- **`LoginRequest`** - Datos de login (codeLogin + token de 5 dígitos)
+- **`LoginResponse`** - Respuesta completa con JWE y datos del usuario
+- **`UserData`** - Información del usuario autenticado
+- **`VerifyTokenResponse`** - Datos del usuario + fechas de token
+- **`LogoutResponse`** - Confirmación de cierre de sesión
+- **`AuthErrorResponse`** - Errores de autenticación (401, etc.)
+
+**Beneficios:**
+- 🔍 **Validación automática** - Error 422 para datos inválidos
+- 📚 **Documentación completa** - Ejemplos en Swagger UI
+- 🛡️ **Type Safety** - IntelliSense en desarrollo
+- ⚡ **Rendimiento** - Validación rápida con Pydantic V2
 
 ### Testing de Endpoints
 
