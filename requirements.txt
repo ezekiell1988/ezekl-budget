@@ -14,7 +14,9 @@ cffi==2.0.0
 charset-normalizer==3.4.3
 click==8.3.0
 cryptography==46.0.2
+dnspython==2.8.0
 ecdsa==0.19.1
+email-validator==2.3.0
 fastapi==0.118.0
 frozenlist==1.7.0
 h11==0.16.0
