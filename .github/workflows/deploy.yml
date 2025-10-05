@@ -56,6 +56,13 @@ jobs:
           AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT_NAME=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
           PORT=$DEPLOY_PORT
+          DB_HOST=localhost
+          DB_PORT=1433
+          DB_NAME=budgetdb
+          DB_USER=budgetuser
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_DRIVER=ODBC Driver 18 for SQL Server
+          DB_TRUST_CERT=yes
           EOF
           fi
           
@@ -89,28 +96,49 @@ jobs:
           ionic build --prod
           cd ..
           
-          # Construir y ejecutar nuevo contenedor Python
-          echo "🔨 Construyendo imagen Docker para FastAPI..."
-          docker build -t $PROJECT_NAME .
+          # Construir y ejecutar nuevo contenedor Python con Microsoft ODBC Driver 18
+          echo "🔨 Construyendo imagen Docker para FastAPI + ODBC..."
+          docker build -t $PROJECT_NAME-image .
           
-          echo "▶️  Ejecutando contenedor en puerto $DEPLOY_PORT..."
+          echo "▶️  Ejecutando contenedor con network host para acceso a BD..."
           docker run -d \
             --name $PROJECT_NAME \
             --restart unless-stopped \
-            -p $DEPLOY_PORT:$DEPLOY_PORT \
+            --network host \
             --env-file .env \
-            $PROJECT_NAME
+            $PROJECT_NAME-image
           
           # Verificar que el contenedor esté corriendo
           echo "✅ Verificando deployment..."
-          sleep 10
+          sleep 15
           
           if docker ps | grep -q $PROJECT_NAME; then
-            echo "🎉 Deployment exitoso! $PROJECT_NAME corriendo en puerto $DEPLOY_PORT"
-            echo "🌐 Accede en: http://20.246.83.239:$DEPLOY_PORT"
+            echo "🎉 Contenedor iniciado correctamente!"
+            
+            # Verificar health check
+            echo "🔍 Verificando health check..."
+            for i in {1..5}; do
+              if curl -f -s http://localhost:$DEPLOY_PORT/api/health > /dev/null 2>&1; then
+                echo "✅ Health check exitoso - API y base de datos funcionando!"
+                echo "🌐 Aplicación disponible en: https://budget.ezekl.com"
+                echo "📊 API Health: https://budget.ezekl.com/api/health"
+                echo "📚 API Docs: https://budget.ezekl.com/docs"
+                break
+              else
+                echo "⏳ Esperando que la aplicación esté lista... (intento $i/5)"
+                sleep 10
+              fi
+            done
+            
+            if [ $i -eq 5 ]; then
+              echo "⚠️  Warning: Health check falló, pero contenedor está corriendo"
+              echo "📋 Logs del contenedor:"
+              docker logs $PROJECT_NAME --tail 20
+            fi
           else
-            echo "❌ Error en deployment"
-            docker logs $PROJECT_NAME
+            echo "❌ Error en deployment - contenedor no está corriendo"
+            echo "📋 Logs del contenedor:"
+            docker logs $PROJECT_NAME --tail 50
             exit 1
           fi
           

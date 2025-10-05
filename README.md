@@ -46,7 +46,8 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - Nginx
 - Certbot (Let's Encrypt)
 - SQL Server 2022 Developer Edition
-- ODBC Driver 18 for SQL Server
+- Microsoft ODBC Driver 18 for SQL Server (instalado en contenedor Docker)
+- Archivo .env configurado en producción
 
 ## 🛠️ Configuración Inicial
 
@@ -222,10 +223,11 @@ git push origin main  # ← Esto activa el deployment automático
 3. 📥 Clona/actualiza código en `/home/azureuser/projects/ezekl-budget`
 4. 📦 Instala Node.js e Ionic CLI si es necesario
 5. 🔨 Compila frontend Ionic (`ionic build --prod`)
-6. 🐳 Construye imagen Docker con FastAPI + frontend compilado
+6. 🐳 Construye imagen Docker con FastAPI + frontend compilado + Microsoft ODBC Driver 18
 7. 🛑 Detiene contenedor anterior
-8. ▶️ Ejecuta nuevo contenedor en puerto 8001
-9. ✅ Verifica que esté funcionando
+8. ▶️ Ejecuta nuevo contenedor con `--network host` para acceso a base de datos
+9. ✅ Verifica que esté funcionando con health check
+10. 📋 Usa archivo .env configurado en el servidor para variables de producción
 
 **Para deployment manual desde GitHub:**
 - Ve a **Actions** → **Deploy to Azure Server** → **Run workflow**
@@ -333,14 +335,18 @@ cd /home/azureuser/projects/ezekl-budget
 # Actualizar código
 git pull origin main
 
-# Reconstruir y ejecutar
+# Reconstruir imagen Docker con Microsoft ODBC Driver 18
 docker stop ezekl-budget || true
 docker rm ezekl-budget || true
-docker build -t ezekl-budget .
-docker run -d --name ezekl-budget --restart unless-stopped -p 8001:8001 --env-file .env ezekl-budget
+docker build -t ezekl-budget-image .
 
-# Verificar
+# Ejecutar con network host para acceso a base de datos localhost
+docker run -d --name ezekl-budget --network host --env-file .env ezekl-budget-image
+
+# Verificar que esté funcionando
 docker ps | grep ezekl-budget
+docker logs ezekl-budget --tail 20
+curl -s http://localhost:8001/api/health
 ```
 
 ## 🔧 Configuración para Múltiples Proyectos
@@ -519,7 +525,82 @@ sudo journalctl -u nginx -f
 sudo journalctl -u docker -f
 ```
 
-## � Troubleshooting
+## 🔧 Cambios Recientes (Octubre 2025)
+
+### ✅ Resolución de Error 502 - Missing ODBC Drivers
+
+**Problema identificado**: El contenedor Docker no tenía los Microsoft ODBC Driver 18 instalados, causando:
+```
+ImportError: libodbc.so.2: cannot open shared object file: No such file or directory
+```
+
+**Solución implementada**:
+
+#### 1. **Dockerfile actualizado** con drivers ODBC
+```dockerfile
+# Instalar dependencias del sistema y Microsoft ODBC Driver
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    gnupg2 \
+    unixodbc-dev \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.asc.gpg \
+    && echo "deb [arch=amd64] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+#### 2. **Configuración de red Docker**
+- **Problema**: Contenedor no podía conectar a `localhost` del servidor
+- **Solución**: Usar `--network host` para acceso directo a localhost
+```bash
+docker run -d --name ezekl-budget --network host --env-file .env ezekl-budget-image
+```
+
+#### 3. **Configuración .env en producción**
+El archivo `.env` debe estar configurado en el servidor con variables de producción:
+```bash
+# En el servidor: /home/azureuser/projects/ezekl-budget/.env
+DB_HOST=localhost          # En producción usar localhost
+DB_PORT=1433
+DB_NAME=budgetdb
+DB_USER=budgetuser
+DB_PASSWORD=Budget2024!
+DB_DRIVER=ODBC Driver 18 for SQL Server
+DB_TRUST_CERT=yes
+```
+
+#### 4. **Verificación del health check**
+```bash
+# Endpoint que verifica base de datos
+curl https://budget.ezekl.com/api/health
+```
+
+**Estado actual**: ✅ **Completamente funcional** - API y base de datos operando correctamente
+
+### 🔄 GitHub Action Actualizado
+
+**Cambios en el workflow de deployment**:
+
+1. **Variables de entorno completas**: El .env ahora incluye toda la configuración de base de datos
+2. **Network host**: Contenedor ejecuta con `--network host` para acceso directo a localhost 
+3. **Health check mejorado**: Verifica que tanto API como base de datos estén funcionando
+4. **Nombre de imagen actualizado**: Usa `ezekl-budget-image` para mayor claridad
+5. **Logs detallados**: Mejor troubleshooting en caso de errores
+
+**Proceso completo del workflow**:
+```yaml
+# 1. Crear .env con variables completas (incluye BD)
+# 2. Construir imagen Docker con Microsoft ODBC Driver 18  
+# 3. Ejecutar contenedor con --network host
+# 4. Verificar health check (API + base de datos)
+# 5. Mostrar URLs de acceso público
+```
+
+---
+
+## 🐛 Troubleshooting
 
 ### Problemas Comunes
 
@@ -591,6 +672,40 @@ ssh -i "clave.pem" azureuser@20.246.83.239 "sudo lsof -i :8001"
 
 # Ver todos los puertos en uso
 ssh -i "clave.pem" azureuser@20.246.83.239 "ss -tlnp | grep LISTEN"
+```
+
+#### Error de importación ODBC en Docker
+```bash
+# Si aparece: "ImportError: libodbc.so.2: cannot open shared object file"
+
+# 1. Verificar que la imagen Docker tenga los drivers instalados
+ssh -i "clave.pem" azureuser@20.246.83.239 "docker exec ezekl-budget odbcinst -q -d"
+# Debe mostrar: [ODBC Driver 18 for SQL Server]
+
+# 2. Si no están instalados, reconstruir la imagen
+ssh -i "clave.pem" azureuser@20.246.83.239 "cd /home/azureuser/projects/ezekl-budget && docker build -t ezekl-budget-image ."
+
+# 3. Verificar que el contenedor use --network host
+ssh -i "clave.pem" azureuser@20.246.83.239 "docker inspect ezekl-budget | grep NetworkMode"
+# Debe mostrar: "NetworkMode": "host"
+
+# 4. Verificar logs del contenedor
+ssh -i "clave.pem" azureuser@20.246.83.239 "docker logs ezekl-budget --tail 20"
+```
+
+#### Conexión a base de datos falla
+```bash
+# 1. Verificar que SQL Server esté ejecutándose
+ssh -i "clave.pem" azureuser@20.246.83.239 "sudo systemctl status mssql-server"
+
+# 2. Verificar conectividad desde el contenedor
+ssh -i "clave.pem" azureuser@20.246.83.239 "docker exec ezekl-budget ping -c 2 localhost"
+
+# 3. Verificar variables de entorno del contenedor
+ssh -i "clave.pem" azureuser@20.246.83.239 "docker exec ezekl-budget env | grep DB_"
+
+# 4. Probar conexión directa
+ssh -i "clave.pem" azureuser@20.246.83.239 "curl -s http://localhost:8001/api/health"
 ```
 
 ### Desarrollo en Ramas
