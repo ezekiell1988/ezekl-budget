@@ -68,8 +68,29 @@ jobs:
           echo "🧹 Limpiando imágenes antiguas..."
           docker image prune -f
           
-          # Construir y ejecutar nuevo contenedor
-          echo "🔨 Construyendo imagen Docker..."
+          # Verificar si Node.js está instalado, si no, instalarlo
+          echo "📦 Verificando Node.js..."
+          if ! command -v node &> /dev/null; then
+            echo "📥 Instalando Node.js..."
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+          fi
+          
+          # Verificar si Ionic CLI está instalado globalmente
+          if ! command -v ionic &> /dev/null; then
+            echo "📥 Instalando Ionic CLI..."
+            sudo npm install -g @ionic/cli
+          fi
+          
+          # Navegar al proyecto Ionic y construir
+          echo "🔨 Construyendo frontend Ionic..."
+          cd ezekl-budget-ionic
+          npm ci
+          ionic build --prod
+          cd ..
+          
+          # Construir y ejecutar nuevo contenedor Python
+          echo "🔨 Construyendo imagen Docker para FastAPI..."
           docker build -t $PROJECT_NAME .
           
           echo "▶️  Ejecutando contenedor en puerto $DEPLOY_PORT..."

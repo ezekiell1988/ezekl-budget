@@ -1,33 +1,46 @@
-# Ezekl Budget - FastAPI Project
+# Ezekl Budget - Aplicación Híbrida FastAPI + Ionic Angular
 
-Este es un proyecto FastAPI para gestión de presupuesto con integración de Azure OpenAI, configurado con Docker, CI/CD automático y SSL.
+Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angular 8** (frontend) para gestión de presupuesto con autenticación Microsoft, integración de Azure OpenAI, y deployment automático.
 
 ## 🚀 Características
 
+### Frontend (Ionic Angular 8)
+- **Ionic 8** con Angular 20 y Standalone Components (sin app.module.ts)
+- **Autenticación Microsoft** con Azure AD
+- **UI moderna** y responsive
+- **PWA** capabilities con Capacitor
+
+### Backend (FastAPI)
 - **FastAPI** con documentación automática
-- **Docker** y Docker Compose para deployment
-- **CI/CD automático** con GitHub Actions
+- **Servidor híbrido** que sirve tanto API como frontend
+- **Autenticación JWT** integrada con Microsoft
+- **Azure OpenAI** integration
+
+### DevOps
+- **Docker** multi-stage build optimizado
+- **CI/CD automático** con GitHub Actions (compila Ionic + despliega FastAPI)
 - **SSL/HTTPS** con certificados Let's Encrypt
 - **Reverse proxy** con Nginx
-- **WebSocket support** para aplicaciones en tiempo real
-- **Configuración flexible** para múltiples proyectos
 
 ## 🌐 URLs del Proyecto
 
-- **Producción**: https://budget.ezekl.com
+- **Frontend (Ionic Angular)**: https://budget.ezekl.com
+- **API**: https://budget.ezekl.com/api/*
 - **API Docs**: https://budget.ezekl.com/docs
-- **Health Check**: https://budget.ezekl.com/health
+- **API Health**: https://budget.ezekl.com/api/health
 
 ## 📋 Requisitos
 
-### Local
-- Python 3.13+
-- Git
-- Acceso a las claves SSH del servidor
+### Local (Desarrollo)
+- **Python 3.13+** (para FastAPI backend)
+- **Node.js 20+** (para Ionic frontend)
+- **Ionic CLI** (`npm install -g @ionic/cli`)
+- **Git**
 
 ### Servidor (Azure)
 - Ubuntu 22.04+
 - Docker y Docker Compose
+- Node.js 20+ (para compilar Ionic en CI/CD)
 - Nginx
 - Certbot (Let's Encrypt)
 
@@ -40,10 +53,11 @@ git clone https://github.com/ezekiell1988/ezekl-budget.git
 cd ezekl-budget
 ```
 
-### 2. Configurar Entorno Virtual Local
+### 2. Configurar Entorno de Desarrollo
 
+#### Backend (FastAPI)
 ```bash
-# Crear entorno virtual
+# Crear entorno virtual para Python
 python3 -m venv .venv
 
 # Activar entorno virtual
@@ -51,11 +65,18 @@ source .venv/bin/activate  # Linux/macOS
 # o
 .venv\\Scripts\\activate     # Windows
 
-# Instalar dependencias
-pip install fastapi "uvicorn[standard]" pydantic-settings python-dotenv
+# Instalar dependencias de Python
+pip install -r requirements.txt
+```
 
-# Generar requirements.txt
-pip freeze > requirements.txt
+#### Frontend (Ionic Angular)
+```bash
+# Instalar Ionic CLI globalmente
+npm install -g @ionic/cli
+
+# Navegar al proyecto Ionic e instalar dependencias
+cd ezekl-budget-ionic
+npm install
 ```
 
 ### 3. Configurar Variables de Entorno
@@ -63,13 +84,17 @@ pip freeze > requirements.txt
 Crea un archivo `.env` basado en `.env.example`:
 
 ```env
-# Azure OpenAI Configuration
-AZURE_OPENAI_ENDPOINT=your_endpoint_here
-AZURE_OPENAI_API_KEY=your_api_key_here
-AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name
-
-# Server Configuration - ezekl-budget
+# Configuración del servidor híbrido
 PORT=8001
+
+# Azure OpenAI Configuration (requerido)
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-azure-openai-api-key
+AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+
+# Microsoft Azure AD (para autenticación)
+AZURE_CLIENT_ID=your-client-id-from-azure-ad
+AZURE_TENANT_ID=your-tenant-id-from-azure-ad
 
 # Deployment Configuration
 DEPLOY_HOST=20.246.83.239
@@ -92,23 +117,36 @@ AZURE_OPENAI_DEPLOYMENT_NAME=tu_deployment_name
 
 ## 🖥️ Desarrollo Local
 
-### Ejecutar la Aplicación
+### Opción 1: Desarrollo Completo (Frontend + Backend)
 
 ```bash
-# Activar entorno virtual
+# Terminal 1: Frontend Ionic (desarrollo con hot-reload)
+cd ezekl-budget-ionic
+ionic serve  # http://localhost:8100
+
+# Terminal 2: Backend FastAPI
 source .venv/bin/activate
-
-# Ejecutar servidor de desarrollo
-python -m app.main
-
-# O usar uvicorn directamente
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+python -m app.main  # http://localhost:8001/api
 ```
 
-La aplicación estará disponible en:
-- **API**: http://localhost:8001
-- **Docs**: http://localhost:8001/docs
-- **Health**: http://localhost:8001/health
+### Opción 2: Servidor Híbrido (Producción Local)
+
+```bash
+# 1. Compilar frontend
+cd ezekl-budget-ionic
+ionic build --prod
+cd ..
+
+# 2. Ejecutar servidor híbrido
+source .venv/bin/activate
+python -m app.main
+```
+
+### URLs de Desarrollo:
+- **Frontend (dev)**: http://localhost:8100 ← Hot reload
+- **Frontend (híbrido)**: http://localhost:8001/ ← Como producción
+- **API**: http://localhost:8001/api/*
+- **API Docs**: http://localhost:8001/docs
 
 ### Ejecutar con Docker (Local)
 
@@ -138,14 +176,16 @@ git commit -m "descripción de cambios"
 git push origin main  # ← Esto activa el deployment automático
 ```
 
-**El proceso automático:**
+**El proceso automático híbrido:**
 1. 🔄 GitHub Actions detecta push a `main`
 2. 🚀 Se conecta al servidor via SSH
 3. 📥 Clona/actualiza código en `/home/azureuser/projects/ezekl-budget`
-4. 🔨 Construye nueva imagen Docker
-5. 🛑 Detiene contenedor anterior
-6. ▶️ Ejecuta nuevo contenedor en puerto 8001
-7. ✅ Verifica que esté funcionando
+4. 📦 Instala Node.js e Ionic CLI si es necesario
+5. 🔨 Compila frontend Ionic (`ionic build --prod`)
+6. 🐳 Construye imagen Docker con FastAPI + frontend compilado
+7. 🛑 Detiene contenedor anterior
+8. ▶️ Ejecuta nuevo contenedor en puerto 8001
+9. ✅ Verifica que esté funcionando
 
 **Para deployment manual desde GitHub:**
 - Ve a **Actions** → **Deploy to Azure Server** → **Run workflow**
@@ -591,23 +631,56 @@ open https://budget.ezekl.com/docs
 
 ## 📝 Notas Adicionales
 
-### Estructura del Proyecto
+### Estructura del Proyecto Híbrido
 
 ```
 ezekl-budget/
 ├── .github/workflows/
-│   └── deploy.yml              # CI/CD workflow
-├── app/
-│   ├── __init__.py
-│   ├── main.py                 # FastAPI app principal
-│   └── settings.py             # Configuración con pydantic-settings
-├── .env                        # Variables de entorno (no commitear)
-├── .env.example                # Template de variables de entorno
-├── .gitignore                  # Archivos ignorados por git
-├── docker-compose.yml          # Configuración Docker Compose
-├── Dockerfile                  # Imagen Docker
-├── README.md                   # Este archivo
-└── requirements.txt            # Dependencias Python
+│   └── deploy.yml                    # CI/CD híbrido (Ionic + FastAPI)
+├── ezekl-budget-ionic/               # 📱 Frontend Ionic Angular 8
+│   ├── src/
+│   │   ├── app/                      # Componentes Angular (Standalone)
+│   │   ├── assets/                   # Recursos estáticos
+│   │   └── environments/             # Configuraciones por entorno
+│   ├── www/                          # 🏗️ Build compilado (servido por FastAPI)
+│   ├── package.json                  # Dependencias Node.js
+│   ├── angular.json                  # Configuración Angular
+│   ├── ionic.config.json             # Configuración Ionic
+│   └── capacitor.config.ts           # Configuración Capacitor
+├── app/                              # ⚡ Backend FastAPI
+│   ├── main.py                       # Servidor híbrido (API + static files)
+│   └── settings.py                   # Configuración con pydantic-settings
+├── .env                              # Variables de entorno (no commitear)
+├── .env.example                      # Template de variables de entorno
+├── .dockerignore                     # Archivos excluidos del build Docker
+├── docker-compose.yml                # Configuración Docker Compose
+├── Dockerfile                        # Multi-stage build (Ionic + FastAPI)
+├── README.md                         # Este archivo
+└── requirements.txt                  # Dependencias Python
+```
+
+### Arquitectura de la Aplicación
+
+```
+┌─────────────────────────────────────────┐
+│             Nginx (SSL)                 │
+│         budget.ezekl.com                │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│           FastAPI (Puerto 8001)         │
+├─────────────────┬───────────────────────┤
+│ GET /           │ Sirve Frontend Ionic  │
+│ GET /api/*      │ Endpoints de la API   │
+│ GET /docs       │ Documentación API     │
+│ GET /static/*   │ Archivos estáticos    │
+└─────────────────┼───────────────────────┘
+                  │
+        ┌─────────▼──────────┐
+        │   Frontend Build   │
+        │ (ezekl-budget-ionic│
+        │      /www/)        │
+        └────────────────────┘
 ```
 
 ### Contacto y Soporte
@@ -620,20 +693,21 @@ ezekl-budget/
 
 ### ✅ Configuración Completada
 
+- **Frontend**: Ionic Angular 8 + Standalone Components ✅
+- **Backend**: FastAPI con servidor híbrido ✅
+- **Autenticación**: Microsoft Azure AD (en implementación) 🔄
 - **Dominio**: budget.ezekl.com ✅
-- **Cloudflare**: DNS only (nube gris) ✅
 - **SSL**: Let's Encrypt válido hasta 2026-01-02 ✅
-- **Nginx**: Reverse proxy configurado ✅
-- **Docker**: Contenedor corriendo en puerto 8001 ✅
-- **CI/CD**: GitHub Actions automático ✅
+- **CI/CD**: GitHub Actions híbrido (Ionic + FastAPI) ✅
+- **Docker**: Multi-stage build optimizado ✅
 - **Servidor**: Azure Ubuntu 22.04 ✅
 
 ### 🚀 URLs Funcionales
 
-- **Producción**: https://budget.ezekl.com
+- **Frontend (Ionic)**: https://budget.ezekl.com/
+- **API**: https://budget.ezekl.com/api/*
 - **API Docs**: https://budget.ezekl.com/docs
-- **Health Check**: https://budget.ezekl.com/health
-- **Credenciales**: https://budget.ezekl.com/credentials
+- **API Health**: https://budget.ezekl.com/api/health
 
 ### 🔄 Workflow de Desarrollo
 
@@ -647,8 +721,51 @@ git push origin main  # ← Deployment automático
 # https://github.com/ezekiell1988/ezekl-budget/actions
 ```
 
+## 🧑‍💻 Scripts de Desarrollo
+
+### Frontend (Ionic)
+```bash
+cd ezekl-budget-ionic
+
+# Desarrollo con hot-reload
+ionic serve
+
+# Build para producción
+ionic build --prod
+
+# Ejecutar tests
+npm test
+
+# Linting
+npm run lint
+```
+
+### Backend (FastAPI)
+```bash
+# Activar entorno virtual
+source .venv/bin/activate
+
+# Servidor de desarrollo
+python -m app.main
+
+# O con uvicorn y hot-reload
+uvicorn app.main:app --reload --port 8001
+```
+
+### Docker
+```bash
+# Build y ejecutar localmente
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Detener
+docker-compose down
+```
+
 ---
 
-⚡ **Proyecto configurado y listo para desarrollo y producción** ⚡
+⚡ **Proyecto híbrido configurado y listo para desarrollo y producción** ⚡
 
-🔗 **Template perfecto para replicar en futuros proyectos Python/FastAPI** 🔗
+🔗 **Template perfecto para aplicaciones FastAPI + Ionic Angular con autenticación Microsoft** 🔗
