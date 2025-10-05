@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Any, Optional
 import aioodbc
 import pyodbc  # Para tipos y excepciones
-from app.settings import settings
+from app.core.config import settings
 
 # Configurar logging
 logger = logging.getLogger(__name__)

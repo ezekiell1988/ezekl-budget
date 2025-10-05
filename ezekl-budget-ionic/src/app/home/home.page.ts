@@ -98,7 +98,8 @@ export class HomePage implements OnInit, OnDestroy {
     const host = window.location.host;
 
     // Servidor híbrido: mismo host y puerto para frontend, API y WebSocket
-    this.wsUrl = `${protocol}//${host}/ws`;
+    // Nota: "/ws/" con barra final según nueva estructura de routers
+    this.wsUrl = `${protocol}//${host}/ws/`;
 
     console.log('🔌 WebSocket URL configurada:', this.wsUrl);
   }

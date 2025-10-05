@@ -31,7 +31,7 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **API**: https://budget.ezekl.com/api/*
 - **API Docs**: https://budget.ezekl.com/docs
 - **API Health**: https://budget.ezekl.com/api/health
-- **WebSocket**: wss://budget.ezekl.com/ws (tiempo real)
+- **WebSocket**: wss://budget.ezekl.com/ws/ (tiempo real)
 
 ## � Inicio Rápido (Desarrollo Local)
 
@@ -177,7 +177,7 @@ La aplicación detecta automáticamente si está en producción y usa `localhost
 La aplicación incluye **WebSocket** para comunicación en tiempo real entre cliente y servidor:
 
 #### Características del WebSocket
-- **Endpoint**: `/ws` (mismo puerto que la API)
+- **Endpoint**: `/ws/` (prefijo consistente con estructura API)
 - **Protocolo**: WS en desarrollo local, WSS en producción con SSL
 - **Ping-Pong automático**: Cada 30 segundos para mantener conexión activa
 - **Reconexión automática**: Hasta 5 intentos con backoff exponencial
@@ -209,8 +209,8 @@ La aplicación incluye **WebSocket** para comunicación en tiempo real entre cli
 ```
 
 #### URLs del WebSocket:
-- **Desarrollo local**: `ws://localhost:8001/ws`
-- **Producción**: `wss://budget.ezekl.com/ws`
+- **Desarrollo local**: `ws://localhost:8001/ws/`
+- **Producción**: `wss://budget.ezekl.com/ws/`
 
 #### Implementación del Cliente:
 El componente `HomePage` incluye un cliente WebSocket completo con:
@@ -270,7 +270,7 @@ source .venv/bin/activate  # Activar entorno virtual
 - **Frontend (híbrido)**: http://localhost:8001/ ← Como producción
 - **API**: http://localhost:8001/api/*
 - **API Docs**: http://localhost:8001/docs
-- **WebSocket**: ws://localhost:8001/ws ← Tiempo real
+- **WebSocket**: ws://localhost:8001/ws/ ← Tiempo real
 
 ### Ejecutar con Docker (Local)
 
@@ -713,6 +713,134 @@ curl https://budget.ezekl.com/api/health
 # 8. Mostrar URLs de acceso público
 ```
 
+### 📁 Refactorización de Estructura de Código (Octubre 2025)
+
+**Mejora implementada**: Reorganización completa de la estructura del backend para mejor mantenimiento y escalabilidad.
+
+#### **Antes (Estructura Plana)**
+```
+app/
+├── main.py        # Todo en un solo archivo
+├── settings.py    # Configuraciones mezcladas
+└── database.py    # Base de datos y lógica
+```
+
+#### **Después (Estructura Organizada + API Modular)**
+```
+app/
+├── __init__.py                 # Módulo principal
+├── main.py                     # Solo servidor FastAPI + frontend
+├── core/                       # 🔧 Configuración central
+│   ├── __init__.py
+│   └── config.py               # settings.py → config.py
+├── database/                   # 💾 Acceso a datos
+│   ├── __init__.py
+│   └── connection.py           # database.py → connection.py
+├── models/                     # 📝 Modelos Pydantic
+│   ├── __init__.py
+│   └── responses.py            # Extraído de main.py
+└── api/                        # 🌐 API modular con routers estándar FastAPI
+    ├── __init__.py             # Routers con prefijos: /api y /ws
+    ├── routes/                 # 🛤️ REST API endpoints
+    │   └── __init__.py         # Router base (sin prefijo)
+    └── websockets/             # 📡 WebSockets en tiempo real
+        └── __init__.py         # Router base (sin prefijo)
+```
+
+#### **Beneficios Obtenidos**
+- ✅ **Código más fácil de encontrar** y mantener
+- ✅ **Separación lógica** por responsabilidades (core, database, models, api)
+- ✅ **API modular** con endpoints y WebSockets separados
+- ✅ **Imports más claros** y organizados
+- ✅ **Preparado para escalar** agregando nuevas funcionalidades
+- ✅ **Zero downtime** - Funcionalidad idéntica después de refactorización
+- ✅ **main.py limpio** - Solo configuración de app y frontend
+
+#### **Cambios en Imports (Evolución)**
+```python
+# Versión 1: Estructura plana
+from app.settings import settings
+from app.database import test_db_connection
+
+# Versión 2: Estructura organizada  
+from app.core.config import settings
+from app.database.connection import test_db_connection
+from app.models.responses import CredentialsResponse
+
+# Versión 3: API modular con routers estándar FastAPI (actual)
+from app.api import api_router, websockets_router_with_prefix
+# api_router: endpoints HTTP con prefijo /api
+# websockets_router_with_prefix: WebSockets con prefijo /ws
+
+# main.py usa include_router() estándar:
+app.include_router(api_router)                    # /api/*
+app.include_router(websockets_router_with_prefix)  # /ws/*
+```
+
+#### **Estructura de Escalabilidad Futura**
+```
+api/
+├── __init__.py                 # Routers con prefijos centralizados
+├── routes/                     # 🛤️ REST API endpoints (prefijo /api en padre)
+│   ├── __init__.py             # Router base (sin prefijo)
+│   ├── auth.py                 # Router para /auth/* → /api/auth/*
+│   ├── budget.py               # Router para /budget/* → /api/budget/*
+│   └── analytics.py            # Router para /analytics/* → /api/analytics/*
+└── websockets/                 # 📡 WebSockets (prefijo /ws en padre)
+    ├── __init__.py             # Router base (sin prefijo)
+    ├── realtime.py             # Router para "/" → /ws/
+    ├── chat.py                 # Router para "/chat" → /ws/chat
+    └── notifications.py        # Router para "/notifications" → /ws/notifications
+
+# En api/__init__.py:
+# api_router = APIRouter(prefix="/api")
+# websockets_router_with_prefix = APIRouter(prefix="/ws")
+```
+
+#### **Arquitectura de Routers Consistente (Noviembre 2025)**
+
+**Principio aplicado**: Prefijos centralizados en el nivel padre para máxima consistencia y mantenibilidad.
+
+```python
+# ✅ Patrón consistente:
+# 1. Routers hijos SIN prefijos (solo lógica)
+# 2. Prefijos aplicados en el nivel padre
+# 3. include_router() estándar en main.py
+
+# api/routes/__init__.py
+router = APIRouter()  # ← Sin prefijo
+@router.get("/credentials")  # Endpoint base
+@router.get("/health")
+
+# api/websockets/__init__.py  
+router = APIRouter()  # ← Sin prefijo
+@router.websocket("/")  # WebSocket base
+
+# api/__init__.py - PREFIJOS CENTRALIZADOS
+api_router = APIRouter(prefix="/api")  # ← Prefijo aquí
+api_router.include_router(routes_router)
+
+websockets_router_with_prefix = APIRouter(prefix="/ws")  # ← Prefijo aquí  
+websockets_router_with_prefix.include_router(websockets_router)
+
+# main.py - 100% FastAPI estándar
+app.include_router(api_router)                    # → /api/*
+app.include_router(websockets_router_with_prefix) # → /ws/*
+```
+
+**Ventajas obtenidas**:
+- ✅ **Patrón uniforme** - Todos los prefijos en el mismo nivel
+- ✅ **Fácil refactoring** - Cambiar prefijos en un solo lugar
+- ✅ **Escalabilidad clara** - Agregar sub-prefijos es trivial
+- ✅ **100% FastAPI estándar** - Sin funciones custom
+
+#### **Próximos Pasos Recomendados**
+- 🔧 Crear `services/` para lógica de negocio compleja
+- 🗂️ Organizar stored procedures en `database/procedures/`
+- 🧪 Agregar `tests/` con estructura similar a `api/`
+- 🔐 Implementar `api/routes/auth.py` para autenticación Microsoft
+- 📊 Agregar `api/routes/budget.py` para gestión de presupuesto
+
 ### ⚠️ Problema Identificado: Sincronización de Archivos
 
 **Issue crítico detectado**: Algunos deployments fallaban porque el `git reset --hard` no sincronizaba correctamente todos los archivos, especialmente el Dockerfile actualizado.
@@ -931,7 +1059,7 @@ El Nginx está configurado con headers de seguridad:
 - `GET /docs` → Documentación interactiva Swagger
 - `GET /redoc` → Documentación ReDoc
 - `GET /api/health` → Health check del servicio y conexión a base de datos
-- `WebSocket /ws` → Conexión en tiempo real con ping-pong
+- `WebSocket /ws/` → Conexión en tiempo real con ping-pong
 
 ### Específicos del Proyecto
 
@@ -987,10 +1115,18 @@ ezekl-budget/
 │   ├── angular.json                  # Configuración Angular
 │   ├── ionic.config.json             # Configuración Ionic
 │   └── capacitor.config.ts           # Configuración Capacitor
-├── app/                              # ⚡ Backend FastAPI
+├── app/                              # ⚡ Backend FastAPI (Estructura Refactorizada)
+│   ├── __init__.py                   # Módulo principal de la aplicación
 │   ├── main.py                       # Servidor híbrido (API + static files)
-│   ├── settings.py                   # Configuración con pydantic-settings
-│   └── database.py                   # Conexiones asíncronas a SQL Server
+│   ├── core/                         # 🔧 Configuración central
+│   │   ├── __init__.py               # Módulo core
+│   │   └── config.py                 # Configuración con pydantic-settings
+│   ├── database/                     # 💾 Capa de acceso a datos
+│   │   ├── __init__.py               # Módulo database
+│   │   └── connection.py             # Conexiones asíncronas a SQL Server
+│   └── models/                       # 📝 Modelos Pydantic
+│       ├── __init__.py               # Módulo models
+│       └── responses.py              # Modelos de respuesta de la API
 ├── .env                              # Variables de entorno (no commitear)
 ├── .env.example                      # Template de variables de entorno
 ├── .dockerignore                     # Archivos excluidos del build Docker
@@ -1035,8 +1171,9 @@ ezekl-budget/
 ### ✅ Configuración Completada
 
 - **Frontend**: Ionic Angular 8 + Standalone Components ✅
-- **Backend**: FastAPI con servidor híbrido ✅
+- **Backend**: FastAPI con servidor híbrido y estructura refactorizada ✅
 - **Base de Datos**: SQL Server 2022 con conexiones asíncronas ✅
+- **Código**: Estructura organizada por módulos y responsabilidades ✅
 - **Usuario BD**: `budgetuser` con permisos limitados ✅
 - **Detección de Ambiente**: Automática (localhost/IP externa) ✅
 - **Autenticación**: Microsoft Azure AD (en implementación) 🔄
