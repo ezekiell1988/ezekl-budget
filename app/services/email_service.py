@@ -8,7 +8,8 @@ from azure.communication.email import EmailClient
 from typing import List, Optional
 import logging
 from app.core.config import settings
-from app.models.responses import EmailSendRequest, EmailSendResponse
+from app.models.requests import EmailSendRequest
+from app.models.responses import EmailSendResponse
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -49,6 +50,9 @@ class EmailService:
         subject: str,
         html_content: Optional[str] = None,
         text_content: Optional[str] = None,
+        cc: Optional[List[str]] = None,
+        bcc: Optional[List[str]] = None,
+        reply_to: Optional[str] = None,
         from_address: Optional[str] = None
     ) -> EmailSendResponse:
         """
@@ -59,6 +63,9 @@ class EmailService:
             subject: Asunto del email
             html_content: Contenido HTML opcional
             text_content: Contenido de texto plano opcional
+            cc: Lista de direcciones para copia (CC)
+            bcc: Lista de direcciones para copia oculta (BCC)
+            reply_to: Dirección para respuestas
             from_address: Dirección del remitente (opcional, usa la por defecto si no se proporciona)
             
         Returns:
@@ -139,7 +146,9 @@ class EmailService:
             subject=request.subject,
             html_content=request.html_content,
             text_content=request.text_content,
-            from_address=request.from_address
+            cc=[str(email) for email in request.cc] if request.cc else None,
+            bcc=[str(email) for email in request.bcc] if request.bcc else None,
+            reply_to=str(request.reply_to) if request.reply_to else None
         )
 
 
@@ -153,6 +162,9 @@ async def send_email(
     subject: str,
     html_content: Optional[str] = None,
     text_content: Optional[str] = None,
+    cc: Optional[List[str]] = None,
+    bcc: Optional[List[str]] = None,
+    reply_to: Optional[str] = None,
     from_address: Optional[str] = None
 ) -> EmailSendResponse:
     """
@@ -163,6 +175,9 @@ async def send_email(
         subject: Asunto del email
         html_content: Contenido HTML opcional
         text_content: Contenido de texto plano opcional
+        cc: Lista de direcciones para copia (CC)
+        bcc: Lista de direcciones para copia oculta (BCC)
+        reply_to: Dirección para respuestas
         from_address: Dirección del remitente opcional
         
     Returns:
@@ -173,6 +188,9 @@ async def send_email(
         subject=subject,
         html_content=html_content,
         text_content=text_content,
+        cc=cc,
+        bcc=bcc,
+        reply_to=reply_to,
         from_address=from_address
     )
 

@@ -714,86 +714,72 @@ sudo journalctl -u docker -f
 
 ## 🔧 Cambios Recientes (Octubre 2025)
 
-### 🚀 Nueva Funcionalidad: Cliente HTTP Asíncrono, Procesamiento y Envío de Emails
+### � Mejora de Modelos Pydantic y Documentación Swagger (Octubre 2025)
 
-**Nuevas características implementadas**:
+**Refactorización de modelos implementada**:
 
-#### 1. **Cliente HTTP Asíncrono Robusto** (`app/core/http_request.py`)
-- ✅ **Clase HTTPClient** con soporte completo para todos los verbos HTTP
-- ✅ **Funciones de conveniencia** para uso rápido (`get()`, `post()`, etc.)
-- ✅ **Métodos especializados** para respuestas (`get_json()`, `get_text()`, `get_bytes()`)
-- ✅ **Configuración flexible** (URL base, timeouts, headers por defecto)
-- ✅ **Logging automático** de peticiones y respuestas
-- ✅ **Manejo robusto de errores** con captura de excepciones específicas
+#### 1. **Separación de Modelos Request/Response** (`app/models/`)
+- ✅ **`requests.py`** - Modelos de entrada con validación completa
+- ✅ **`responses.py`** - Modelos de salida con documentación detallada
+- ✅ **Field descriptions** con ejemplos y validaciones específicas
+- ✅ **Documentación Swagger mejorada** automáticamente generada
 
-#### 2. **Procesamiento de Emails via Azure Event Grid** (`app/api/routes/email.py`)
-- ✅ **Endpoint POST /api/email/receive** para Azure Event Grid
-- ✅ **Validación automática de suscripción** de Azure Event Grid
-- ✅ **Procesamiento asíncrono** de emails entrantes
-- ✅ **Descarga de contenido MIME** usando el cliente HTTP asíncrono
-- ✅ **Parsing completo** de emails (texto plano, HTML, adjuntos)
-- ✅ **Manejo de reportes** de entrega y rebotes
-- ✅ **Logging detallado** para debugging y monitoreo
-
-#### 3. **Envío de Emails con Azure Communication Services** (`app/api/routes/email.py`)
-- ✅ **Endpoint POST /api/email/send** para enviar emails
-- ✅ **Azure Communication Services SDK** integrado
-- ✅ **Validación de emails** con Pydantic EmailStr
-- ✅ **Soporte dual** para contenido HTML y texto plano
-- ✅ **Múltiples destinatarios** por petición
-- ✅ **Tracking de mensajes** con message_id y operation_id
-- ✅ **Configuración flexible** del remitente
-
-#### 3. **Arquitectura Modular Mejorada**
-```
-app/api/
-├── routes/
-│   ├── __init__.py     # Health check, credentials
-│   └── email.py        # Procesamiento de emails (NUEVO)
-└── websockets/
-    └── __init__.py     # WebSockets en tiempo real
-```
-
-#### 4. **Dependencias Actualizadas**
+#### 2. **EmailSendRequest - Modelo de Entrada Optimizado**
 ```python
-# Cliente HTTP asíncrono
-aiohttp==3.12.15        # Cliente HTTP asíncrono
-aiohappyeyeballs==2.6.1 # Optimización de conexiones DNS
-aiosignal==1.4.0        # Manejo de signals asincrónicos
-multidict==6.6.4        # Estructuras de datos para HTTP
-yarl==1.20.1           # Parsing y manipulación de URLs
-
-# Azure Communication Services para envío de emails
-azure-communication-email==1.0.0  # SDK oficial de Azure
-azure-core==1.35.1                # Funcionalidades core de Azure
-azure-mgmt-core==1.6.0            # Gestión de recursos Azure
-msrest==0.7.1                     # Cliente REST para Microsoft
-
-# Validación de emails
-email-validator==2.3.0            # Validación robusta de emails
-dnspython==2.8.0                  # DNS lookups para validación
+class EmailSendRequest(BaseModel):
+    to: List[EmailStr] = Field(..., description="Lista de destinatarios", example=["user@example.com"])
+    subject: str = Field(..., min_length=1, max_length=255, description="Asunto del email")
+    html_content: Optional[str] = Field(None, description="Contenido HTML del email")
+    text_content: Optional[str] = Field(None, description="Contenido en texto plano")
+    cc: Optional[List[EmailStr]] = Field(None, description="Lista de destinatarios en copia")
+    bcc: Optional[List[EmailStr]] = Field(None, description="Lista de destinatarios en copia oculta")
+    reply_to: Optional[EmailStr] = Field(None, description="Dirección de respuesta")
+    # from_address removido - siempre viene del .env por seguridad
 ```
 
-#### 5. **Beneficios de la Implementación**
-- 🔄 **100% asíncrono**: Todas las operaciones HTTP mantienen el event loop
-- 📈 **Mejor rendimiento**: Sin bloqueos en descargas de contenido
-- 🔧 **Reutilizable**: Cliente HTTP centralizado para futuras integraciones
-- 🐛 **Debugging mejorado**: Logging detallado de todas las operaciones HTTP
-- 📧 **Preparado para producción**: Manejo completo del ciclo de vida de emails
-
-#### 6. **Ejemplo de Uso en Producción**
+#### 3. **WebhookEvent - Modelos para Azure Event Grid**
 ```python
-# Configuración de Azure Event Grid Subscription:
-# Webhook URL: https://budget.ezekl.com/api/email/webhook
-# Event Types: Microsoft.Communication.InboundEmailReceived
-# 
-# El endpoint maneja automáticamente:
-# 1. Validación de suscripción (primer evento)
-# 2. Descarga asíncrona de contenido MIME
-# 3. Parsing de headers y cuerpo del email
-# 4. Logging para auditoria y debugging
-# 5. Procesamiento de adjuntos (preparado)
+class WebhookEventRequest(BaseModel):
+    # Modelo flexible para recibir eventos de Azure Event Grid
+    
+class WebhookEventResponse(BaseModel):
+    validationResponse: Optional[str] = Field(None, description="Código de validación para Azure Event Grid")
+    ok: Optional[bool] = Field(None, description="Estado del procesamiento")
+    message: Optional[str] = Field(None, description="Mensaje descriptivo del resultado")
+    event_type: Optional[str] = Field(None, description="Tipo de evento procesado")
+    processed_at: Optional[str] = Field(None, description="Timestamp del procesamiento")
 ```
+
+#### 4. **Mejoras en Endpoints de Email**
+- ✅ **POST /api/email/send** con validación Pydantic completa
+- ✅ **POST /api/email/webhook** con modelos específicos (no más Request genérico)
+- ✅ **Configuración from_address** desde .env (mayor seguridad)
+- ✅ **Campos null removidos** de respuestas (message_id, recipients_count)
+- ✅ **Documentación Swagger automática** con ejemplos y descripciones
+
+#### 5. **Beneficios Obtenidos**
+- 📚 **Swagger más informativo** - Documentación automática con Field descriptions
+- 🔒 **Mayor seguridad** - from_address no expuesto en API, viene del .env
+- 🧹 **Respuestas limpias** - Sin campos null innecesarios
+- 🔧 **Mantenibilidad mejorada** - Separación clara entre entrada y salida
+- ⚡ **Validación robusta** - Pydantic v2 con validaciones específicas por campo
+
+### �🚀 Nueva Funcionalidad: Cliente HTTP Asíncrono, Procesamiento y Envío de Emails
+
+**Características implementadas**:
+
+- ✅ **Cliente HTTP asíncrono** - aiohttp para operaciones no bloqueantes
+- ✅ **Procesamiento de emails** - Azure Event Grid webhooks y Communication Services
+- ✅ **API endpoints** - /api/email/send y /api/email/webhook
+- ✅ **Modelos Pydantic** - Validaciones y documentación Swagger
+
+
+
+
+
+
+
+
 
 ### ✅ Resolución de Error 502 - Missing ODBC Drivers
 
@@ -932,35 +918,9 @@ app/
         └── __init__.py         # Router base (sin prefijo)
 ```
 
-#### **Beneficios Obtenidos**
-- ✅ **Código más fácil de encontrar** y mantener
-- ✅ **Separación lógica** por responsabilidades (core, database, models, api)
-- ✅ **API modular** con endpoints y WebSockets separados
-- ✅ **Imports más claros** y organizados
-- ✅ **Preparado para escalar** agregando nuevas funcionalidades
-- ✅ **Zero downtime** - Funcionalidad idéntica después de refactorización
-- ✅ **main.py limpio** - Solo configuración de app y frontend
 
-#### **Cambios en Imports (Evolución)**
-```python
-# Versión 1: Estructura plana
-from app.settings import settings
-from app.database import test_db_connection
 
-# Versión 2: Estructura organizada  
-from app.core.config import settings
-from app.database.connection import test_db_connection
-from app.models.responses import CredentialsResponse
 
-# Versión 3: API modular con routers estándar FastAPI (actual)
-from app.api import api_router, websockets_router_with_prefix
-# api_router: endpoints HTTP con prefijo /api
-# websockets_router_with_prefix: WebSockets con prefijo /ws
-
-# main.py usa include_router() estándar:
-app.include_router(api_router)                    # /api/*
-app.include_router(websockets_router_with_prefix)  # /ws/*
-```
 
 #### **Estructura de Escalabilidad Futura**
 ```
@@ -1297,34 +1257,39 @@ El webhook `/api/email/webhook` maneja eventos de Azure Event Grid para procesam
 
 El endpoint `/api/email/send` permite enviar emails usando Azure Communication Services:
 
-#### Request Body:
+#### Request Body (EmailSendRequest):
 ```json
 {
   "to": ["recipient1@example.com", "recipient2@example.com"],
   "subject": "Asunto del email",
   "html_content": "<h1>Contenido HTML</h1><p>Este es un email con formato.</p>",
   "text_content": "Contenido en texto plano como alternativa",
-  "from_address": "noreply@ezekl.com"
+  "cc": ["cc@example.com"],
+  "bcc": ["bcc@example.com"],
+  "reply_to": "noreply@ezekl.com"
 }
 ```
+*Nota: `from_address` se configura automáticamente desde variables de entorno por seguridad*
 
-#### Response:
+#### Response (EmailSendResponse):
 ```json
 {
   "success": true,
   "message": "Email enviado exitosamente",
-  "message_id": "12345678-abcd-1234-abcd-123456789012",
   "operation_id": "operation-abcd-1234"
 }
 ```
+*Nota: Campos `message_id` y `recipients_count` removidos para limpiar respuesta*
 
 #### Características del envío:
 
-- ✅ **Validación automática** de direcciones de email usando Pydantic
+- ✅ **Validación automática** de direcciones de email usando Pydantic EmailStr
 - ✅ **Soporte dual** para contenido HTML y texto plano
-- ✅ **Múltiples destinatarios** en una sola petición
-- ✅ **Dirección remitente configurable** o usa la por defecto
-- ✅ **Tracking del mensaje** con message_id único
+- ✅ **Múltiples destinatarios** - to, cc, bcc y reply_to
+- ✅ **Configuración segura** - from_address desde .env (no expuesto en API)
+- ✅ **Modelos Pydantic** - EmailSendRequest/EmailSendResponse con Field descriptions
+- ✅ **Swagger mejorado** - Documentación automática con ejemplos y validaciones
+- ✅ **Respuestas limpias** - Sin campos null innecesarios
 - ✅ **Manejo robusto de errores** sin afectar la API
 
 ### Testing de Endpoints
@@ -1394,9 +1359,13 @@ ezekl-budget/
 │   ├── database/                     # 💾 Capa de acceso a datos
 │   │   ├── __init__.py               # Módulo database
 │   │   └── connection.py             # Conexiones asíncronas a SQL Server
-│   └── models/                       # 📝 Modelos Pydantic
-│       ├── __init__.py               # Módulo models
-│       └── responses.py              # Modelos de respuesta de la API
+│   ├── models/                       # 📝 Modelos Pydantic
+│   │   ├── __init__.py               # Módulo models
+│   │   ├── requests.py               # Modelos de entrada con validación (NUEVO)
+│   │   └── responses.py              # Modelos de respuesta de la API
+│   └── services/                     # 🔧 Lógica de negocio (NUEVO)
+│       ├── __init__.py               # Módulo services
+│       └── email_service.py          # Servicio centralizado para emails
 ├── .env                              # Variables de entorno (no commitear)
 ├── .env.example                      # Template de variables de entorno
 ├── .dockerignore                     # Archivos excluidos del build Docker
