@@ -13,6 +13,7 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 ### Backend (FastAPI)
 - **FastAPI** con documentación automática
 - **Servidor híbrido** que sirve tanto API como frontend
+- **WebSocket en tiempo real** con ping-pong y reconexión automática
 - **Autenticación JWT** integrada con Microsoft
 - **Azure OpenAI** integration
 - **SQL Server** con conexiones asíncronas y stored procedures
@@ -30,8 +31,37 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **API**: https://budget.ezekl.com/api/*
 - **API Docs**: https://budget.ezekl.com/docs
 - **API Health**: https://budget.ezekl.com/api/health
+- **WebSocket**: wss://budget.ezekl.com/ws (tiempo real)
 
-## 📋 Requisitos
+## � Inicio Rápido (Desarrollo Local)
+
+```bash
+# 1. Clonar proyecto
+git clone https://github.com/ezekiell1988/ezekl-budget.git
+cd ezekl-budget
+
+# 2. Configurar Python
+python3 -m venv .venv
+source .venv/bin/activate  # macOS/Linux
+pip install -r requirements.txt
+
+# 3. Configurar frontend Ionic
+cd ezekl-budget-ionic
+npm install
+ionic build --prod  # ← IMPORTANTE: Compilar antes de levantar FastAPI
+cd ..
+
+# 4. Crear archivo .env (copiar desde .env.example)
+cp .env.example .env
+# Editar .env con tus credenciales de Azure OpenAI y BD
+
+# 5. Levantar servidor híbrido
+.venv/bin/python -m app.main
+# 🌐 Abre: http://localhost:8001 (frontend + API)
+# 📚 Docs: http://localhost:8001/docs
+```
+
+## �📋 Requisitos
 
 ### Local (Desarrollo)
 - **Python 3.13+** (para FastAPI backend)
@@ -142,6 +172,55 @@ La aplicación detecta automáticamente si está en producción y usa `localhost
 - **Usuario**: `budgetuser` (permisos limitados)
 - **Puerto**: 1433 (estándar SQL Server)
 
+### 4.5. WebSocket en Tiempo Real
+
+La aplicación incluye **WebSocket** para comunicación en tiempo real entre cliente y servidor:
+
+#### Características del WebSocket
+- **Endpoint**: `/ws` (mismo puerto que la API)
+- **Protocolo**: WS en desarrollo local, WSS en producción con SSL
+- **Ping-Pong automático**: Cada 30 segundos para mantener conexión activa
+- **Reconexión automática**: Hasta 5 intentos con backoff exponencial
+- **Mensajes JSON**: Comunicación estructurada con tipos específicos
+
+#### Tipos de mensajes soportados:
+```json
+// Ping desde cliente
+{
+  "type": "ping",
+  "timestamp": "2024-10-05T02:47:09.589Z",
+  "message": "ping from client"
+}
+
+// Pong desde servidor
+{
+  "type": "pong",
+  "timestamp": "2024-10-05T02:47:09.632Z",
+  "client_timestamp": "2024-10-05T02:47:09.589Z",
+  "message": "pong from server"
+}
+
+// Echo test
+{
+  "type": "echo",
+  "message": "Test message",
+  "timestamp": "2024-10-05T02:47:09.589Z"
+}
+```
+
+#### URLs del WebSocket:
+- **Desarrollo local**: `ws://localhost:8001/ws`
+- **Producción**: `wss://budget.ezekl.com/ws`
+
+#### Implementación del Cliente:
+El componente `HomePage` incluye un cliente WebSocket completo con:
+- ✅ Detección automática de URL (desarrollo/producción)
+- ✅ Reconexión automática con backoff exponencial
+- ✅ Ping-pong automático cada 30 segundos
+- ✅ UI en tiempo real con estado de conexión
+- ✅ Log de mensajes con timestamps
+- ✅ Controles manuales para testing
+
 ### 5. Configurar GitHub Secrets
 
 En tu repositorio de GitHub, ve a **Settings → Secrets and variables → Actions** y agrega:
@@ -158,29 +237,32 @@ DB_PASSWORD=tu_contraseña_de_base_de_datos
 
 ## 🖥️ Desarrollo Local
 
-### Opción 1: Desarrollo Completo (Frontend + Backend)
+### Opción 1: Desarrollo Completo (Frontend + Backend por separado)
 
 ```bash
 # Terminal 1: Frontend Ionic (desarrollo con hot-reload)
 cd ezekl-budget-ionic
-ionic serve  # http://localhost:8100
+ionic serve  # http://localhost:8100 ← Para desarrollo del frontend
 
 # Terminal 2: Backend FastAPI
 source .venv/bin/activate
-python -m app.main  # http://localhost:8001/api
+.venv/bin/python -m app.main  # http://localhost:8001/api ← Solo API endpoints
 ```
 
 ### Opción 2: Servidor Híbrido (Producción Local)
 
 ```bash
-# 1. Compilar frontend
+# 1. Compilar frontend (OBLIGATORIO - el servidor sirve desde www/)
 cd ezekl-budget-ionic
 ionic build --prod
 cd ..
 
-# 2. Ejecutar servidor híbrido
-source .venv/bin/activate
-python -m app.main
+# 2. Ejecutar servidor híbrido FastAPI
+source .venv/bin/activate  # Activar entorno virtual
+.venv/bin/python -m app.main  # Levantar servidor en puerto 8001
+
+# ⚠️ IMPORTANTE: El frontend DEBE estar compilado en www/ 
+# porque FastAPI sirve los archivos estáticos desde ezekl-budget-ionic/www/
 ```
 
 ### URLs de Desarrollo:
@@ -188,6 +270,7 @@ python -m app.main
 - **Frontend (híbrido)**: http://localhost:8001/ ← Como producción
 - **API**: http://localhost:8001/api/*
 - **API Docs**: http://localhost:8001/docs
+- **WebSocket**: ws://localhost:8001/ws ← Tiempo real
 
 ### Ejecutar con Docker (Local)
 
@@ -848,6 +931,7 @@ El Nginx está configurado con headers de seguridad:
 - `GET /docs` → Documentación interactiva Swagger
 - `GET /redoc` → Documentación ReDoc
 - `GET /api/health` → Health check del servicio y conexión a base de datos
+- `WebSocket /ws` → Conexión en tiempo real con ping-pong
 
 ### Específicos del Proyecto
 
@@ -867,6 +951,14 @@ open https://budget.ezekl.com/docs
 
 # Testing local con detección de ambiente
 curl http://localhost:8001/api/health
+
+# WebSocket testing (requiere cliente WebSocket)
+# Abre la aplicación en http://localhost:8001 para probar WebSocket interactivamente
+# El componente HomePage incluye controles para:
+# - Envío de pings manuales
+# - Tests de echo
+# - Monitoreo de estado de conexión en tiempo real
+# - Reconexión automática
 ```
 
 ## 🤝 Contribuir
