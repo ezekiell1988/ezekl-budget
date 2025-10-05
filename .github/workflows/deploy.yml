@@ -35,12 +35,14 @@ jobs:
           # Crear directorio base si no existe
           mkdir -p /home/azureuser/projects
           
-          # Clonar o actualizar repositorio
+          # Clonar o actualizar repositorio con limpieza completa
           if [ -d "$PROJECT_PATH" ]; then
-            echo "📁 Actualizando repositorio existente..."
+            echo "📁 Actualizando repositorio existente con reset completo..."
             cd $PROJECT_PATH
             git fetch origin
             git reset --hard origin/main
+            git clean -fd
+            echo "✅ Repositorio actualizado a commit: $(git rev-parse --short HEAD)"
           else
             echo "📥 Clonando repositorio..."
             cd /home/azureuser/projects
@@ -71,9 +73,12 @@ jobs:
           docker stop $PROJECT_NAME || true
           docker rm $PROJECT_NAME || true
           
-          # Limpiar imágenes antiguas
-          echo "🧹 Limpiando imágenes antiguas..."
-          docker image prune -f
+          # Limpiar completamente imágenes Docker para forzar rebuild
+          echo "🧹 Limpieza completa de imágenes Docker..."
+          docker rmi $PROJECT_NAME-image || true
+          docker rmi $PROJECT_NAME || true
+          docker image prune -af
+          docker builder prune -af || true
           
           # Verificar si Node.js está instalado, si no, instalarlo
           echo "📦 Verificando Node.js..."
@@ -96,9 +101,13 @@ jobs:
           ionic build --prod
           cd ..
           
-          # Construir y ejecutar nuevo contenedor Python con Microsoft ODBC Driver 18
-          echo "🔨 Construyendo imagen Docker para FastAPI + ODBC..."
-          docker build -t $PROJECT_NAME-image .
+          # Construir imagen Docker desde cero con Microsoft ODBC Driver 18
+          echo "🔨 Construyendo imagen Docker para FastAPI + ODBC (build completo)..."
+          docker build --no-cache -t $PROJECT_NAME-image .
+          
+          # Verificar que los drivers ODBC estén instalados en la imagen
+          echo "🔍 Verificando instalación de drivers ODBC..."
+          docker run --rm $PROJECT_NAME-image odbcinst -q -d || echo "⚠️ Warning: No se pudieron verificar drivers ODBC"
           
           echo "▶️  Ejecutando contenedor con network host para acceso a BD..."
           docker run -d \

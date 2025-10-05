@@ -579,6 +579,33 @@ curl https://budget.ezekl.com/api/health
 
 **Estado actual**: ✅ **Completamente funcional** - API y base de datos operando correctamente
 
+### 📚 Lecciones Aprendidas - Mejores Prácticas de Deployment
+
+#### 🔄 **Problema: Git Sync Inconsistente**
+- **Causa**: `git reset --hard` solo no garantiza sincronización completa de archivos
+- **Solución**: Agregar `git clean -fd` para limpiar archivos no trackeados
+- **Prevención**: Siempre usar secuencia completa: `fetch` → `reset --hard` → `clean -fd`
+
+#### 🐳 **Problema: Docker Cache Corrupto**  
+- **Causa**: Docker reutiliza layers cache incluso con archivos actualizados
+- **Solución**: Usar `--no-cache` en builds críticos + limpieza previa de imágenes
+- **Prevención**: Limpiar imágenes antiguas antes de rebuild: `docker rmi` + `docker image prune -af`
+
+#### 🔍 **Problema: GitHub Action "Falso Positivo"**
+- **Causa**: Workflow reporta éxito pero usa archivos desactualizados
+- **Solución**: Verificación post-build de archivos críticos (Dockerfile, etc.)
+- **Prevención**: Agregar verificaciones de integridad en el workflow
+
+#### ⚡ **Checklist de Deployment Seguro**
+```bash
+# Antes de hacer push crítico:
+1. Verificar cambios locales: git status && git diff
+2. Confirmar Dockerfile actualizado: grep "ODBC Driver" Dockerfile  
+3. Push y monitorear GitHub Actions
+4. Verificar aplicación post-deployment: curl https://budget.ezekl.com/api/health
+5. Si falla, revisar logs: docker logs ezekl-budget --tail 30
+```
+
 ### 🔄 GitHub Action Actualizado
 
 **Cambios en el workflow de deployment**:
@@ -588,14 +615,40 @@ curl https://budget.ezekl.com/api/health
 3. **Health check mejorado**: Verifica que tanto API como base de datos estén funcionando
 4. **Nombre de imagen actualizado**: Usa `ezekl-budget-image` para mayor claridad
 5. **Logs detallados**: Mejor troubleshooting en caso de errores
+6. **Limpieza completa**: Fuerza rebuild completo de imágenes Docker con `--no-cache`
+7. **Sincronización robusta**: Git reset forzado con limpieza para asegurar archivos actualizados
 
-**Proceso completo del workflow**:
+**Proceso completo del workflow mejorado**:
 ```yaml
-# 1. Crear .env con variables completas (incluye BD)
-# 2. Construir imagen Docker con Microsoft ODBC Driver 18  
-# 3. Ejecutar contenedor con --network host
-# 4. Verificar health check (API + base de datos)
-# 5. Mostrar URLs de acceso público
+# 1. Git reset --hard + clean -fd (forzar sincronización)
+# 2. Crear .env con variables completas (incluye BD)
+# 3. Limpieza completa de imágenes Docker existentes
+# 4. Construir imagen Docker desde cero (--no-cache) con ODBC Driver 18
+# 5. Verificar instalación de drivers ODBC en imagen  
+# 6. Ejecutar contenedor con --network host
+# 7. Health check con reintentos y timeout
+# 8. Mostrar URLs de acceso público
+```
+
+### ⚠️ Problema Identificado: Sincronización de Archivos
+
+**Issue crítico detectado**: Algunos deployments fallaban porque el `git reset --hard` no sincronizaba correctamente todos los archivos, especialmente el Dockerfile actualizado.
+
+**Síntomas**:
+- Contenedor se crashea con `ImportError: libodbc.so.2`
+- Dockerfile en servidor no tiene drivers ODBC
+- Imagen Docker usa versión anterior sin drivers
+
+**Solución implementada**:
+```bash
+# GitHub Action mejorado con limpieza forzada
+git fetch origin
+git reset --hard origin/main
+git clean -fd  # ← Limpia archivos no trackeados
+
+# Docker rebuild forzado
+docker rmi $PROJECT_NAME-image || true
+docker build --no-cache -t $PROJECT_NAME-image .
 ```
 
 ---
@@ -706,6 +759,43 @@ ssh -i "clave.pem" azureuser@20.246.83.239 "docker exec ezekl-budget env | grep 
 
 # 4. Probar conexión directa
 ssh -i "clave.pem" azureuser@20.246.83.239 "curl -s http://localhost:8001/api/health"
+```
+
+#### Deployment falló pero GitHub Action mostró éxito
+```bash
+# Si GitHub Action dice "éxito" pero la app no funciona:
+
+# 1. Verificar si los archivos se sincronizaron correctamente
+ssh -i "clave.pem" azureuser@20.246.83.239 "cd /home/azureuser/projects/ezekl-budget && git log --oneline -3"
+
+# 2. Verificar si el Dockerfile tiene los drivers ODBC
+ssh -i "clave.pem" azureuser@20.246.83.239 "cd /home/azureuser/projects/ezekl-budget && grep -A 5 'Microsoft ODBC Driver' Dockerfile"
+
+# 3. Forzar sincronización manual si es necesario
+ssh -i "clave.pem" azureuser@20.246.83.239 "cd /home/azureuser/projects/ezekl-budget && git fetch origin && git reset --hard origin/main && git clean -fd"
+
+# 4. Rebuild completo manual
+ssh -i "clave.pem" azureuser@20.246.83.239 "cd /home/azureuser/projects/ezekl-budget && docker stop ezekl-budget && docker rm ezekl-budget && docker rmi ezekl-budget-image && docker build --no-cache -t ezekl-budget-image . && docker run -d --name ezekl-budget --network host --env-file .env ezekl-budget-image"
+```
+
+#### Contenedor en estado "Restarting" después del deployment
+```bash
+# Si el contenedor se reinicia continuamente:
+
+# 1. Ver logs detallados del crash
+ssh -i "clave.pem" azureuser@20.246.83.239 "docker logs ezekl-budget --tail 50"
+
+# 2. Si aparece ImportError de libodbc.so.2:
+#    → El Dockerfile no se actualizó correctamente
+#    → Ejecutar rebuild manual (ver comando arriba)
+
+# 3. Verificar que la imagen tenga los drivers instalados
+ssh -i "clave.pem" azureuser@20.246.83.239 "docker run --rm ezekl-budget-image odbcinst -q -d"
+#    Debe mostrar: [ODBC Driver 18 for SQL Server]
+
+# 4. Si no aparecen los drivers, la imagen está corrupta
+#    → Hacer limpieza completa y rebuild
+ssh -i "clave.pem" azureuser@20.246.83.239 "docker system prune -af && cd /home/azureuser/projects/ezekl-budget && docker build --no-cache -t ezekl-budget-image ."
 ```
 
 ### Desarrollo en Ramas
