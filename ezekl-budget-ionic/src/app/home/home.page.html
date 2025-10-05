@@ -1,172 +1,112 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>Ezekl Budget</ion-title>
+<ion-app>
+  <app-side-menu></app-side-menu>
 
-    <!-- Botón de logout -->
-    <ion-button
-      slot="end"
-      fill="clear"
-      (click)="confirmLogout()"
-      *ngIf="currentUser">
-      <ion-icon name="log-out" slot="icon-only"></ion-icon>
-    </ion-button>
-  </ion-toolbar>
-</ion-header>
+  <div class="ion-page" id="main-content">
+    <app-header title="Ezekl Budget"></app-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Dashboard</ion-title>
-    </ion-toolbar>
-  </ion-header>
+    <ion-content [fullscreen]="true">
+  <ion-grid fixed>
+    <ion-row class="ion-justify-content-center">
+      <ion-col size="12" size-md="6" size-lg="4">
 
-  <div id="container">
-    <!-- Información del usuario -->
-    <ion-card *ngIf="currentUser" class="user-card">
-      <ion-card-header>
-        <div class="user-header">
-          <ion-avatar class="user-avatar">
-            <div class="avatar-text">{{ getUserInitials(currentUser) }}</div>
-          </ion-avatar>
-          <div class="user-info">
-            <ion-card-title>{{ currentUser.nameLogin }}</ion-card-title>
-            <ion-card-subtitle>{{ currentUser.codeLogin }}</ion-card-subtitle>
-          </div>
-          <ion-chip color="success" class="status-chip">
-            <ion-icon name="shield" slot="start"></ion-icon>
-            <ion-label>Conectado</ion-label>
-          </ion-chip>
-        </div>
-      </ion-card-header>
-
-      <ion-card-content>
-        <div class="user-details">
-          <ion-item lines="none">
-            <ion-icon name="mail" slot="start" color="primary"></ion-icon>
-            <ion-label>
-              <p>Email</p>
-              <h3>{{ currentUser.emailLogin }}</h3>
-            </ion-label>
-          </ion-item>
-
-          <ion-item lines="none" *ngIf="currentUser.phoneLogin">
-            <ion-icon name="call" slot="start" color="primary"></ion-icon>
-            <ion-label>
-              <p>Teléfono</p>
-              <h3>{{ currentUser.phoneLogin }}</h3>
-            </ion-label>
-          </ion-item>
-
-          <ion-item lines="none">
-            <ion-icon name="card" slot="start" color="primary"></ion-icon>
-            <ion-label>
-              <p>ID Usuario</p>
-              <h3>#{{ currentUser.idLogin }}</h3>
-            </ion-label>
-          </ion-item>
-
-          <!-- Información de sesión -->
-          <div class="session-info" *ngIf="authState$ | async as authState">
-            <h4>Información de Sesión</h4>
-            <p><strong>Token expira en:</strong> {{ formatTokenExpiry(authState.expiresAt) }}</p>
-          </div>
-        </div>
-      </ion-card-content>
-    </ion-card>
-    <!-- Estado de conexión WebSocket -->
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>🔌 Estado WebSocket</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="connection-status">
-          <ion-chip [color]="connectionStatus === 'connected' ? 'success' : connectionStatus === 'connecting' ? 'warning' : 'danger'">
-            <ion-icon
-              [name]="connectionStatus === 'connected' ? 'wifi' : connectionStatus === 'connecting' ? 'refresh' : 'cloud-offline'"
-              class="status-icon">
-            </ion-icon>
-            <ion-label>{{ getStatusText() }}</ion-label>
-          </ion-chip>
-        </div>
-
-        <p class="status-details">
-          <strong>URL:</strong> {{ wsUrl }}<br>
-          <strong>Intentos de reconexión:</strong> {{ reconnectAttempts }}<br>
-          <strong>Último ping:</strong> {{ lastPing || 'Nunca' }}<br>
-          <strong>Último pong:</strong> {{ lastPong || 'Nunca' }}
-        </p>
-      </ion-card-content>
-    </ion-card>
-
-    <!-- Mensajes del WebSocket -->
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>📨 Mensajes</ion-card-title>
-        <ion-card-subtitle>Últimos 10 mensajes</ion-card-subtitle>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="messages-container" #messagesContainer>
-          <div
-            *ngFor="let message of messages; trackBy: trackByMessage"
-            class="message-item"
-            [ngClass]="'message-' + message.type">
-            <div class="message-time">{{ formatTime(message.timestamp) }}</div>
-            <div class="message-content">
-              <strong>{{ message.type.toUpperCase() }}:</strong>
-              {{ message.content }}
+        <!-- Header condensado dentro del grid -->
+        <ion-header collapse="condense">
+          <ion-toolbar>
+            <ion-title size="large">Dashboard</ion-title>
+          </ion-toolbar>
+        </ion-header>
+        <!-- Estado de conexión WebSocket -->
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>🔌 Estado WebSocket</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="connection-status">
+              <ion-chip
+                [color]="connectionStatus === 'connected' ? 'success' : connectionStatus === 'connecting' ? 'warning' : 'danger'">
+                <ion-icon
+                  [name]="connectionStatus === 'connected' ? 'wifi' : connectionStatus === 'connecting' ? 'refresh' : 'cloud-offline'"
+                  class="status-icon">
+                </ion-icon>
+                <ion-label>{{ getStatusText() }}</ion-label>
+              </ion-chip>
             </div>
-          </div>
-          <div *ngIf="messages.length === 0" class="no-messages">
-            No hay mensajes aún...
-          </div>
-        </div>
-      </ion-card-content>
-    </ion-card>
 
-    <!-- Controles -->
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>🎮 Controles</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="controls">
-          <ion-button
-            expand="block"
-            fill="outline"
-            (click)="sendPing()"
-            [disabled]="connectionStatus !== 'connected'">
-            <ion-icon name="pulse" slot="start"></ion-icon>
-            Enviar Ping Manual
-          </ion-button>
+            <p class="status-details">
+              <strong>URL:</strong> {{ wsUrl }}<br>
+              <strong>Intentos de reconexión:</strong> {{ reconnectAttempts }}<br>
+              <strong>Último ping:</strong> {{ lastPing || 'Nunca' }}<br>
+              <strong>Último pong:</strong> {{ lastPong || 'Nunca' }}
+            </p>
+          </ion-card-content>
+        </ion-card>
 
-          <ion-button
-            expand="block"
-            fill="outline"
-            (click)="sendEcho()"
-            [disabled]="connectionStatus !== 'connected'">
-            <ion-icon name="chatbubble" slot="start"></ion-icon>
-            Enviar Echo Test
-          </ion-button>
+        <!-- Mensajes del WebSocket -->
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>📨 Mensajes</ion-card-title>
+            <ion-card-subtitle>Últimos 10 mensajes</ion-card-subtitle>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="messages-container" #messagesContainer>
+              @for (message of messages; track trackByMessage($index, message)) {
+              <div class="message-item" [ngClass]="'message-' + message.type">
+                <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+                <div class="message-content">
+                  <strong>{{ message.type.toUpperCase() }}:</strong>
+                  {{ message.content }}
+                </div>
+              </div>
+              }
+              @if (messages.length === 0) {
+              <div class="no-messages">
+                No hay mensajes aún...
+              </div>
+              }
+            </div>
+          </ion-card-content>
+        </ion-card>
 
-          <ion-button
-            expand="block"
-            color="warning"
-            fill="outline"
-            (click)="reconnect()">
-            <ion-icon name="refresh" slot="start"></ion-icon>
-            Reconectar
-          </ion-button>
+        <!-- Controles como Lista -->
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>🎮 Controles</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-list>
+              <ion-item button (click)="sendPing()" [disabled]="connectionStatus !== 'connected'">
+                <ion-icon name="pulse" slot="start" color="primary"></ion-icon>
+                <ion-label>Enviar Ping Manual</ion-label>
+                @if (connectionStatus === 'connected') {
+                <ion-badge slot="end" color="success">Listo</ion-badge>
+                }
+              </ion-item>
 
-          <ion-button
-            expand="block"
-            color="danger"
-            fill="outline"
-            (click)="clearMessages()">
-            <ion-icon name="trash" slot="start"></ion-icon>
-            Limpiar Mensajes
-          </ion-button>
-        </div>
-      </ion-card-content>
-    </ion-card>
+              <ion-item button (click)="sendEcho()" [disabled]="connectionStatus !== 'connected'">
+                <ion-icon name="chatbubble" slot="start" color="primary"></ion-icon>
+                <ion-label>Enviar Echo Test</ion-label>
+                @if (connectionStatus === 'connected') {
+                <ion-badge slot="end" color="success">Listo</ion-badge>
+                }
+              </ion-item>
+
+              <ion-item button (click)="reconnect()">
+                <ion-icon name="refresh" slot="start" color="warning"></ion-icon>
+                <ion-label>Reconectar WebSocket</ion-label>
+                <ion-badge slot="end" color="warning">Acción</ion-badge>
+              </ion-item>
+
+              <ion-item button (click)="clearMessages()">
+                <ion-icon name="trash" slot="start" color="danger"></ion-icon>
+                <ion-label>Limpiar Mensajes</ion-label>
+                <ion-badge slot="end" color="danger">Borrar</ion-badge>
+              </ion-item>
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+    </ion-content>
   </div>
-</ion-content>
+</ion-app>

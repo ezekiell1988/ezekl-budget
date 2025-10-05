@@ -5,7 +5,7 @@
 
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, Observable, throwError, from } from 'rxjs';
+import { BehaviorSubject, Observable, throwError, from, firstValueFrom } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { Preferences } from '@capacitor/preferences';
 import {
@@ -15,6 +15,7 @@ import {
   RequestTokenResponse,
   LoginRequest,
   LoginResponse,
+  RefreshResponse,
   LoginStep,
   LoginWizardState
 } from '../models/auth.models';
@@ -42,9 +43,19 @@ export class AuthService {
     error: undefined
   });
 
+  // Promesa de inicialización
+  private initPromise: Promise<void>;
+
   constructor(private http: HttpClient) {
     // Cargar estado de autenticación al inicializar
-    this.loadAuthState();
+    this.initPromise = this.loadAuthState();
+  }
+
+  /**
+   * Esperar a que termine la inicialización
+   */
+  async ensureInitialized(): Promise<void> {
+    await this.initPromise;
   }
 
   /**
@@ -66,13 +77,18 @@ export class AuthService {
    */
   get isAuthenticated(): boolean {
     const state = this.authState$.value;
-    if (!state.isAuthenticated || !state.token || !state.expiresAt) {
+    if (!state.isAuthenticated || !state.token) {
       return false;
     }
 
-    // Verificar si el token no ha expirado
-    const now = new Date();
-    return state.expiresAt > now;
+    // Si hay expiresAt, verificar que no haya expirado
+    if (state.expiresAt) {
+      const now = new Date();
+      return state.expiresAt > now;
+    }
+
+    // Si no hay expiresAt, confiar en el flag isAuthenticated
+    return true;
   }
 
   /**
@@ -100,10 +116,12 @@ export class AuthService {
     });
 
     try {
-      const response = await this.http.post<RequestTokenResponse>(
-        `${this.API_BASE}/request-token`,
-        { codeLogin }
-      ).toPromise();
+      const response = await firstValueFrom(
+        this.http.post<RequestTokenResponse>(
+          `${this.API_BASE}/request-token`,
+          { codeLogin }
+        )
+      );
 
       if (response?.success) {
         // Avanzar al siguiente paso del wizard
@@ -142,10 +160,12 @@ export class AuthService {
     });
 
     try {
-      const response = await this.http.post<LoginResponse>(
-        `${this.API_BASE}/login`,
-        { codeLogin, token }
-      ).toPromise();
+      const response = await firstValueFrom(
+        this.http.post<LoginResponse>(
+          `${this.API_BASE}/login`,
+          { codeLogin, token }
+        )
+      );
 
       if (response?.success && response.accessToken) {
         // Guardar datos de autenticación
@@ -165,6 +185,7 @@ export class AuthService {
           token: response.accessToken,
           expiresAt: new Date(response.expiresAt!)
         });
+
       } else {
         this.updateWizardState({
           isLoading: false,
@@ -235,27 +256,99 @@ export class AuthService {
     }
 
     try {
-      const response = await this.http.post<any>(
-        `${this.API_BASE}/verify-token`,
-        { token }
-      ).toPromise();
+      const response = await firstValueFrom(
+        this.http.get<any>(
+          `${this.API_BASE}/verify-token`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        )
+      );
 
-      if (response?.valid) {
-        // Actualizar datos del usuario si es necesario
-        if (response.user) {
-          this.updateAuthState({
-            ...this.authState$.value,
-            user: response.user,
-            expiresAt: response.expiresAt ? new Date(response.expiresAt) : undefined
-          });
-        }
+      if (response?.user) {
+        // Actualizar estado como autenticado
+        this.updateAuthState({
+          ...this.authState$.value,
+          isAuthenticated: true,
+          user: response.user,
+          expiresAt: response.expiresAt ? new Date(response.expiresAt) : undefined
+        });
+        return true;
+      } else {
+        await this.clearAuthData();
+        return false;
+      }
+    } catch (error) {
+      console.error('Error verificando token:', error);
+      await this.logout();
+      return false;
+    }
+  }
+
+  /**
+   * Verificar si el token necesita renovación (dentro de 1 hora de expirar)
+   */
+  shouldRefreshToken(): boolean {
+    const state = this.authState$.value;
+    if (!state.isAuthenticated || !state.expiresAt) {
+      return false;
+    }
+
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + (60 * 60 * 1000)); // +1 hora
+
+    // Renovar si expira dentro de 1 hora
+    return state.expiresAt <= oneHourFromNow;
+  }
+
+  /**
+   * Extender tiempo de expiración del token actual
+   */
+  async refreshToken(): Promise<boolean> {
+    const token = this.currentToken;
+    if (!token) {
+      await this.logout();
+      return false;
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post<RefreshResponse>(
+          `${this.API_BASE}/refresh-token`,
+          {},
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        )
+      );
+
+      if (response?.success && response.accessToken) {
+        // Guardar nuevo token
+        await this.saveAuthData(
+          response.accessToken,
+          response.user as AuthUser,
+          response.expiresAt!
+        );
+
+        // Actualizar estado con nuevo token
+        this.updateAuthState({
+          isAuthenticated: true,
+          user: response.user as AuthUser,
+          token: response.accessToken,
+          expiresAt: new Date(response.expiresAt!)
+        });
+
         return true;
       } else {
         await this.logout();
         return false;
       }
     } catch (error) {
-      console.error('Error verificando token:', error);
+      console.error('Error extendiendo token:', error);
       await this.logout();
       return false;
     }
@@ -267,7 +360,9 @@ export class AuthService {
   async logout(): Promise<void> {
     try {
       // Llamar al endpoint de logout (opcional con JWE)
-      await this.http.post(`${this.API_BASE}/logout`, {}).toPromise();
+      await firstValueFrom(
+        this.http.post(`${this.API_BASE}/logout`, {})
+      );
     } catch (error) {
       console.error('Error en logout del servidor:', error);
       // Continuar con logout local aunque falle el servidor
@@ -310,7 +405,7 @@ export class AuthService {
         }
       }
     } catch (error) {
-      console.log('No se pudo acceder al portapapeles:', error);
+      // Error accessing clipboard
     }
 
     return null;
@@ -331,17 +426,27 @@ export class AuthService {
         const token = tokenResult.value;
         const user = JSON.parse(userResult.value) as AuthUser;
 
+        // Actualizar estado temporalmente para que currentToken funcione
+        this.updateAuthState({
+          isAuthenticated: false, // Marca como no autenticado hasta verificar
+          user,
+          token,
+          expiresAt: undefined
+        });
+
         // Verificar token con el servidor
         const isValid = await this.verifyToken();
 
-        if (isValid) {
-          this.updateAuthState({
-            isAuthenticated: true,
-            user,
-            token,
-            expiresAt: undefined // Se actualiza en verifyToken
-          });
-        }
+        // Si verifyToken falla, logout() ya limpia el estado
+        // No necesitamos hacer nada más aquí
+      } else {
+        // No hay datos guardados, asegurar que el estado esté limpio
+        this.updateAuthState({
+          isAuthenticated: false,
+          user: undefined,
+          token: undefined,
+          expiresAt: undefined
+        });
       }
     } catch (error) {
       console.error('Error cargando estado de autenticación:', error);

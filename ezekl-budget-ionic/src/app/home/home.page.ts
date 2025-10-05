@@ -1,8 +1,10 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import {
+  IonApp,
   IonHeader,
   IonToolbar,
   IonTitle,
@@ -15,11 +17,14 @@ import {
   IonChip,
   IonLabel,
   IonIcon,
-  IonButton,
-  IonAvatar,
   IonItem,
+  IonList,
+  IonBadge,
+  IonGrid,
+  IonRow,
+  IonCol,
   AlertController,
-  ToastController
+  ToastController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -30,14 +35,15 @@ import {
   chatbubble,
   trash,
   person,
-  logOut,
   mail,
   call,
   card,
-  shield
+  shield,
+  time,
 } from 'ionicons/icons';
-import { AuthService } from '../services/auth.service';
-import { AuthUser, AuthState } from '../models/auth.models';
+
+import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
+import { SideMenuComponent } from '../shared/components/side-menu/side-menu.component';
 
 interface WebSocketMessage {
   id: string;
@@ -54,6 +60,7 @@ type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
   styleUrls: ['home.page.scss'],
   imports: [
     CommonModule,
+    IonApp,
     IonHeader,
     IonToolbar,
     IonTitle,
@@ -66,17 +73,20 @@ type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
     IonChip,
     IonLabel,
     IonIcon,
-    IonButton,
-    IonAvatar,
-    IonItem
+    IonItem,
+    IonList,
+    IonBadge,
+    IonGrid,
+    IonRow,
+    IonCol,
+    AppHeaderComponent,
+    SideMenuComponent,
   ],
 })
 export class HomePage implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
-  // Estado de autenticación
-  authState$: Observable<AuthState>;
-  currentUser: AuthUser | undefined;
+  // Estado de autenticación ya no se maneja aquí
   // Estado del WebSocket
   connectionStatus: ConnectionStatus = 'disconnected';
   ws: WebSocket | null = null;
@@ -96,7 +106,7 @@ export class HomePage implements OnInit, OnDestroy {
   maxMessages: number = 10;
 
   constructor(
-    private authService: AuthService,
+    private router: Router,
     private alertController: AlertController,
     private toastController: ToastController
   ) {
@@ -108,36 +118,20 @@ export class HomePage implements OnInit, OnDestroy {
       pulse,
       chatbubble,
       trash,
-      person,
-      logOut,
-      mail,
-      call,
-      card,
-      shield
     });
-
-    // Configurar observables de autenticación
-    this.authState$ = this.authService.authState;
 
     // Configurar URL del WebSocket
     this.setupWebSocketUrl();
   }
 
-  ngOnInit() {
-    console.log('🏠 HomePage iniciando...');
-
-    // Suscribirse al estado de autenticación
-    this.authState$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(state => {
-        this.currentUser = state.user;
-      });
+    ngOnInit() {
 
     this.connect();
   }
 
+
+
   ngOnDestroy() {
-    console.log('🏠 HomePage destruyendo...');
     this.destroy$.next();
     this.destroy$.complete();
     this.disconnect();
@@ -151,27 +145,24 @@ export class HomePage implements OnInit, OnDestroy {
     // Servidor híbrido: mismo host y puerto para frontend, API y WebSocket
     // Nota: "/ws/" con barra final según nueva estructura de routers
     this.wsUrl = `${protocol}//${host}/ws/`;
-
-    console.log('🔌 WebSocket URL configurada:', this.wsUrl);
   }
 
   private connect(): void {
-    if (this.connectionStatus === 'connecting' || this.connectionStatus === 'connected') {
+    if (
+      this.connectionStatus === 'connecting' ||
+      this.connectionStatus === 'connected'
+    ) {
       return;
     }
 
-    console.log('🔌 Intentando conectar WebSocket...');
     this.connectionStatus = 'connecting';
 
     try {
       this.ws = new WebSocket(this.wsUrl);
 
       this.ws.onopen = (event) => {
-        console.log('✅ WebSocket conectado', event);
         this.connectionStatus = 'connected';
         this.reconnectAttempts = 0;
-        this.addMessage('system', 'Conectado al servidor WebSocket');
-        this.startPingInterval();
       };
 
       this.ws.onmessage = (event) => {
@@ -179,16 +170,9 @@ export class HomePage implements OnInit, OnDestroy {
       };
 
       this.ws.onclose = (event) => {
-        console.log('🔌 WebSocket desconectado', event);
         this.connectionStatus = 'disconnected';
-        this.stopPingInterval();
-        this.addMessage('system', `Conexión cerrada (código: ${event.code})`);
-
-        // Intentar reconectar automáticamente
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        if (event.code !== 1000) {
           this.scheduleReconnect();
-        } else {
-          this.addMessage('error', 'Máximo de intentos de reconexión alcanzado');
         }
       };
 
@@ -196,7 +180,6 @@ export class HomePage implements OnInit, OnDestroy {
         console.error('❌ Error WebSocket:', error);
         this.addMessage('error', 'Error de conexión WebSocket');
       };
-
     } catch (error) {
       console.error('❌ Error creando WebSocket:', error);
       this.connectionStatus = 'disconnected';
@@ -208,7 +191,6 @@ export class HomePage implements OnInit, OnDestroy {
   private handleMessage(data: string): void {
     try {
       const message = JSON.parse(data);
-      console.log('📨 Mensaje recibido:', message);
 
       switch (message.type) {
         case 'welcome':
@@ -216,7 +198,10 @@ export class HomePage implements OnInit, OnDestroy {
           break;
         case 'pong':
           this.lastPong = this.formatTime(new Date().toISOString());
-          this.addMessage('pong', `Pong recibido (latencia: ${this.calculateLatency(message)}ms)`);
+          this.addMessage(
+            'pong',
+            `Pong recibido (latencia: ${this.calculateLatency(message)}ms)`
+          );
           break;
         case 'echo':
           this.addMessage('echo', `Echo: ${message.echo}`);
@@ -225,7 +210,10 @@ export class HomePage implements OnInit, OnDestroy {
           this.addMessage('error', message.message);
           break;
         default:
-          this.addMessage('response', message.message || JSON.stringify(message));
+          this.addMessage(
+            'response',
+            message.message || JSON.stringify(message)
+          );
       }
     } catch (error) {
       console.error('❌ Error parseando mensaje:', error);
@@ -247,7 +235,7 @@ export class HomePage implements OnInit, OnDestroy {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       type,
       content,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     this.messages.unshift(message);
@@ -260,7 +248,6 @@ export class HomePage implements OnInit, OnDestroy {
 
   private scheduleReconnect(): void {
     this.reconnectAttempts++;
-    console.log(`🔄 Programando reconexión (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 
     setTimeout(() => {
       if (this.connectionStatus === 'disconnected') {
@@ -301,7 +288,7 @@ export class HomePage implements OnInit, OnDestroy {
     const pingMessage = {
       type: 'ping',
       timestamp: new Date().toISOString(),
-      message: 'ping from client'
+      message: 'ping from client',
     };
 
     this.ws.send(JSON.stringify(pingMessage));
@@ -317,7 +304,7 @@ export class HomePage implements OnInit, OnDestroy {
     const echoMessage = {
       type: 'echo',
       message: `Test echo desde cliente - ${new Date().toLocaleTimeString()}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     this.ws.send(JSON.stringify(echoMessage));
@@ -325,7 +312,6 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   reconnect(): void {
-    console.log('🔄 Reconexión manual iniciada...');
     this.disconnect();
     this.reconnectAttempts = 0;
     setTimeout(() => this.connect(), 1000);
@@ -358,89 +344,10 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   // ================================
-  // Métodos de autenticación
+  // Métodos de utilidad
   // ================================
 
-  /**
-   * Confirmar y ejecutar logout
-   */
-  async confirmLogout() {
-    const alert = await this.alertController.create({
-      header: 'Cerrar Sesión',
-      message: '¿Estás seguro de que deseas cerrar tu sesión?',
-      buttons: [
-        {
-          text: 'Cancelar',
-          role: 'cancel',
-        },
-        {
-          text: 'Cerrar Sesión',
-          role: 'confirm',
-          handler: () => {
-            this.logout();
-          },
-        },
-      ],
-    });
 
-    await alert.present();
-  }
 
-  /**
-   * Ejecutar logout
-   */
-  private async logout() {
-    try {
-      await this.authService.logout();
 
-      const toast = await this.toastController.create({
-        message: 'Sesión cerrada exitosamente',
-        duration: 2000,
-        color: 'success',
-        position: 'bottom',
-      });
-      await toast.present();
-
-    } catch (error) {
-      console.error('Error en logout:', error);
-
-      const toast = await this.toastController.create({
-        message: 'Error cerrando sesión',
-        duration: 3000,
-        color: 'danger',
-        position: 'bottom',
-      });
-      await toast.present();
-    }
-  }
-
-  /**
-   * Obtener iniciales del usuario para el avatar
-   */
-  getUserInitials(user: AuthUser): string {
-    if (!user?.nameLogin) return '?';
-
-    const names = user.nameLogin.split(' ');
-    if (names.length >= 2) {
-      return names[0][0] + names[1][0];
-    }
-    return user.nameLogin[0] || '?';
-  }
-
-  /**
-   * Formatear tiempo de expiración del token
-   */
-  formatTokenExpiry(expiresAt?: Date): string {
-    if (!expiresAt) return 'Desconocido';
-
-    const now = new Date();
-    const diff = expiresAt.getTime() - now.getTime();
-
-    if (diff <= 0) return 'Expirado';
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    return `${hours}h ${minutes}m`;
-  }
 }

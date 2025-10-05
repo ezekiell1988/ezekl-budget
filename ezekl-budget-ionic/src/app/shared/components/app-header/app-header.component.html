@@ -1,0 +1,10 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <!-- Botón de menú -->
+    @if (showLogout) {
+    <ion-menu-button slot="start" color="primary" size="large"></ion-menu-button>
+    }
+
+    <ion-title>{{ title }}</ion-title>
+  </ion-toolbar>
+</ion-header>

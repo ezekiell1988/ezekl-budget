@@ -431,6 +431,61 @@ async def verify_token(current_user: Dict = Depends(get_current_user)):
 
 
 @router.post(
+    "/refresh-token",
+    response_model=LoginResponse,
+    summary="Extender tiempo de expiración del token",
+    description="""Endpoint privado para renovar/extender la expiración del token actual.
+    
+    **Autenticación requerida:**
+    - Header: Authorization: Bearer {jwe_token}
+    
+    **Funcionalidad:**
+    - Valida el token actual del usuario
+    - Genera un nuevo token JWE con tiempo extendido (+24 horas)
+    - Mantiene los mismos datos de usuario
+    - Útil para mantener sesiones activas sin reautenticación
+    
+    **Casos de uso:**
+    - Extender sesión antes de que expire
+    - Mantener actividad del usuario automáticamente
+    - Evitar relogin innecesario en sesiones largas
+    """,
+    responses={
+        401: {"model": AuthErrorResponse, "description": "Token requerido, inválido o expirado"}
+    }
+)
+async def refresh_token(current_user: Dict = Depends(get_current_user)):
+    """
+    Extiende la expiración del token actual del usuario autenticado.
+
+    Args:
+        current_user: Datos del usuario obtenidos del token JWE (inyectado por dependencia)
+
+    Returns:
+        Nuevo token JWE con expiración extendida
+    """
+    try:
+        user_data = current_user["user"]
+
+        # Generar nuevo token JWE con tiempo extendido
+        new_access_token, new_expires_at = create_jwe_token(user_data)
+
+        logger.info(f"Token renovado para usuario {user_data.get('codeLogin', 'unknown')}")
+
+        return LoginResponse(
+            success=True,
+            message="Token renovado exitosamente",
+            user=UserData(**user_data),
+            accessToken=new_access_token,
+            expiresAt=new_expires_at.isoformat()
+        )
+
+    except Exception as e:
+        logger.error(f"Error renovando token: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@router.post(
     "/logout",
     response_model=LogoutResponse,
     summary="Cerrar sesión",

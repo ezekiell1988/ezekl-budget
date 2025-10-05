@@ -5,8 +5,8 @@
 
 import { Injectable, inject } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
-import { Observable } from 'rxjs';
-import { map, take } from 'rxjs/operators';
+import { Observable, from, of } from 'rxjs';
+import { map, take, switchMap, catchError } from 'rxjs/operators';
 
 import { AuthService } from '../services/auth.service';
 
@@ -22,16 +22,33 @@ export class AuthGuard implements CanActivate {
    * Redirige a /login si no está autenticado
    */
   canActivate(): Observable<boolean> {
-    return this.authService.authState.pipe(
+    // Esperar la inicialización y verificar con el servidor
+    return from(this.authService.ensureInitialized()).pipe(
       take(1),
-      map(state => {
-        if (state.isAuthenticated && this.authService.isAuthenticated) {
-          return true;
-        } else {
-          console.log('🔒 Acceso denegado: Usuario no autenticado');
+      switchMap(() => {
+        const token = this.authService.currentToken;
+        // Si no hay token inicial, ir a login directamente
+        if (!token) {
           this.router.navigate(['/login']);
-          return false;
+          return of(false);
         }
+
+        // Verificar token con el servidor
+        return from(this.authService.verifyToken()).pipe(
+          map(isValid => {
+            if (isValid) {
+              return true;
+            } else {
+              this.router.navigate(['/login']);
+              return false;
+            }
+          }),
+          catchError(() => {
+            // En caso de error, redirigir a login
+            this.router.navigate(['/login']);
+            return of(false);
+          })
+        );
       })
     );
   }
@@ -49,16 +66,24 @@ export class GuestGuard implements CanActivate {
    * Redirige a /home si ya está autenticado
    */
   canActivate(): Observable<boolean> {
-    return this.authService.authState.pipe(
+    // Esperar la inicialización
+    return from(this.authService.ensureInitialized()).pipe(
       take(1),
-      map(state => {
-        if (!state.isAuthenticated || !this.authService.isAuthenticated) {
-          return true;
-        } else {
-          console.log('🏠 Redirigiendo a home: Usuario ya autenticado');
+      map(() => {
+        const isAuth = this.authService.isAuthenticated;
+        // Verificar el estado local primero (más rápido)
+        if (isAuth) {
+          // Usuario autenticado, redirigir a home
           this.router.navigate(['/home']);
           return false;
+        } else {
+          // No autenticado, permitir acceso a login
+          return true;
         }
+      }),
+      catchError(() => {
+        // En caso de error, permitir acceso a login
+        return of(true);
       })
     );
   }

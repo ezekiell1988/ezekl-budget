@@ -1,6 +1,19 @@
-import { Component, OnInit, OnDestroy, ViewChildren, QueryList, ElementRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  ViewChildren,
+  QueryList,
+  ElementRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+  FormControl,
+} from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -19,11 +32,15 @@ import {
   IonInput,
   IonButton,
   IonIcon,
-  IonText,
   IonSpinner,
   IonAvatar,
+  IonGrid,
+  IonRow,
+  IonCol,
   ToastController,
-  AlertController
+  AlertController,
+  ViewWillLeave,
+  ViewDidLeave,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -34,11 +51,18 @@ import {
   alertCircle,
   clipboard,
   arrowBack,
-  refresh
+  refresh,
+  checkmarkCircle,
 } from 'ionicons/icons';
 
 import { AuthService } from '../services/auth.service';
-import { LoginStep, LoginWizardState } from '../models/auth.models';
+import {
+  RequestTokenResponse,
+  LoginResponse,
+  LoginStep,
+  LoginWizardState,
+} from '../models/auth.models';
+import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
 
 @Component({
   selector: 'app-login',
@@ -49,9 +73,6 @@ import { LoginStep, LoginWizardState } from '../models/auth.models';
     CommonModule,
     ReactiveFormsModule,
     IonContent,
-    IonHeader,
-    IonTitle,
-    IonToolbar,
     IonCard,
     IonCardHeader,
     IonCardTitle,
@@ -62,13 +83,17 @@ import { LoginStep, LoginWizardState } from '../models/auth.models';
     IonInput,
     IonButton,
     IonIcon,
-    IonText,
     IonSpinner,
-    IonAvatar
-  ]
+    IonAvatar,
+    IonGrid,
+    IonRow,
+    IonCol,
+    AppHeaderComponent,
+  ],
 })
-export class LoginPage implements OnInit, OnDestroy {
-  @ViewChildren('tokenInput', { read: ElementRef }) tokenInputs!: QueryList<ElementRef>;
+export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave {
+  @ViewChildren('tokenInput', { read: ElementRef })
+  tokenInputs!: QueryList<ElementRef>;
 
   private destroy$ = new Subject<void>();
 
@@ -101,17 +126,27 @@ export class LoginPage implements OnInit, OnDestroy {
       alertCircle,
       clipboard,
       arrowBack,
-      refresh
+      refresh,
+      'checkmark-circle': checkmarkCircle,
     });
 
     // Inicializar formularios
     this.step1Form = this.fb.group({
-      codeLogin: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(10)]]
+      codeLogin: [
+        '',
+        [
+          Validators.required,
+          Validators.minLength(1),
+          Validators.maxLength(10),
+        ],
+      ],
     });
 
     // Crear controles para token de 5 dígitos
-    this.tokenControls = Array.from({ length: 5 }, () =>
-      new FormControl('', [Validators.required, Validators.pattern(/^\d$/)])
+    this.tokenControls = Array.from(
+      { length: 5 },
+      () =>
+        new FormControl('', [Validators.required, Validators.pattern(/^\d$/)])
     );
 
     this.step2Form = this.fb.group({
@@ -119,7 +154,7 @@ export class LoginPage implements OnInit, OnDestroy {
       digit2: this.tokenControls[1],
       digit3: this.tokenControls[2],
       digit4: this.tokenControls[3],
-      digit5: this.tokenControls[4]
+      digit5: this.tokenControls[4],
     });
 
     // Suscribirse al estado del wizard
@@ -139,10 +174,13 @@ export class LoginPage implements OnInit, OnDestroy {
     // Suscribirse a cambios de autenticación
     this.authService.authState
       .pipe(takeUntil(this.destroy$))
-      .subscribe(state => {
+      .subscribe((state) => {
         if (state.isAuthenticated) {
           this.showSuccessToast('¡Bienvenido!');
-          this.router.navigate(['/home']);
+          // Usar un pequeño delay para evitar conflictos con guards
+          setTimeout(() => {
+            this.router.navigate(['/home']);
+          }, 100);
         }
       });
   }
@@ -150,6 +188,36 @@ export class LoginPage implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  /**
+   * Ionic lifecycle: Antes de salir de la vista
+   * Quita el focus de cualquier elemento para evitar conflictos aria-hidden
+   */
+  ionViewWillLeave() {
+    // Quitar focus de cualquier elemento activo
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement && activeElement.blur) {
+      activeElement.blur();
+    }
+
+    // Quitar focus específicamente de los inputs del token si existen
+    if (this.tokenInputs) {
+      this.tokenInputs.forEach(input => {
+        const nativeElement = input.nativeElement.querySelector('input');
+        if (nativeElement && nativeElement.blur) {
+          nativeElement.blur();
+        }
+      });
+    }
+  }
+
+  /**
+   * Ionic lifecycle: Después de salir de la vista
+   * Limpieza adicional si es necesaria
+   */
+  ionViewDidLeave() {
+    // Limpieza adicional si es necesaria
   }
 
   /**
@@ -177,7 +245,9 @@ export class LoginPage implements OnInit, OnDestroy {
   async login() {
     if (this.step2Form.valid) {
       try {
-        const token = this.tokenControls.map(control => control.value).join('');
+        const token = this.tokenControls
+          .map((control) => control.value)
+          .join('');
         const codeLogin = this.step1Form.value.codeLogin;
 
         const response = await this.authService.login(codeLogin, token);
@@ -228,11 +298,28 @@ export class LoginPage implements OnInit, OnDestroy {
 
         this.showSuccessToast('Token copiado automáticamente');
 
-        // Auto-focus al último input
+        // Auto-focus al último input y actualizar la UI
         setTimeout(() => {
           const inputs = this.tokenInputs.toArray();
           if (inputs[4]) {
-            inputs[4].nativeElement.focus();
+            const lastInput = inputs[4].nativeElement;
+            if (lastInput.setFocus) {
+              lastInput.setFocus();
+            } else {
+              lastInput.focus();
+            }
+          }
+
+          // Actualizar los valores visualmente
+          inputs.forEach((input, i) => {
+            if (input.nativeElement.value !== token[i]) {
+              input.nativeElement.value = token[i];
+            }
+          });
+
+          // Auto-submit si el formulario es válido
+          if (this.step2Form.valid) {
+            setTimeout(() => this.login(), 500);
           }
         }, 100);
       } else {
@@ -247,20 +334,29 @@ export class LoginPage implements OnInit, OnDestroy {
    * Manejo de input de dígitos del token
    */
   onTokenDigitInput(index: number, event: any, inputElement: any) {
-    const value = event.target.value;
+    let value = event.detail?.value || event.target?.value || '';
 
-    // Solo permitir números
+    // Limpiar el valor si no es un dígito
     if (!/^\d$/.test(value)) {
       this.tokenControls[index].setValue('');
+      inputElement.value = '';
       return;
     }
 
-    // Auto-focus al siguiente input
+    // Establecer el valor en el control
+    this.tokenControls[index].setValue(value);
+
+    // Auto-focus al siguiente input si hay valor y no es el último
     if (value && index < 4) {
       setTimeout(() => {
         const inputs = this.tokenInputs.toArray();
         if (inputs[index + 1]) {
-          inputs[index + 1].nativeElement.focus();
+          const nextInput = inputs[index + 1].nativeElement;
+          if (nextInput.setFocus) {
+            nextInput.setFocus();
+          } else {
+            nextInput.focus();
+          }
         }
       }, 50);
     }
@@ -271,7 +367,7 @@ export class LoginPage implements OnInit, OnDestroy {
         if (this.step2Form.valid) {
           this.login();
         }
-      }, 100);
+      }, 200);
     }
   }
 
@@ -279,15 +375,21 @@ export class LoginPage implements OnInit, OnDestroy {
    * Manejo de teclas en inputs de token
    */
   onTokenKeydown(index: number, event: KeyboardEvent) {
+    const inputs = this.tokenInputs.toArray();
+
     // Backspace - ir al input anterior
-    if (event.key === 'Backspace' && index > 0) {
+    if (event.key === 'Backspace') {
       const currentValue = this.tokenControls[index].value;
-      if (!currentValue) {
+      if (!currentValue && index > 0) {
         event.preventDefault();
         setTimeout(() => {
-          const inputs = this.tokenInputs.toArray();
           if (inputs[index - 1]) {
-            inputs[index - 1].nativeElement.focus();
+            const prevInput = inputs[index - 1].nativeElement;
+            if (prevInput.setFocus) {
+              prevInput.setFocus();
+            } else {
+              prevInput.focus();
+            }
             this.tokenControls[index - 1].setValue('');
           }
         }, 50);
@@ -296,17 +398,28 @@ export class LoginPage implements OnInit, OnDestroy {
 
     // Arrow keys para navegación
     if (event.key === 'ArrowLeft' && index > 0) {
-      const inputs = this.tokenInputs.toArray();
-      if (inputs[index - 1]) {
-        inputs[index - 1].nativeElement.focus();
+      event.preventDefault();
+      const prevInput = inputs[index - 1].nativeElement;
+      if (prevInput.setFocus) {
+        prevInput.setFocus();
+      } else {
+        prevInput.focus();
       }
     }
 
     if (event.key === 'ArrowRight' && index < 4) {
-      const inputs = this.tokenInputs.toArray();
-      if (inputs[index + 1]) {
-        inputs[index + 1].nativeElement.focus();
+      event.preventDefault();
+      const nextInput = inputs[index + 1].nativeElement;
+      if (nextInput.setFocus) {
+        nextInput.setFocus();
+      } else {
+        nextInput.focus();
       }
+    }
+
+    // Prevenir entrada de caracteres no numéricos
+    if (!/\d|Backspace|ArrowLeft|ArrowRight|Tab/.test(event.key)) {
+      event.preventDefault();
     }
   }
 
@@ -330,12 +443,25 @@ export class LoginPage implements OnInit, OnDestroy {
    * Limpiar inputs de token
    */
   clearTokenInputs() {
-    this.tokenControls.forEach(control => control.setValue(''));
-    // Focus al primer input
+    this.tokenControls.forEach((control) => control.setValue(''));
+
+    // Limpiar también los valores visibles de los inputs
     setTimeout(() => {
       const inputs = this.tokenInputs.toArray();
+      inputs.forEach((input) => {
+        if (input.nativeElement.value) {
+          input.nativeElement.value = '';
+        }
+      });
+
+      // Focus al primer input
       if (inputs[0]) {
-        inputs[0].nativeElement.focus();
+        const firstInput = inputs[0].nativeElement;
+        if (firstInput.setFocus) {
+          firstInput.setFocus();
+        } else {
+          firstInput.focus();
+        }
       }
     }, 100);
   }
@@ -357,7 +483,7 @@ export class LoginPage implements OnInit, OnDestroy {
       duration: 3000,
       color: 'success',
       position: 'bottom',
-      icon: 'checkmark-circle'
+      icon: 'checkmark-circle',
     });
     await toast.present();
   }
@@ -368,7 +494,7 @@ export class LoginPage implements OnInit, OnDestroy {
       duration: 4000,
       color: 'danger',
       position: 'bottom',
-      icon: 'alert-circle'
+      icon: 'alert-circle',
     });
     await toast.present();
   }
@@ -379,7 +505,7 @@ export class LoginPage implements OnInit, OnDestroy {
       duration: 3000,
       color: 'primary',
       position: 'bottom',
-      icon: 'information-circle'
+      icon: 'information-circle',
     });
     await toast.present();
   }

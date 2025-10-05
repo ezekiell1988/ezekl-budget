@@ -1245,6 +1245,7 @@ El Nginx está configurado con headers de seguridad:
 - `POST /api/auth/request-token` → Solicita token de autenticación por email (con modelos Pydantic)
 - `POST /api/auth/login` → Completa autenticación con token y genera JWE de acceso
 - `GET /api/auth/verify-token` → **[PRIVADO]** Obtiene datos del usuario autenticado 
+- `POST /api/auth/refresh-token` → **[PRIVADO]** Extiende la expiración del token actual (+24h)
 - `POST /api/auth/logout` → Cierra sesión (limpieza del lado cliente)
 
 ### Integración con Azure Event Grid (Emails)
@@ -1397,7 +1398,30 @@ Response (VerifyTokenResponse):
 }
 ```
 
-**4. Cerrar Sesión**
+**4. Renovar/Extender Token (Endpoint Privado)**
+```bash
+curl -X POST https://budget.ezekl.com/api/auth/refresh-token \
+  -H "Authorization: Bearer eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0..."
+```
+
+Response (LoginResponse):
+```json
+{
+  "success": true,
+  "message": "Token renovado exitosamente",
+  "user": {
+    "idLogin": 1,
+    "codeLogin": "S",
+    "nameLogin": "Ezequiel Baltodano Cubillo", 
+    "phoneLogin": "50683681485",
+    "emailLogin": "ezekiell1988@hotmail.com"
+  },
+  "accessToken": "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0...",
+  "expiresAt": "2025-10-06T21:43:15+00:00"
+}
+```
+
+**5. Cerrar Sesión**
 ```bash
 curl -X POST https://budget.ezekl.com/api/auth/logout
 ```
@@ -1417,11 +1441,23 @@ Response (LogoutResponse):
 - ✅ **JWE seguros** - Encriptación completa con algoritmo A256KW + A256GCM
 - ✅ **Email en background** - Cola asíncrona sin bloquear API (1 segundo vs 5-10s antes)
 - ✅ **Modelos Pydantic** - Validación automática y documentación completa
+- ✅ **Renovación automática** - Sistema automático de extensión de sesión sin reautenticación
+- ✅ **Renovación manual** - Botón para extender sesión cuando el usuario lo requiera
+- ✅ **Detección inteligente** - Renueva automáticamente solo si el token expira pronto (<1 hora)
 - ✅ **Base de datos integrada** - Stored procedures con SQL Server
 - ✅ **Endpoint privado** - `GET /verify-token` con autenticación Bearer
 - ✅ **Tokens de un solo uso** - Se eliminan automáticamente después del login
 - ✅ **Clave de 256 bits** - Configuración segura para algoritmos JWE
 - ✅ **Documentación automática** - Swagger/OpenAPI con todos los esquemas
+
+#### Sistema de Renovación Automática de Tokens
+
+El endpoint `POST /api/auth/refresh-token` permite extender la vida útil de tokens JWE sin reautenticación:
+
+- **Funcionalidad**: Valida token actual y genera nuevo JWE con +24 horas de vida
+- **Autenticación**: Requiere header `Authorization: Bearer {token_actual}`
+- **Respuesta**: Mismo formato que login (LoginResponse) con nuevo token
+- **Casos de uso**: Mantener sesiones activas, evitar relogin innecesario en aplicaciones SPA
 
 #### Modelos Pydantic de Autenticación
 

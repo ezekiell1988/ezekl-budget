@@ -1,0 +1,33 @@
+/* Estilos mínimos para el side menu - usando Ionic nativo */
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.profile-avatar {
+  --size: 60px;
+  margin-right: 1rem;
+}
+
+.avatar-text {
+  font-size: 24px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+/* Responsive - solo para móviles pequeños */
+@media (max-width: 768px) {
+  .profile-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profile-avatar {
+    margin: 0 0 12px 0;
+  }
+}

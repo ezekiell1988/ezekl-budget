@@ -1,171 +1,168 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>Ezekl Budget - Login</ion-title>
-  </ion-toolbar>
-</ion-header>
+<app-header title="Ezekl Budget" [showLogout]="false"></app-header>
 
-<ion-content [fullscreen]="true" class="login-content">
-  <div class="login-container">
-    <!-- Logo y bienvenida -->
-    <div class="logo-section">
-      <ion-icon name="wallet" color="primary" size="large"></ion-icon>
-      <h1>Ezekl Budget</h1>
-      <p>Gestión inteligente de presupuesto</p>
-    </div>
+<ion-content [fullscreen]="true">
+  <ion-grid fixed>
+    <ion-row class="ion-justify-content-center ion-align-items-center" style="min-height: 100vh;">
+      <ion-col size="12" size-md="6" size-lg="4">
 
-    <!-- Wizard Step 1: Solicitar código de usuario -->
-    <ion-card *ngIf="(wizardState$ | async)?.currentStep === loginSteps.REQUEST_TOKEN">
-      <ion-card-header>
-        <ion-card-title>
-          <ion-icon name="person-circle" slot="start"></ion-icon>
-          Identificación
-        </ion-card-title>
-        <ion-card-subtitle>
-          Ingresa tu código de usuario para comenzar
-        </ion-card-subtitle>
-      </ion-card-header>
+        <!-- Logo y bienvenida -->
+        <ion-item lines="none" class="ion-text-center ion-margin-bottom">
+          <ion-label>
+            <ion-icon name="wallet" color="primary" style="font-size: 4rem;"></ion-icon>
+            <h1>Ezekl Budget</h1>
+            <p>Gestión inteligente de presupuesto</p>
+          </ion-label>
+        </ion-item>
 
-      <ion-card-content>
-        <form [formGroup]="step1Form" (ngSubmit)="requestToken()">
-          <ion-item class="input-item">
-            <ion-label position="stacked">Código de Usuario</ion-label>
-            <ion-input
-              formControlName="codeLogin"
-              placeholder="Ej: ABC123"
-              maxlength="10"
-              [clearInput]="true">
-            </ion-input>
-          </ion-item>
+        <!-- Wizard Step 1: Solicitar código de usuario -->
+        @if ((wizardState$ | async)?.currentStep === loginSteps.REQUEST_TOKEN) {
+        <ion-card class="ion-margin">
+          <ion-card-header>
+            <ion-card-title color="primary">
+              <ion-icon name="person-circle" slot="start"></ion-icon>
+              Identificación
+            </ion-card-title>
+            <ion-card-subtitle>
+              Ingresa tu código de usuario para comenzar
+            </ion-card-subtitle>
+          </ion-card-header>
 
-          <!-- Mensaje de error -->
-          <ion-text
-            color="danger"
-            *ngIf="(wizardState$ | async)?.error">
-            <p class="error-message">
-              <ion-icon name="alert-circle" slot="start"></ion-icon>
-              {{ (wizardState$ | async)?.error }}
-            </p>
-          </ion-text>
+          <ion-card-content>
+            <form [formGroup]="step1Form" (ngSubmit)="requestToken()">
 
-          <!-- Botón continuar -->
-          <ion-button
-            expand="full"
-            type="submit"
-            [disabled]="step1Form.invalid || (wizardState$ | async)?.isLoading"
-            class="login-button">
-            <ion-spinner
-              name="crescent"
-              slot="start"
-              *ngIf="(wizardState$ | async)?.isLoading">
-            </ion-spinner>
-            <span *ngIf="!(wizardState$ | async)?.isLoading">Continuar</span>
-            <span *ngIf="(wizardState$ | async)?.isLoading">Enviando...</span>
-          </ion-button>
-        </form>
-      </ion-card-content>
-    </ion-card>
+              <ion-item fill="outline" class="ion-margin-bottom">
+                <ion-label position="stacked">Código de Usuario</ion-label>
+                <ion-input formControlName="codeLogin" placeholder="Ej: ABC123" maxlength="10" [clearInput]="true">
+                </ion-input>
+              </ion-item>
 
-    <!-- Wizard Step 2: Ingresar token -->
-    <ion-card *ngIf="(wizardState$ | async)?.currentStep === loginSteps.ENTER_TOKEN">
-      <ion-card-header>
-        <ion-card-title>
-          <ion-icon name="mail" slot="start"></ion-icon>
-          Verificación
-        </ion-card-title>
-        <ion-card-subtitle>
-          Ingresa el código de 5 dígitos enviado a tu email
-        </ion-card-subtitle>
-      </ion-card-header>
+              <!-- Mensaje de error -->
+              @if ((wizardState$ | async)?.error) {
+              <ion-item lines="none" color="danger" fill="outline">
+                <ion-icon name="alert-circle" slot="start"></ion-icon>
+                <ion-label>{{ (wizardState$ | async)?.error }}</ion-label>
+              </ion-item>
+              }
 
-      <ion-card-content>
-        <!-- Información del usuario -->
-        <div class="user-info" *ngIf="(wizardState$ | async)?.user as user">
-          <ion-item lines="none">
-            <ion-avatar slot="start">
-              <ion-icon name="person" size="large"></ion-icon>
-            </ion-avatar>
-            <ion-label>
-              <h3>{{ user.nameLogin }}</h3>
-              <p>{{ user.emailLogin }}</p>
-            </ion-label>
-          </ion-item>
-        </div>
+              <!-- Botón continuar -->
+              <ion-button expand="full" type="submit" shape="round" size="large"
+                [disabled]="step1Form.invalid || (wizardState$ | async)?.isLoading" class="ion-margin-top">
+                @if ((wizardState$ | async)?.isLoading) {
+                <ion-spinner name="crescent" slot="start"></ion-spinner>
+                <span>Enviando...</span>
+                } @else {
+                <span>Continuar</span>
+                }
+              </ion-button>
+            </form>
+          </ion-card-content>
+        </ion-card>
+        }
 
-        <form [formGroup]="step2Form" (ngSubmit)="login()">
-          <!-- Token inputs -->
-          <div class="token-input-container">
-            <ion-label>Código de verificación:</ion-label>
-            <div class="token-inputs">
-              <ion-input
-                *ngFor="let control of tokenControls; trackBy: trackByIndex; let i = index"
-                #tokenInput
-                [formControlName]="'digit' + (i + 1)"
-                type="number"
-                maxlength="1"
-                class="token-digit"
-                (ionInput)="onTokenDigitInput(i, $event, tokenInput)"
-                (keydown)="onTokenKeydown(i, $event)"
-                (click)="onTokenInputClick(i)">
-              </ion-input>
-            </div>
-          </div>
+        <!-- Wizard Step 2: Ingresar token -->
+        @if ((wizardState$ | async)?.currentStep === loginSteps.ENTER_TOKEN) {
+        <ion-card class="ion-margin">
+          <ion-card-header>
+            <ion-card-title color="primary">
+              <ion-icon name="mail" slot="start"></ion-icon>
+              Verificación
+            </ion-card-title>
+            <ion-card-subtitle>
+              Ingresa el código de 5 dígitos enviado a tu email
+            </ion-card-subtitle>
+          </ion-card-header>
 
-          <!-- Auto-copy button -->
-          <ion-button
-            fill="outline"
-            expand="block"
-            (click)="tryAutoCopy()"
-            [disabled]="(wizardState$ | async)?.isLoading"
-            class="auto-copy-button">
-            <ion-icon name="clipboard" slot="start"></ion-icon>
-            Pegar desde portapapeles
-          </ion-button>
+          <ion-card-content>
+            <!-- Información del usuario -->
+            @if ((wizardState$ | async)?.user; as user) {
+            <ion-item lines="none" fill="outline" color="primary" class="ion-margin-bottom">
+              <ion-avatar slot="start">
+                <ion-icon name="person" size="large"></ion-icon>
+              </ion-avatar>
+              <ion-label>
+                <h3>{{ user.nameLogin }}</h3>
+                <p>{{ user.emailLogin }}</p>
+              </ion-label>
+            </ion-item>
+            }
 
-          <!-- Mensaje de error -->
-          <ion-text
-            color="danger"
-            *ngIf="(wizardState$ | async)?.error">
-            <p class="error-message">
-              <ion-icon name="alert-circle" slot="start"></ion-icon>
-              {{ (wizardState$ | async)?.error }}
-            </p>
-          </ion-text>
+            <form [formGroup]="step2Form" (ngSubmit)="login()">
 
-          <!-- Botones de acción -->
-          <div class="action-buttons">
-            <ion-button
-              fill="outline"
-              (click)="goBack()"
-              [disabled]="(wizardState$ | async)?.isLoading">
-              <ion-icon name="arrow-back" slot="start"></ion-icon>
-              Atrás
-            </ion-button>
+              <!-- Token inputs usando ion-grid -->
+              <ion-item lines="none" class="ion-margin-bottom">
+                <ion-label position="stacked" color="primary">Código de verificación:</ion-label>
+              </ion-item>
 
-            <ion-button
-              fill="outline"
-              color="warning"
-              (click)="resendToken()"
-              [disabled]="(wizardState$ | async)?.isLoading">
-              <ion-icon name="refresh" slot="start"></ion-icon>
-              Reenviar
-            </ion-button>
+              <ion-grid>
+                <ion-row class="ion-justify-content-center">
+                  @for (control of tokenControls; track $index; let i = $index) {
+                  <ion-col size="2">
+                    <ion-item fill="outline" lines="none">
+                      <ion-input #tokenInput [formControlName]="'digit' + (i + 1)" type="tel" inputmode="numeric"
+                        maxlength="1" [class.ion-valid]="tokenControls[i].valid && tokenControls[i].value"
+                        (ionInput)="onTokenDigitInput(i, $event, tokenInput)" (keydown)="onTokenKeydown(i, $event)"
+                        (ionFocus)="onTokenInputClick(i)" autocomplete="off"
+                        style="text-align: center; font-size: 1.5rem; font-weight: bold;" placeholder="0">
+                      </ion-input>
+                    </ion-item>
+                  </ion-col>
+                  }
+                </ion-row>
+              </ion-grid>
 
-            <ion-button
-              expand="block"
-              type="submit"
-              [disabled]="step2Form.invalid || (wizardState$ | async)?.isLoading"
-              class="login-button">
-              <ion-spinner
-                name="crescent"
-                slot="start"
-                *ngIf="(wizardState$ | async)?.isLoading">
-              </ion-spinner>
-              <span *ngIf="!(wizardState$ | async)?.isLoading">Iniciar Sesión</span>
-              <span *ngIf="(wizardState$ | async)?.isLoading">Validando...</span>
-            </ion-button>
-          </div>
-        </form>
-      </ion-card-content>
-    </ion-card>
-  </div>
+              <!-- Auto-copy button -->
+              <ion-button fill="outline" expand="block" (click)="tryAutoCopy()"
+                [disabled]="(wizardState$ | async)?.isLoading" class="ion-margin-vertical">
+                <ion-icon name="clipboard" slot="start"></ion-icon>
+                Pegar desde portapapeles
+              </ion-button>
+
+              <!-- Mensaje de error -->
+              @if ((wizardState$ | async)?.error) {
+              <ion-item lines="none" color="danger" fill="outline" class="ion-margin-bottom">
+                <ion-icon name="alert-circle" slot="start"></ion-icon>
+                <ion-label>{{ (wizardState$ | async)?.error }}</ion-label>
+              </ion-item>
+              }
+
+              <!-- Botones de acción usando ion-grid -->
+              <ion-grid>
+                <ion-row>
+                  <ion-col size="6">
+                    <ion-button fill="outline" expand="block" (click)="goBack()"
+                      [disabled]="(wizardState$ | async)?.isLoading">
+                      <ion-icon name="arrow-back" slot="start"></ion-icon>
+                      Atrás
+                    </ion-button>
+                  </ion-col>
+                  <ion-col size="6">
+                    <ion-button fill="outline" color="warning" expand="block" (click)="resendToken()"
+                      [disabled]="(wizardState$ | async)?.isLoading">
+                      <ion-icon name="refresh" slot="start"></ion-icon>
+                      Reenviar
+                    </ion-button>
+                  </ion-col>
+                </ion-row>
+                <ion-row>
+                  <ion-col size="12">
+                    <ion-button expand="full" type="submit" shape="round" size="large"
+                      [disabled]="step2Form.invalid || (wizardState$ | async)?.isLoading" class="ion-margin-top">
+                      @if ((wizardState$ | async)?.isLoading) {
+                      <ion-spinner name="crescent" slot="start"></ion-spinner>
+                      <span>Validando...</span>
+                      } @else {
+                      <span>Iniciar Sesión</span>
+                      }
+                    </ion-button>
+                  </ion-col>
+                </ion-row>
+              </ion-grid>
+            </form>
+          </ion-card-content>
+        </ion-card>
+        }
+
+      </ion-col>
+    </ion-row>
+  </ion-grid>
 </ion-content>

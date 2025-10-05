@@ -39,6 +39,16 @@ export interface LoginResponse {
   expiresAt?: string; // ISO date string
 }
 
+// Response para refresh de token
+export interface RefreshResponse {
+  success: boolean;
+  message?: string;
+  accessToken?: string;
+  user?: AuthUser;
+  expiresAt?: string;
+  newExpiresAt?: string;
+}
+
 // Estado de autenticación
 export interface AuthState {
   isAuthenticated: boolean;
