@@ -5,9 +5,52 @@
   align-items: center;
 }
 
-/* Estilos mínimos para inputs de token - respeta dark mode automáticamente */
-ion-input[formControlName^="digit"] {
+/* Grid para los inputs del token - responsivo */
+.token-grid {
+  max-width: 300px;
+  margin: 0 auto;
+
+  ion-col {
+    padding: 0.25rem;
+  }
+}
+
+/* Estilos para cada input de dígito del token */
+.token-digit-input {
+  --color: var(--ion-color-dark);
+  --background: var(--ion-color-light);
+  --border-color: var(--ion-color-medium);
+
   text-align: center;
   font-weight: bold;
   font-size: 1.5rem;
+
+  // Asegurar que el input sea cuadrado y responsivo
+  height: 60px;
+
+  // En móviles más pequeños
+  @media (max-width: 480px) {
+    height: 50px;
+    font-size: 1.3rem;
+  }
+
+  // Cuando está enfocado
+  &.ion-focused {
+    --border-color: var(--ion-color-primary);
+    --color: var(--ion-color-primary);
+  }
+
+  // Cuando tiene valor
+  &.ion-valid {
+    --border-color: var(--ion-color-success);
+  }
+}
+
+/* Estilo para la tarjeta de Microsoft */
+.microsoft-login-card {
+  ion-button[color="primary"] {
+    --background: #0078d4;
+    --background-hover: #106ebe;
+    --background-activated: #005a9e;
+  }
 }

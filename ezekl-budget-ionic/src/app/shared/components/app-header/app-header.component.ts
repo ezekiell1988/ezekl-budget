@@ -5,6 +5,9 @@ import {
   IonToolbar,
   IonTitle,
   IonMenuButton,
+  IonGrid,
+  IonRow,
+  IonCol,
 } from '@ionic/angular/standalone';
 
 
@@ -18,6 +21,9 @@ import {
     IonToolbar,
     IonTitle,
     IonMenuButton,
+    IonGrid,
+    IonRow,
+    IonCol,
   ],
 })
 export class AppHeaderComponent {

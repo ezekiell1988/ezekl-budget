@@ -426,31 +426,68 @@ export class AuthService {
         const token = tokenResult.value;
         const user = JSON.parse(userResult.value) as AuthUser;
 
-        // Actualizar estado temporalmente para que currentToken funcione
-        this.updateAuthState({
-          isAuthenticated: false, // Marca como no autenticado hasta verificar
-          user,
-          token,
-          expiresAt: undefined
-        });
+        // Verificar token con el servidor SIN cambiar el estado intermedio
+        try {
+          const response = await firstValueFrom(
+            this.http.get<any>(
+              `${this.API_BASE}/verify-token`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              }
+            )
+          );
 
-        // Verificar token con el servidor
-        const isValid = await this.verifyToken();
-
-        // Si verifyToken falla, logout() ya limpia el estado
-        // No necesitamos hacer nada más aquí
+          if (response?.user) {
+            // Token válido - actualizar estado como autenticado
+            this.updateAuthState({
+              isAuthenticated: true,
+              user: response.user,
+              token: token,
+              expiresAt: response.expiresAt ? new Date(response.expiresAt) : undefined
+            });
+            console.log('AuthService: Sesión restaurada exitosamente');
+          } else {
+            // Token inválido - limpiar datos
+            await this.clearAuthData();
+            this.updateAuthState({
+              isAuthenticated: false,
+              user: undefined,
+              token: undefined,
+              expiresAt: undefined
+            });
+            console.log('AuthService: Token inválido, limpiando sesión');
+          }
+        } catch (error) {
+          console.error('AuthService: Error verificando token:', error);
+          await this.clearAuthData();
+          this.updateAuthState({
+            isAuthenticated: false,
+            user: undefined,
+            token: undefined,
+            expiresAt: undefined
+          });
+        }
       } else {
-        // No hay datos guardados, asegurar que el estado esté limpio
+        // No hay datos guardados
         this.updateAuthState({
           isAuthenticated: false,
           user: undefined,
           token: undefined,
           expiresAt: undefined
         });
+        console.log('AuthService: No hay sesión guardada');
       }
     } catch (error) {
       console.error('Error cargando estado de autenticación:', error);
       await this.clearAuthData();
+      this.updateAuthState({
+        isAuthenticated: false,
+        user: undefined,
+        token: undefined,
+        expiresAt: undefined
+      });
     }
   }
 

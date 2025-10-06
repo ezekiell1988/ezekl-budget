@@ -22,20 +22,30 @@ export class AuthGuard implements CanActivate {
    * Redirige a /login si no está autenticado
    */
   canActivate(): Observable<boolean> {
-    // Verificación simple y directa
-    const isAuthenticated = this.authService.isAuthenticated;
-    const token = this.authService.currentToken;
+    // Esperar a que termine la inicialización del servicio
+    return from(this.authService.ensureInitialized()).pipe(
+      switchMap(() => {
+        // Verificación después de inicialización
+        const isAuthenticated = this.authService.isAuthenticated;
+        const token = this.authService.currentToken;
 
-    // Si no hay token, redirigir a login
-    if (!token || !isAuthenticated) {
-      console.log('AuthGuard: Sin autenticación, redirigiendo a login');
-      this.router.navigate(['/login'], { replaceUrl: true });
-      return of(false);
-    }
+        // Si no hay token, redirigir a login
+        if (!token || !isAuthenticated) {
+          console.log('AuthGuard: Sin autenticación, redirigiendo a login');
+          this.router.navigate(['/login'], { replaceUrl: true });
+          return of(false);
+        }
 
-    // Si hay token, permitir acceso
-    console.log('AuthGuard: Usuario autenticado, permitiendo acceso');
-    return of(true);
+        // Si hay token, permitir acceso
+        console.log('AuthGuard: Usuario autenticado, permitiendo acceso');
+        return of(true);
+      }),
+      catchError(error => {
+        console.error('AuthGuard: Error en verificación:', error);
+        this.router.navigate(['/login'], { replaceUrl: true });
+        return of(false);
+      })
+    );
   }
 }
 
@@ -51,20 +61,30 @@ export class GuestGuard implements CanActivate {
    * Redirige a /home si ya está autenticado
    */
   canActivate(): Observable<boolean> {
-    // Verificación simple
-    const isAuth = this.authService.isAuthenticated;
-    const token = this.authService.currentToken;
+    // Esperar a que termine la inicialización del servicio
+    return from(this.authService.ensureInitialized()).pipe(
+      switchMap(() => {
+        // Verificación después de inicialización
+        const isAuth = this.authService.isAuthenticated;
+        const token = this.authService.currentToken;
 
-    if (isAuth && token) {
-      // Usuario autenticado, redirigir a home
-      console.log('GuestGuard: Usuario ya autenticado, redirigiendo a home');
-      this.router.navigate(['/home'], { replaceUrl: true });
-      return of(false);
-    } else {
-      // No autenticado, permitir acceso a login
-      console.log('GuestGuard: Usuario no autenticado, permitiendo acceso a login');
-      return of(true);
-    }
+        if (isAuth && token) {
+          // Usuario autenticado, redirigir a home
+          console.log('GuestGuard: Usuario ya autenticado, redirigiendo a home');
+          this.router.navigate(['/home'], { replaceUrl: true });
+          return of(false);
+        } else {
+          // No autenticado, permitir acceso a login
+          console.log('GuestGuard: Usuario no autenticado, permitiendo acceso a login');
+          return of(true);
+        }
+      }),
+      catchError(error => {
+        console.error('GuestGuard: Error en verificación:', error);
+        // En caso de error, permitir acceso a login
+        return of(true);
+      })
+    );
   }
 }
 

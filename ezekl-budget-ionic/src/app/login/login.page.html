@@ -17,11 +17,40 @@
 
         <!-- Wizard Step 1: Solicitar código de usuario -->
         @if ((wizardState$ | async)?.currentStep === loginSteps.REQUEST_TOKEN) {
+
+        <!-- Botón de Microsoft Login -->
+        <ion-card class="ion-margin microsoft-login-card">
+          <ion-card-header>
+            <ion-card-title color="primary">
+              <ion-icon name="logo-microsoft" slot="start"></ion-icon>
+              Acceso Empresarial
+            </ion-card-title>
+            <ion-card-subtitle>
+              Usa tu cuenta de Microsoft de la empresa
+            </ion-card-subtitle>
+          </ion-card-header>
+
+          <ion-card-content>
+            <ion-button expand="full" shape="round" size="large" color="primary"
+              (click)="loginWithMicrosoft()" [disabled]="(wizardState$ | async)?.isLoading">
+              <ion-icon name="logo-microsoft" slot="start"></ion-icon>
+              Continuar con Microsoft
+            </ion-button>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Separador OR -->
+        <div class="ion-text-center ion-margin">
+          <ion-chip color="medium" outline="true">
+            <ion-label>O</ion-label>
+          </ion-chip>
+        </div>
+
         <ion-card class="ion-margin">
           <ion-card-header>
             <ion-card-title color="primary">
               <ion-icon name="person-circle" slot="start"></ion-icon>
-              Identificación
+              Identificación Manual
             </ion-card-title>
             <ion-card-subtitle>
               Ingresa tu código de usuario para comenzar
@@ -90,25 +119,31 @@
 
             <form [formGroup]="step2Form" (ngSubmit)="login()">
 
-              <!-- Token inputs usando ion-grid -->
+              <!-- Token inputs - 5 dígitos individuales -->
               <div class="ion-margin-bottom ion-text-center">
                 <ion-text color="primary">
                   <h3>Código de verificación:</h3>
                 </ion-text>
               </div>
 
-              <ion-grid>
-                <ion-row class="ion-justify-content-center">
+              <!-- Grid responsivo para los 5 inputs -->
+              <ion-grid class="token-grid">
+                <ion-row class="ion-justify-content-center ion-align-items-center">
                   @for (control of tokenControls; track $index; let i = $index) {
-                  <ion-col size="2">
-                    <ion-item fill="outline" lines="none">
-                      <ion-input #tokenInput [formControlName]="'digit' + (i + 1)" type="tel" inputmode="numeric"
-                        maxlength="1" [class.ion-valid]="tokenControls[i].valid && tokenControls[i].value"
-                        (ionInput)="onTokenDigitInput(i, $event, tokenInput)" (keydown)="onTokenKeydown(i, $event)"
-                        (ionFocus)="onTokenInputClick(i)" autocomplete="off"
-                        style="text-align: center; font-size: 1.5rem; font-weight: bold;" placeholder="0">
-                      </ion-input>
-                    </ion-item>
+                  <ion-col size="2" size-md="1.5" class="ion-text-center">
+                    <ion-input
+                      #tokenInput
+                      [formControlName]="'digit' + (i + 1)"
+                      fill="outline"
+                      type="tel"
+                      inputmode="numeric"
+                      maxlength="1"
+                      placeholder="0"
+                      class="token-digit-input"
+                      (ionInput)="onDigitInput(i, $event, tokenInput)"
+                      (keydown)="onDigitKeydown(i, $event)"
+                      (ionFocus)="onDigitFocus(i)">
+                    </ion-input>
                   </ion-col>
                   }
                 </ion-row>

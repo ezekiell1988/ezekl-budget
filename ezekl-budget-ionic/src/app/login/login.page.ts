@@ -4,7 +4,6 @@ import {
   OnDestroy,
   ViewChildren,
   QueryList,
-  ElementRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -14,7 +13,7 @@ import {
   Validators,
   FormControl,
 } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, Observable } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import {
@@ -53,6 +52,7 @@ import {
   arrowBack,
   refresh,
   checkmarkCircle,
+  logoMicrosoft
 } from 'ionicons/icons';
 
 import { AuthService } from '../services/auth.service';
@@ -94,8 +94,7 @@ import {
   ],
 })
 export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave {
-  @ViewChildren('tokenInput', { read: ElementRef })
-  tokenInputs!: QueryList<ElementRef>;
+  @ViewChildren('tokenInput') tokenInputs!: QueryList<any>;
 
   private destroy$ = new Subject<void>();
 
@@ -109,28 +108,19 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   // Referencias a enums para el template
   loginSteps = LoginStep;
 
-  // Controles del token para iteración en template
+  // Controles individuales para los 5 dígitos
   tokenControls: FormControl[] = [];
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
     private toastController: ToastController,
     private alertController: AlertController
   ) {
     // Registrar iconos
-    addIcons({
-      wallet,
-      personCircle,
-      person,
-      mail,
-      alertCircle,
-      clipboard,
-      arrowBack,
-      refresh,
-      'checkmark-circle': checkmarkCircle,
-    });
+    addIcons({wallet,logoMicrosoft,personCircle,alertCircle,mail,person,clipboard,arrowBack,refresh,'checkmarkCircle':checkmarkCircle,});
 
     // Inicializar formularios
     this.step1Form = this.fb.group({
@@ -144,13 +134,13 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
       ],
     });
 
-    // Crear controles para token de 5 dígitos
+    // Crear 5 controles individuales para el token
     this.tokenControls = Array.from(
       { length: 5 },
-      () =>
-        new FormControl('', [Validators.required, Validators.pattern(/^\d$/)])
+      () => new FormControl('', [Validators.required, Validators.pattern(/^\d$/)])
     );
 
+    // Formulario con los 5 dígitos individuales
     this.step2Form = this.fb.group({
       digit1: this.tokenControls[0],
       digit2: this.tokenControls[1],
@@ -169,6 +159,9 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
       this.router.navigate(['/home']);
       return;
     }
+
+    // Verificar si hay token de Microsoft en los parámetros de URL (callback de Microsoft)
+    this.checkForMicrosoftCallback();
 
     // Resetear wizard al entrar
     this.authService.resetWizard();
@@ -202,16 +195,6 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
     if (activeElement && activeElement.blur) {
       activeElement.blur();
     }
-
-    // Quitar focus específicamente de los inputs del token si existen
-    if (this.tokenInputs) {
-      this.tokenInputs.forEach(input => {
-        const nativeElement = input.nativeElement.querySelector('input');
-        if (nativeElement && nativeElement.blur) {
-          nativeElement.blur();
-        }
-      });
-    }
   }
 
   /**
@@ -220,6 +203,80 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
    */
   ionViewDidLeave() {
     // Limpieza adicional si es necesaria
+  }
+
+  /**
+   * Verifica si hay token de Microsoft en los parámetros de URL
+   */
+  private async checkForMicrosoftCallback() {
+    // Obtener parámetros de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const expires = urlParams.get('expires');
+
+    if (token && expires) {
+      try {
+        // Simular respuesta de login exitoso para activar el flujo normal de autenticación
+        const mockResponse: LoginResponse = {
+          success: true,
+          message: 'Autenticación con Microsoft exitosa',
+          accessToken: token,
+          expiresAt: expires,
+          user: undefined // Se obtendrá del token
+        };
+
+        // Usar el método interno del AuthService para establecer la sesión
+        // Por ahora, guardamos directamente en localStorage como lo hace el AuthService
+        localStorage.setItem('ezekl_auth_token', token);
+        localStorage.setItem('ezekl_auth_expires', expires);
+
+        // Limpiar URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        // Mostrar mensaje de éxito y redirigir
+        this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
+
+        // Forzar recarga para que el AuthService detecte el token
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+
+      } catch (error) {
+        console.error('Error procesando autenticación de Microsoft:', error);
+        this.showErrorToast('Error procesando autenticación de Microsoft');
+        // Limpiar URL en caso de error
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }
+
+  /**
+   * Login con Microsoft
+   */
+  loginWithMicrosoft() {
+    try {
+      // Redirigir a la URL de autenticación de Microsoft en el backend
+      const microsoftUrl = `${this.getMicrosoftLoginUrl()}/api/auth/microsoft/login`;
+
+      // Abrir en la misma ventana para manejar el callback correctamente
+      window.location.href = microsoftUrl;
+
+    } catch (error: any) {
+      this.showErrorToast(error.message || 'Error iniciando sesión con Microsoft');
+    }
+  }
+
+  /**
+   * Obtiene la URL base para la autenticación de Microsoft
+   */
+  private getMicrosoftLoginUrl(): string {
+    // En desarrollo: localhost:8001
+    // En producción: https://budget.ezekl.com
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:8001';
+    } else {
+      return 'https://budget.ezekl.com';
+    }
   }
 
   /**
@@ -247,9 +304,7 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   async login() {
     if (this.step2Form.valid) {
       try {
-        const token = this.tokenControls
-          .map((control) => control.value)
-          .join('');
+        const token = this.tokenControls.map(control => control.value).join('');
         const codeLogin = this.step1Form.value.codeLogin;
 
         const response = await this.authService.login(codeLogin, token);
@@ -293,37 +348,19 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
       const token = await this.authService.tryAutoCopyToken();
 
       if (token && token.length === 5) {
-        // Llenar los inputs con el token
+        // Llenar cada input individualmente
         for (let i = 0; i < 5; i++) {
           this.tokenControls[i].setValue(token[i]);
         }
 
         this.showSuccessToast('Token copiado automáticamente');
 
-        // Auto-focus al último input y actualizar la UI
+        // Auto-submit si el formulario es válido
         setTimeout(() => {
-          const inputs = this.tokenInputs.toArray();
-          if (inputs[4]) {
-            const lastInput = inputs[4].nativeElement;
-            if (lastInput.setFocus) {
-              lastInput.setFocus();
-            } else {
-              lastInput.focus();
-            }
-          }
-
-          // Actualizar los valores visualmente
-          inputs.forEach((input, i) => {
-            if (input.nativeElement.value !== token[i]) {
-              input.nativeElement.value = token[i];
-            }
-          });
-
-          // Auto-submit si el formulario es válido
           if (this.step2Form.valid) {
-            setTimeout(() => this.login(), 500);
+            this.login();
           }
-        }, 100);
+        }, 500);
       } else {
         this.showInfoToast('No se encontró un token válido en el portapapeles');
       }
@@ -333,108 +370,67 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   }
 
   /**
-   * Manejo de input de dígitos del token
+   * Manejo de input para cada dígito
    */
-  onTokenDigitInput(index: number, event: any, inputElement: any) {
-    let value = event.detail?.value || event.target?.value || '';
+  onDigitInput(index: number, event: any, inputElement: any) {
+    let value = event.detail?.value || '';
 
-    // Limpiar el valor si no es un dígito
+    // Mantener solo el último dígito ingresado
     if (!/^\d$/.test(value)) {
       this.tokenControls[index].setValue('');
-      inputElement.value = '';
       return;
     }
 
-    // Establecer el valor en el control
     this.tokenControls[index].setValue(value);
 
-    // Auto-focus al siguiente input si hay valor y no es el último
+    // Auto-focus al siguiente input
     if (value && index < 4) {
       setTimeout(() => {
         const inputs = this.tokenInputs.toArray();
         if (inputs[index + 1]) {
-          const nextInput = inputs[index + 1].nativeElement;
-          if (nextInput.setFocus) {
-            nextInput.setFocus();
-          } else {
-            nextInput.focus();
-          }
+          inputs[index + 1].setFocus();
         }
       }, 50);
     }
 
-    // Auto-submit cuando se complete el token
-    if (index === 4 && value) {
+    // Auto-submit cuando se complete el último dígito
+    if (index === 4 && value && this.step2Form.valid) {
       setTimeout(() => {
-        if (this.step2Form.valid) {
-          this.login();
-        }
-      }, 200);
+        this.login();
+      }, 300);
     }
   }
 
   /**
-   * Manejo de teclas en inputs de token
+   * Manejo de teclas especiales
    */
-  onTokenKeydown(index: number, event: KeyboardEvent) {
-    const inputs = this.tokenInputs.toArray();
-
+  onDigitKeydown(index: number, event: KeyboardEvent) {
     // Backspace - ir al input anterior
-    if (event.key === 'Backspace') {
-      const currentValue = this.tokenControls[index].value;
-      if (!currentValue && index > 0) {
-        event.preventDefault();
-        setTimeout(() => {
-          if (inputs[index - 1]) {
-            const prevInput = inputs[index - 1].nativeElement;
-            if (prevInput.setFocus) {
-              prevInput.setFocus();
-            } else {
-              prevInput.focus();
-            }
-            this.tokenControls[index - 1].setValue('');
-          }
-        }, 50);
-      }
-    }
-
-    // Arrow keys para navegación
-    if (event.key === 'ArrowLeft' && index > 0) {
+    if (event.key === 'Backspace' && !this.tokenControls[index].value && index > 0) {
       event.preventDefault();
-      const prevInput = inputs[index - 1].nativeElement;
-      if (prevInput.setFocus) {
-        prevInput.setFocus();
-      } else {
-        prevInput.focus();
+      const inputs = this.tokenInputs.toArray();
+      if (inputs[index - 1]) {
+        inputs[index - 1].setFocus();
+        this.tokenControls[index - 1].setValue('');
       }
     }
 
-    if (event.key === 'ArrowRight' && index < 4) {
-      event.preventDefault();
-      const nextInput = inputs[index + 1].nativeElement;
-      if (nextInput.setFocus) {
-        nextInput.setFocus();
-      } else {
-        nextInput.focus();
-      }
-    }
-
-    // Prevenir entrada de caracteres no numéricos
+    // Prevenir caracteres no numéricos
     if (!/\d|Backspace|ArrowLeft|ArrowRight|Tab/.test(event.key)) {
       event.preventDefault();
     }
   }
 
   /**
-   * Click en input de token
+   * Focus en un dígito específico
    */
-  onTokenInputClick(index: number) {
+  onDigitFocus(index: number) {
     // Si hay inputs vacíos anteriores, ir al primero vacío
     for (let i = 0; i < index; i++) {
       if (!this.tokenControls[i].value) {
         const inputs = this.tokenInputs.toArray();
         if (inputs[i]) {
-          inputs[i].nativeElement.focus();
+          inputs[i].setFocus();
         }
         return;
       }
@@ -442,28 +438,16 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   }
 
   /**
-   * Limpiar inputs de token
+   * Limpiar todos los inputs del token
    */
   clearTokenInputs() {
-    this.tokenControls.forEach((control) => control.setValue(''));
+    this.tokenControls.forEach(control => control.setValue(''));
 
-    // Limpiar también los valores visibles de los inputs
+    // Focus al primer input
     setTimeout(() => {
       const inputs = this.tokenInputs.toArray();
-      inputs.forEach((input) => {
-        if (input.nativeElement.value) {
-          input.nativeElement.value = '';
-        }
-      });
-
-      // Focus al primer input
       if (inputs[0]) {
-        const firstInput = inputs[0].nativeElement;
-        if (firstInput.setFocus) {
-          firstInput.setFocus();
-        } else {
-          firstInput.focus();
-        }
+        inputs[0].setFocus();
       }
     }, 100);
   }

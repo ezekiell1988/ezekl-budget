@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import {
@@ -14,7 +14,6 @@ import {
   IonLabel,
   IonAvatar,
   IonButton,
-  IonMenuButton,
   IonCard,
   IonCardContent,
   IonChip,
@@ -179,7 +178,7 @@ export class SideMenuComponent implements OnInit {
           duration: 3000,
           color: 'success',
           position: 'bottom',
-          icon: 'checkmark-circle'
+          icon: 'checkmark-circle',
         });
         await toast.present();
       } else {
@@ -188,7 +187,7 @@ export class SideMenuComponent implements OnInit {
           duration: 3000,
           color: 'danger',
           position: 'bottom',
-          icon: 'alert-circle'
+          icon: 'alert-circle',
         });
         await toast.present();
       }

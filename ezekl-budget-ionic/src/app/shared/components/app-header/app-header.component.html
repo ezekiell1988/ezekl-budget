@@ -1,10 +1,16 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <!-- Botón de menú -->
-    @if (showLogout) {
-    <ion-menu-button slot="start" color="primary" size="large"></ion-menu-button>
-    }
+<ion-grid fixed>
+  <ion-row class="ion-justify-content-center">
+    <ion-col size="12" size-md="8" size-lg="6">
+      <ion-header [translucent]="true">
+        <ion-toolbar>
+          <!-- Botón de menú -->
+          @if (showLogout) {
+          <ion-menu-button slot="start" color="primary" size="large"></ion-menu-button>
+          }
 
-    <ion-title>{{ title }}</ion-title>
-  </ion-toolbar>
-</ion-header>
+          <ion-title>{{ title }}</ion-title>
+        </ion-toolbar>
+      </ion-header>
+    </ion-col>
+  </ion-row>
+</ion-grid>
