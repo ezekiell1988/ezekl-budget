@@ -94,5 +94,23 @@ async def serve_frontend_routes(path: str):
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=settings.port)
+    import platform
+    
+    # Configuración específica para WebSockets compatible con Windows
+    config_kwargs = {
+        "host": "0.0.0.0",
+        "port": settings.port,
+        "ws_ping_interval": 20,
+        "ws_ping_timeout": 20,
+        "ws_max_size": 16777216,  # 16MB
+        "reload": False  # Evitar problemas en Windows
+    }
+    
+    # En Windows, no usar uvloop (no es compatible)
+    if platform.system() != "Windows":
+        config_kwargs["loop"] = "uvloop"
+    else:
+        # Windows usa el event loop por defecto de asyncio
+        config_kwargs["loop"] = "asyncio"
+    
+    uvicorn.run(app, **config_kwargs)

@@ -404,6 +404,30 @@ source .venv/bin/activate  # Activar entorno virtual
 - **API Docs**: http://localhost:8001/docs
 - **WebSocket**: ws://localhost:8001/ws/ ← Tiempo real
 
+### 🪟 Desarrollo en Windows
+
+**Configuración específica para Windows**:
+
+```bash
+# Activar entorno virtual (PowerShell)
+.\.venv\Scripts\Activate.ps1
+
+# O en Command Prompt
+.venv\Scripts\activate.bat
+
+# Instalar dependencias (uvloop se excluye automáticamente en Windows)
+pip install -r requirements.txt
+
+# Ejecutar servidor (asyncio se usa automáticamente en Windows)
+python -m app.main
+```
+
+**Diferencias importantes**:
+- ✅ **Event Loop**: Se usa `asyncio` en lugar de `uvloop` (automático)
+- ✅ **WebSockets**: Funcionan perfectamente con configuración específica
+- ✅ **Performance**: Ligeramente menor que Linux/Mac pero completamente funcional
+- ✅ **Desarrollo**: Sin diferencias en el código, detección automática del OS
+
 ### Ejecutar con Docker (Local)
 
 ```bash
@@ -741,6 +765,38 @@ sudo journalctl -u docker -f
 ```
 
 ## 🔧 Cambios Recientes (Octubre 2025)
+
+### 🪟 Compatibilidad con Windows - WebSockets y Event Loop (Octubre 2025)
+
+**Problema identificado**: uvloop no es compatible con Windows, causando fallos en WebSockets y servidor uvicorn.
+
+**Solución implementada**:
+
+#### 1. **Detección automática de sistema operativo en main.py**
+```python
+# Configuración específica para WebSockets compatible con Windows
+if platform.system() != "Windows":
+    config_kwargs["loop"] = "uvloop"  # Usar uvloop (más rápido) en Mac/Linux
+else:
+    config_kwargs["loop"] = "asyncio"  # Usar asyncio (estándar) en Windows
+```
+
+#### 2. **Dependencies condicionales en requirements.txt**
+```python
+uvloop==0.21.0; sys_platform != "win32"  # Solo instalar uvloop en sistemas Unix/Linux
+```
+
+#### 3. **Configuración optimizada para WebSockets multiplataforma**
+- ✅ **Windows**: asyncio event loop (nativo de Python)
+- ✅ **Mac/Linux**: uvloop event loop (hasta 2-4x más rápido)
+- ✅ **Parámetros WebSocket**: ws_ping_interval, ws_ping_timeout, ws_max_size configurados
+- ✅ **Reload deshabilitado**: Evita problemas específicos de Windows
+
+#### 4. **Beneficios obtenidos**
+- 🪟 **Compatibilidad total con Windows** - WebSockets funcionan correctamente
+- 🚀 **Rendimiento optimizado** - uvloop en Mac/Linux para máxima velocidad
+- 🔄 **Código universal** - Una sola base de código para todos los sistemas
+- 🛠️ **Desarrollo local** - Funciona igual en Windows, Mac y Linux
 
 ### � Mejora de Modelos Pydantic y Documentación Swagger (Octubre 2025)
 
