@@ -9,6 +9,7 @@ from app.database.connection import test_db_connection
 from app.models.responses import CredentialsResponse, HealthCheckResponse
 from .email import router as email_router
 from .auth import router as auth_router
+from .accounting_account import router as accounting_account_router
 
 # Router principal para todos los endpoints de la API
 router = APIRouter()
@@ -16,6 +17,7 @@ router = APIRouter()
 # Incluir routers de módulos específicos
 router.include_router(email_router, prefix="/email", tags=["email"])
 router.include_router(auth_router, prefix="/auth", tags=["authentication"])
+router.include_router(accounting_account_router, prefix="/accounting-accounts", tags=["accounting-accounts"])
 
 
 @router.get(

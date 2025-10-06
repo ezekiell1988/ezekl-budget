@@ -1248,6 +1248,64 @@ El Nginx está configurado con headers de seguridad:
 - `POST /api/auth/refresh-token` → **[PRIVADO]** Extiende la expiración del token actual (+24h)
 - `POST /api/auth/logout` → Cierra sesión (limpieza del lado cliente)
 
+### Cuentas Contables (Catálogo)
+
+- `GET /api/accounting-accounts` → **[PRIVADO]** Lista paginada de cuentas contables del catálogo
+- `GET /api/accounting-accounts/{id}` → **[PRIVADO]** Obtiene una cuenta contable específica por ID
+
+#### Funcionalidades de Cuentas Contables:
+
+**Paginación y Búsqueda:**
+- ✅ **Paginación configurable** - Parámetros `page` (1-∞) y `itemPerPage` (1-100)
+- ✅ **Búsqueda por nombre** - Parámetro `search` para filtrar cuentas por nombre
+- ✅ **Ordenamiento flexible** - Parámetro `sort` con múltiples opciones
+
+**Parámetros de ordenamiento disponibles:**
+- `idAccountingAccount_asc` → Por ID ascendente
+- `codeAccountingAccount_asc` → Por código ascendente (por defecto)
+- `codeAccountingAccount_desc` → Por código descendente
+- `nameAccountingAccount_asc` → Por nombre ascendente
+- `nameAccountingAccount_desc` → Por nombre descendente
+
+**Ejemplos de uso:**
+```bash
+# Obtener primeras 10 cuentas (valores por defecto)
+GET /api/accounting-accounts
+
+# Buscar cuentas que contengan "activo" en el nombre
+GET /api/accounting-accounts?search=activo
+
+# Página 2 con 25 elementos por página
+GET /api/accounting-accounts?page=2&itemPerPage=25
+
+# Ordenar por nombre descendente
+GET /api/accounting-accounts?sort=nameAccountingAccount_desc
+
+# Combinación de parámetros
+GET /api/accounting-accounts?search=caja&sort=codeAccountingAccount_asc&page=1&itemPerPage=5
+```
+
+**Estructura de respuesta:**
+```json
+{
+  "total": 6,
+  "data": [
+    {
+      "idAccountingAccount": 1,
+      "codeAccountingAccount": "001",
+      "nameAccountingAccount": "Activo"
+    },
+    {
+      "idAccountingAccount": 2,
+      "codeAccountingAccount": "002", 
+      "nameAccountingAccount": "Pasivo"
+    }
+  ]
+}
+```
+
+**Autenticación requerida:** Todos los endpoints requieren header `Authorization: Bearer {jwt_token}`
+
 ### Integración con Azure Event Grid (Emails)
 
 El webhook `/api/email/webhook` maneja eventos de Azure Event Grid para procesamiento de emails:

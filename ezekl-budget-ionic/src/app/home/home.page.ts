@@ -8,7 +8,10 @@ import {
   IonGrid,
   IonRow,
   IonCol,
+  IonButton,
+  IonIcon
 } from '@ionic/angular/standalone';
+import { RouterModule } from '@angular/router';
 
 import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
 
@@ -18,6 +21,7 @@ import { AppHeaderComponent } from '../shared/components/app-header/app-header.c
   styleUrls: ['home.page.scss'],
   imports: [
     CommonModule,
+    RouterModule,
     IonHeader,
     IonToolbar,
     IonTitle,
@@ -25,6 +29,8 @@ import { AppHeaderComponent } from '../shared/components/app-header/app-header.c
     IonGrid,
     IonRow,
     IonCol,
+    IonButton,
+    IonIcon,
     AppHeaderComponent,
   ],
 })

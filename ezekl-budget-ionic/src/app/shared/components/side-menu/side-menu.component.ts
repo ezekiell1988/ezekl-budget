@@ -18,6 +18,7 @@ import {
   IonCard,
   IonCardContent,
   IonChip,
+  IonBadge,
   AlertController,
   ToastController,
   MenuController,
@@ -37,8 +38,13 @@ import {
   helpCircle,
   close,
   pulse,
+  bookOutline,
+  swapHorizontal,
+  barChart,
+  calculator,
 } from 'ionicons/icons';
 import { AuthService } from '../../../services/auth.service';
+import { MeService, MenuSection, MenuItem } from '../../../services/me.service';
 import { AuthUser, AuthState } from '../../../models/auth.models';
 import { Observable } from 'rxjs';
 
@@ -63,14 +69,17 @@ import { Observable } from 'rxjs';
     IonCard,
     IonCardContent,
     IonChip,
+    IonBadge,
   ],
 })
 export class SideMenuComponent implements OnInit {
   authState$: Observable<AuthState>;
   currentUser: AuthUser | undefined;
+  menuSections$: Observable<MenuSection[]>;
 
   constructor(
     private authService: AuthService,
+    private meService: MeService,
     private router: Router,
     private alertController: AlertController,
     private toastController: ToastController,
@@ -91,10 +100,15 @@ export class SideMenuComponent implements OnInit {
       helpCircle,
       close,
       pulse,
+      bookOutline,
+      swapHorizontal,
+      barChart,
+      calculator,
     });
 
-    // Configurar observables de autenticación
+    // Configurar observables
     this.authState$ = this.authService.authState;
+    this.menuSections$ = this.meService.menuSections;
   }
 
   ngOnInit() {
@@ -140,6 +154,16 @@ export class SideMenuComponent implements OnInit {
   async navigateTo(path: string) {
     await this.menuController.close('main-menu');
     this.router.navigate([path]);
+  }
+
+  /**
+   * Ejecutar una acción del menú
+   */
+  async onMenuItemClick(item: MenuItem) {
+    if (!item.enabled) return;
+
+    await this.meService.executeAction(item);
+    await this.menuController.close('main-menu');
   }
 
   /**

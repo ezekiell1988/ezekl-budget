@@ -1,0 +1,200 @@
+/**
+ * Estilos para la página de Cuentas Contables
+ * Incluye estilos para estados de loading, error, vacío y elementos de UI
+ */
+
+// Información de resultados
+.results-info {
+  padding: 0 16px 8px;
+
+  small {
+    font-size: 0.875rem;
+  }
+}
+
+// Items de cuenta contable
+ion-item {
+  --padding-start: 16px;
+  --inner-padding-end: 8px;
+
+  ion-label {
+    h3 {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--ion-color-dark);
+      line-height: 1.3;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--ion-color-medium);
+
+      .account-id {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  ion-icon {
+    margin-left: 8px;
+  }
+}
+
+// Skeleton loading
+.skeleton-container {
+  padding-top: 8px;
+
+  ion-item {
+    margin-bottom: 1px;
+  }
+}
+
+// Estado vacío
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+
+  ion-icon {
+    margin-bottom: 1.5rem;
+    font-size: 4rem;
+  }
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ion-color-dark);
+  }
+
+  p {
+    margin: 0 0 1.5rem;
+    color: var(--ion-color-medium);
+    line-height: 1.5;
+    max-width: 300px;
+  }
+
+  ion-button {
+    margin-top: 8px;
+  }
+}
+
+// Estado de error
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+
+  ion-icon {
+    margin-bottom: 1.5rem;
+    font-size: 4rem;
+  }
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ion-color-danger);
+  }
+
+  p {
+    margin: 0 0 1.5rem;
+    color: var(--ion-color-medium);
+    line-height: 1.5;
+    max-width: 400px;
+    word-break: break-word;
+  }
+
+  ion-button {
+    margin-top: 8px;
+  }
+}
+
+// Barra de búsqueda
+ion-searchbar {
+  --background: var(--ion-color-light);
+  --color: var(--ion-color-dark);
+  --placeholder-color: var(--ion-color-medium);
+  --icon-color: var(--ion-color-medium);
+  --clear-button-color: var(--ion-color-medium);
+
+  padding: 8px 0;
+}
+
+// Lista
+ion-list {
+  padding: 0;
+}
+
+// Infinite scroll
+ion-infinite-scroll-content {
+  --color: var(--ion-color-medium);
+}
+
+// Responsive adjustments
+@media (max-width: 576px) {
+  .results-info {
+    padding: 0 12px 6px;
+
+    small {
+      font-size: 0.8125rem;
+    }
+  }
+
+  ion-item {
+    --padding-start: 12px;
+
+    ion-label {
+      h3 {
+        font-size: 1rem;
+      }
+
+      p {
+        font-size: 0.8125rem;
+      }
+    }
+  }
+
+  .empty-state,
+  .error-state {
+    padding: 2rem 1rem;
+
+    ion-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    h3 {
+      font-size: 1.125rem;
+    }
+
+    p {
+      font-size: 0.875rem;
+    }
+  }
+}
+
+// Mejoras de accesibilidad
+ion-item:focus {
+  --background: var(--ion-color-light-tint);
+}
+
+ion-button:focus {
+  --box-shadow: 0 0 0 2px var(--ion-color-primary-tint);
+}
+
+// Animaciones suaves
+ion-item {
+  transition: --background 0.15s ease;
+}
+
+ion-button {
+  transition: all 0.15s ease;
+}
