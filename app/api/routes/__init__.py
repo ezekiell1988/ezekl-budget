@@ -3,12 +3,13 @@ Endpoints HTTP de la API ezekl-budget.
 Estructura preparada para escalar con múltiples rutas organizadas.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from typing import Dict
 from app.core.config import settings
 from app.database.connection import test_db_connection
 from app.models.responses import CredentialsResponse, HealthCheckResponse
 from .email import router as email_router
-from .auth import router as auth_router
+from .auth import router as auth_router, get_current_user
 from .accounting_account import router as accounting_account_router
 
 # Router principal para todos los endpoints de la API
@@ -23,8 +24,10 @@ router.include_router(accounting_account_router, prefix="/accounting-accounts", 
 @router.get(
     "/credentials",
     response_model=CredentialsResponse,
-    summary="Obtener credenciales de Azure OpenAI",
+    summary="Obtener credenciales de Azure OpenAI (Privado)",
     description="""Obtiene la configuración de credenciales de Azure OpenAI desde las variables de entorno.
+    
+    🔒 **Este endpoint requiere autenticación.**
     
     Este endpoint devuelve la información de configuración necesaria para conectar
     con los servicios de Azure OpenAI, excluyendo datos sensibles como las API keys.
@@ -32,31 +35,39 @@ router.include_router(accounting_account_router, prefix="/accounting-accounts", 
     **Información devuelta:**
     - Endpoint de Azure OpenAI configurado
     - Nombre del deployment/modelo configurado
+    - Sistema operativo del servidor (para configuración de WebSocket)
     - Mensaje de confirmación de carga exitosa
     
     **Seguridad:**
+    - Requiere token JWE válido en header Authorization
     - Las API keys y tokens sensibles NO son devueltos
     - Solo información de configuración pública
-    - Ideal para validar configuración desde el frontend
     
     **Casos de uso:**
-    - Verificar configuración de Azure OpenAI desde el cliente
+    - Verificar configuración de Azure OpenAI desde el cliente autenticado
+    - Obtener SO del servidor para configuración de WebSocket en Windows
     - Debugging de configuración de variables de entorno
     - Validación de conectividad con servicios Azure
     """,
     response_description="Configuración de credenciales de Azure OpenAI (sin datos sensibles)"
 )
-async def get_credentials():
+async def get_credentials(current_user: Dict = Depends(get_current_user)):
     """
     Obtiene las credenciales de Azure OpenAI desde las variables de entorno.
+    
+    Args:
+        current_user: Usuario autenticado (inyectado por Depends)
 
     Returns:
         CredentialsResponse: Las credenciales configuradas (sin incluir la API key por seguridad)
     """
+    import platform
+    
     return CredentialsResponse(
         azure_openai_endpoint=settings.azure_openai_endpoint,
         azure_openai_deployment_name=settings.azure_openai_deployment_name,
         message="Credenciales cargadas exitosamente desde .env",
+        server_os=platform.system(),  # Windows, Linux, Darwin (macOS)
     )
 
 

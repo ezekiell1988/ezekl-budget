@@ -47,6 +47,22 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Configurar CORS para permitir WebSockets desde localhost
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8001",
+        "http://127.0.0.1:8001",
+        "ws://localhost:8001",
+        "ws://127.0.0.1:8001",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 🔧 Configurar módulos de la API (estándar FastAPI)
 app.include_router(api_router)                    # ✅ HTTP endpoints con prefix="/api"
 app.include_router(websockets_router_with_prefix)  # ✅ WebSockets con prefix="/ws"
@@ -97,20 +113,32 @@ if __name__ == "__main__":
     import platform
     
     # Configuración específica para WebSockets compatible con Windows
+    is_windows = platform.system() == "Windows"
+    
     config_kwargs = {
-        "host": "0.0.0.0",
+        # En Windows, usar 127.0.0.1 en lugar de 0.0.0.0 para WebSockets
+        "host": "127.0.0.1" if is_windows else "0.0.0.0",
         "port": settings.port,
         "ws_ping_interval": 20,
         "ws_ping_timeout": 20,
         "ws_max_size": 16777216,  # 16MB
-        "reload": False  # Evitar problemas en Windows
+        "reload": False,  # Evitar problemas en Windows con reload
+        "log_level": "info",
     }
     
     # En Windows, no usar uvloop (no es compatible)
-    if platform.system() != "Windows":
+    if not is_windows:
         config_kwargs["loop"] = "uvloop"
     else:
         # Windows usa el event loop por defecto de asyncio
         config_kwargs["loop"] = "asyncio"
+        # En Windows, asegurar que se use el selector de eventos correcto
+        import asyncio
+        if hasattr(asyncio, 'WindowsSelectorEventLoopPolicy'):
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+    logger.info(f"🚀 Iniciando servidor en {config_kwargs['host']}:{config_kwargs['port']}")
+    logger.info(f"🖥️  Sistema operativo: {platform.system()}")
+    logger.info(f"🔌 WebSocket endpoint: ws://{config_kwargs['host']}:{config_kwargs['port']}/ws/")
     
     uvicorn.run(app, **config_kwargs)

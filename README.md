@@ -311,6 +311,35 @@ La aplicación incluye **WebSocket** para comunicación en tiempo real entre cli
 - **Ping-Pong automático**: Cada 30 segundos para mantener conexión activa
 - **Reconexión automática**: Hasta 5 intentos con backoff exponencial
 - **Mensajes JSON**: Comunicación estructurada con tipos específicos
+- **Detección de SO del servidor**: Fix automático para Windows
+
+#### 🪟 Compatibilidad con Windows
+
+**Problema común**: En Windows, `localhost` puede resolver a IPv6 (`::1`) causando fallos en WebSockets.
+
+**Solución inteligente implementada**:
+
+1. **Backend** expone dos endpoints:
+   - `/api/server-config` (público): Retorna sistema operativo del servidor
+   - `/api/credentials` (privado 🔒): Requiere autenticación
+
+2. **Frontend** consulta el SO del servidor antes de conectar
+
+3. **Fix automático**: Si servidor es Windows, convierte `localhost` → `127.0.0.1`
+
+**Resultado**: WebSocket funciona en Windows, Mac, Linux y producción sin cambios manuales.
+
+**Configuración del servidor por plataforma**:
+```python
+# Windows
+host = "127.0.0.1"  # Solo localhost
+loop = "asyncio"
+event_loop_policy = WindowsSelectorEventLoopPolicy()
+
+# Linux/Mac
+host = "0.0.0.0"    # Todas las interfaces
+loop = "uvloop"     # Más rápido
+```
 
 #### Tipos de mensajes soportados:
 ```json
@@ -338,12 +367,14 @@ La aplicación incluye **WebSocket** para comunicación en tiempo real entre cli
 ```
 
 #### URLs del WebSocket:
-- **Desarrollo local**: `ws://localhost:8001/ws/`
+- **Desarrollo local (Windows)**: `ws://127.0.0.1:8001/ws/`
+- **Desarrollo local (Mac/Linux)**: `ws://localhost:8001/ws/` o `ws://127.0.0.1:8001/ws/`
 - **Producción**: `wss://budget.ezekl.com/ws/`
 
 #### Implementación del Cliente:
-El componente `HomePage` incluye un cliente WebSocket completo con:
-- ✅ Detección automática de URL (desarrollo/producción)
+El componente `DemoWebsocketPage` incluye un cliente WebSocket completo con:
+- ✅ Detección automática de URL según SO del servidor
+- ✅ Fix automático de `localhost` → `127.0.0.1` solo en Windows
 - ✅ Reconexión automática con backoff exponencial
 - ✅ Ping-pong automático cada 30 segundos
 - ✅ UI en tiempo real con estado de conexión
@@ -422,11 +453,249 @@ pip install -r requirements.txt
 python -m app.main
 ```
 
+**Script automatizado para Windows**:
+
+```powershell
+# Usar el script de inicio optimizado para Windows
+.\start-windows.ps1
+
+# O para reconstruir frontend + reiniciar servidor
+.\rebuild-and-restart.ps1
+```
+
 **Diferencias importantes**:
-- ✅ **Event Loop**: Se usa `asyncio` en lugar de `uvloop` (automático)
-- ✅ **WebSockets**: Funcionan perfectamente con configuración específica
+- ✅ **Event Loop**: Se usa `asyncio` con `WindowsSelectorEventLoopPolicy` (automático)
+- ✅ **Host**: Servidor usa `127.0.0.1` en lugar de `0.0.0.0` para WebSockets
+- ✅ **WebSockets**: Funcionan perfectamente con detección inteligente del SO
 - ✅ **Performance**: Ligeramente menor que Linux/Mac pero completamente funcional
 - ✅ **Desarrollo**: Sin diferencias en el código, detección automática del OS
+
+#### 🔧 Solución de WebSocket en Windows
+
+**Problema**: Windows resuelve `localhost` a IPv6 (`::1`), causando fallos en WebSockets.
+
+**Solución Implementada**: Sistema inteligente de detección del SO del servidor.
+
+**Arquitectura**:
+```
+Cliente → GET /api/server-config (público) → Recibe SO del servidor
+       → Si Windows: convierte localhost a 127.0.0.1
+       → Conecta WebSocket con configuración correcta
+```
+
+**Características**:
+- 🎯 **Detección inteligente**: Cliente consulta SO del servidor
+- 🔒 **Seguro**: `/api/server-config` público, `/api/credentials` privado
+- 🌍 **Multiplataforma**: Fix aplicado solo en Windows
+- ✅ **Transparente**: Funciona con `localhost` o `127.0.0.1`
+
+#### 🌐 Configuración de IIS con Reverse Proxy (Windows Server)
+
+Si deseas desplegar la aplicación en un servidor Windows con IIS, sigue estos pasos:
+
+**Requisitos previos**:
+- Windows Server 2019/2022 o Windows 10/11 Pro
+- IIS instalado con Application Request Routing (ARR) y URL Rewrite
+- Python 3.13+ instalado
+- Aplicación configurada y corriendo en `http://127.0.0.1:8001`
+
+**1. Instalar módulos necesarios en IIS**:
+
+Descarga e instala los siguientes módulos desde la web de Microsoft:
+- **Application Request Routing (ARR) 3.0**: Para habilitar reverse proxy
+- **URL Rewrite 2.1**: Para reescritura de URLs y manejo de WebSocket
+
+```powershell
+# Verificar que los módulos están instalados
+Get-WindowsFeature -Name Web-* | Where-Object {$_.InstallState -eq 'Installed'}
+```
+
+**2. Habilitar Proxy en ARR**:
+
+1. Abre IIS Manager
+2. Selecciona el servidor (nivel raíz)
+3. Doble clic en "Application Request Routing Cache"
+4. Clic en "Server Proxy Settings" (panel derecho)
+5. Marca "Enable proxy"
+6. Establece valores:
+   - HTTP version: `Pass Through`
+   - Response buffer threshold: `0`
+   - Time-out (seconds): `300`
+7. Clic en "Apply"
+
+**3. Configurar sitio en IIS**:
+
+```powershell
+# Crear directorio para el sitio
+New-Item -ItemType Directory -Path "C:\inetpub\wwwroot\budget.ezekl.com" -Force
+
+# Crear sitio en IIS (PowerShell)
+Import-Module WebAdministration
+New-WebSite -Name "budget.ezekl.com" `
+    -Port 80 `
+    -HostHeader "budget.ezekl.com" `
+    -PhysicalPath "C:\inetpub\wwwroot\budget.ezekl.com"
+```
+
+**4. Configurar URL Rewrite para Reverse Proxy**:
+
+Crea o edita el archivo `web.config` en `C:\inetpub\wwwroot\budget.ezekl.com\web.config`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <system.webServer>
+        <rewrite>
+            <rules>
+                <!-- WebSocket Rule - DEBE IR PRIMERO -->
+                <rule name="WebSocket" stopProcessing="true">
+                    <match url="^ws/(.*)$" />
+                    <action type="Rewrite" url="ws://127.0.0.1:8001/ws/{R:1}" />
+                    <conditions>
+                        <add input="{HTTP:Connection}" pattern="Upgrade" />
+                        <add input="{HTTP:Upgrade}" pattern="websocket" />
+                    </conditions>
+                </rule>
+                
+                <!-- API Routes -->
+                <rule name="API" stopProcessing="true">
+                    <match url="^api/(.*)$" />
+                    <action type="Rewrite" url="http://127.0.0.1:8001/api/{R:1}" />
+                </rule>
+                
+                <!-- Docs and Static -->
+                <rule name="Docs" stopProcessing="true">
+                    <match url="^(docs|redoc|openapi.json)(.*)$" />
+                    <action type="Rewrite" url="http://127.0.0.1:8001/{R:1}{R:2}" />
+                </rule>
+                
+                <!-- Frontend/SPA Routes -->
+                <rule name="SPA" stopProcessing="true">
+                    <match url=".*" />
+                    <conditions logicalGrouping="MatchAll">
+                        <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                        <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+                    </conditions>
+                    <action type="Rewrite" url="http://127.0.0.1:8001/{R:0}" />
+                </rule>
+            </rules>
+        </rewrite>
+        
+        <!-- Configuración adicional para WebSockets -->
+        <webSocket enabled="true" />
+        
+        <!-- Headers para CORS y seguridad -->
+        <httpProtocol>
+            <customHeaders>
+                <add name="X-Frame-Options" value="SAMEORIGIN" />
+                <add name="X-Content-Type-Options" value="nosniff" />
+            </customHeaders>
+        </httpProtocol>
+        
+        <!-- Aumentar límites para subida de archivos -->
+        <security>
+            <requestFiltering>
+                <requestLimits maxAllowedContentLength="52428800" />
+            </requestFiltering>
+        </security>
+    </system.webServer>
+</configuration>
+```
+
+**5. Configurar servicio Python como tarea programada o servicio Windows**:
+
+Opción A - **NSSM (Non-Sucking Service Manager)** (Recomendado):
+
+```powershell
+# Descargar NSSM desde https://nssm.cc/download
+# Instalar el servicio
+nssm install ezekl-budget "C:\Users\Administrator\.venv\Scripts\python.exe" "-m app.main"
+nssm set ezekl-budget AppDirectory "C:\inetpub\wwwroot\budget.ezekl.com"
+nssm set ezekl-budget DisplayName "Ezekl Budget FastAPI"
+nssm set ezekl-budget Description "Servidor FastAPI para Ezekl Budget"
+nssm set ezekl-budget Start SERVICE_AUTO_START
+
+# Iniciar servicio
+nssm start ezekl-budget
+
+# Ver logs
+nssm status ezekl-budget
+```
+
+Opción B - **Tarea programada**:
+
+```powershell
+# Crear script de inicio
+$scriptPath = "C:\inetpub\wwwroot\budget.ezekl.com\start-service.ps1"
+@"
+Set-Location 'C:\path\to\ezekl-budget'
+.\.venv\Scripts\Activate.ps1
+python -m app.main
+"@ | Out-File -FilePath $scriptPath -Encoding UTF8
+
+# Crear tarea programada
+$action = New-ScheduledTaskAction -Execute 'PowerShell.exe' -Argument "-File $scriptPath"
+$trigger = New-ScheduledTaskTrigger -AtStartup
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest
+Register-ScheduledTask -TaskName "EzeklBudget" -Action $action -Trigger $trigger -Principal $principal
+```
+
+**6. Configurar SSL con Certificado**:
+
+```powershell
+# Instalar certificado SSL (desde archivo .pfx)
+$certPath = "C:\certs\budget.ezekl.com.pfx"
+$certPassword = ConvertTo-SecureString -String "tu_password" -Force -AsPlainText
+Import-PfxCertificate -FilePath $certPath -CertStoreLocation Cert:\LocalMachine\My -Password $certPassword
+
+# Obtener thumbprint del certificado
+$cert = Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object {$_.Subject -like "*budget.ezekl.com*"}
+
+# Agregar binding HTTPS al sitio
+New-WebBinding -Name "budget.ezekl.com" -Protocol https -Port 443 -HostHeader "budget.ezekl.com" -SslFlags 1
+$binding = Get-WebBinding -Name "budget.ezekl.com" -Protocol https
+$binding.AddSslCertificate($cert.Thumbprint, "my")
+```
+
+**7. Verificar configuración**:
+
+```powershell
+# Verificar que Python está corriendo
+Test-NetConnection -ComputerName 127.0.0.1 -Port 8001
+
+# Verificar IIS
+Get-Website | Where-Object {$_.Name -eq "budget.ezekl.com"}
+
+# Probar endpoints
+Invoke-WebRequest -Uri "http://localhost/api/health" -UseBasicParsing
+Invoke-WebRequest -Uri "https://budget.ezekl.com/api/health" -UseBasicParsing
+```
+
+**8. Troubleshooting común**:
+
+```powershell
+# Ver logs de IIS
+Get-Content "C:\inetpub\logs\LogFiles\W3SVC*\*.log" -Tail 50
+
+# Verificar permisos
+icacls "C:\inetpub\wwwroot\budget.ezekl.com"
+
+# Reiniciar servicios
+Restart-Service W3SVC
+Restart-Service WAS
+
+# Verificar firewall
+New-NetFirewallRule -DisplayName "HTTP-In" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
+New-NetFirewallRule -DisplayName "HTTPS-In" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
+```
+
+**Ventajas de IIS con Reverse Proxy**:
+- ✅ Integración nativa con Windows Server
+- ✅ Gestión centralizada de certificados SSL
+- ✅ Soporte completo para WebSockets
+- ✅ Logs y monitoreo integrados
+- ✅ Load balancing si se necesita escalabilidad
+- ✅ Gestión de autenticación Windows (opcional)
 
 ### Ejecutar con Docker (Local)
 

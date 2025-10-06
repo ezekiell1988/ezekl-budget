@@ -1,8 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { Subject, Observable } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 import {
   IonHeader,
   IonToolbar,
@@ -34,21 +33,24 @@ import {
   pulse,
   chatbubble,
   trash,
-  person,
-  mail,
-  call,
-  card,
-  shield,
-  time,
 } from 'ionicons/icons';
 
 import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 interface WebSocketMessage {
   id: string;
   type: string;
   content: string;
   timestamp: string;
+}
+
+interface CredentialsResponse {
+  azure_openai_endpoint: string;
+  azure_openai_deployment_name: string;
+  message: string;
+  server_os?: string;
 }
 
 type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
@@ -105,7 +107,8 @@ export class DemoWebsocketPage implements OnInit, OnDestroy {
     private router: Router,
     private alertController: AlertController,
     private toastController: ToastController,
-    private menuController: MenuController
+    private menuController: MenuController,
+    private http: HttpClient
   ) {
     // Registrar iconos
     addIcons({
@@ -116,13 +119,38 @@ export class DemoWebsocketPage implements OnInit, OnDestroy {
       chatbubble,
       trash,
     });
-
-    // Configurar URL del WebSocket
-    this.setupWebSocketUrl();
   }
 
-  ngOnInit() {
-    this.connect();
+  async ngOnInit() {
+    // Cargar configuración del servidor y luego configurar WebSocket
+    await this.loadServerConfigAndConnect();
+  }
+
+  private async loadServerConfigAndConnect(): Promise<void> {
+    try {
+      // Obtener configuración del servidor desde /api/credentials
+      const credentials = await firstValueFrom(
+        this.http.get<CredentialsResponse>('/api/credentials')
+      );
+
+      console.log('📋 Configuración del servidor cargada:', {
+        server_os: credentials.server_os,
+        endpoint: credentials.azure_openai_endpoint
+      });
+
+      // Configurar URL del WebSocket según el SO del servidor
+      this.setupWebSocketUrl(credentials.server_os);
+
+      // Conectar al WebSocket
+      this.connect();
+    } catch (error) {
+      console.error('❌ Error cargando configuración del servidor:', error);
+      console.log('⚠️ Usando configuración por defecto para WebSocket');
+
+      // Intentar conectar de todas formas con configuración por defecto
+      this.setupWebSocketUrl();
+      this.connect();
+    }
   }
 
   ngOnDestroy() {
@@ -131,14 +159,30 @@ export class DemoWebsocketPage implements OnInit, OnDestroy {
     this.disconnect();
   }
 
-  private setupWebSocketUrl(): void {
+  private setupWebSocketUrl(serverOS?: string): void {
     // Usar la misma URL base que el frontend, cambiando solo el protocolo a WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
+    let host = window.location.host;
+
+    // FIX SOLO PARA WINDOWS: Reemplazar 'localhost' con '127.0.0.1'
+    // En Windows, localhost puede resolver a IPv6 (::1) causando problemas con WebSockets
+    // Este fix se aplica SOLO cuando el servidor está corriendo en Windows
+    const isServerWindows = serverOS === 'Windows';
+
+    if (isServerWindows && host.startsWith('localhost')) {
+      host = host.replace('localhost', '127.0.0.1');
+      console.log('🔧 [Windows Server] WebSocket usando 127.0.0.1 en lugar de localhost');
+      console.log('   Razón: El servidor está corriendo en Windows y localhost puede resolver a IPv6');
+    }
 
     // Servidor híbrido: mismo host y puerto para frontend, API y WebSocket
-    // Nota: "/ws/" con barra final según nueva estructura de routers
     this.wsUrl = `${protocol}//${host}/ws/`;
+
+    console.log('🔌 WebSocket configurado:', {
+      url: this.wsUrl,
+      serverOS: serverOS || 'Desconocido',
+      windowsFixApplied: isServerWindows && host.includes('127.0.0.1')
+    });
   }
 
   private connect(): void {

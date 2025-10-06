@@ -28,8 +28,7 @@ export class AuthInterceptor implements HttpInterceptor {
     const publicEndpoints = [
       '/api/auth/request-token',
       '/api/auth/login',
-      '/api/health',
-      '/api/credentials'
+      '/api/health'
     ];
 
     // Si es un endpoint público, no agregar token

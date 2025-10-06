@@ -29,6 +29,12 @@ class CredentialsResponse(BaseModel):
         description="Mensaje descriptivo sobre el estado de las credenciales",
         examples=["Credenciales cargadas exitosamente desde .env"]
     )
+    
+    server_os: Optional[str] = Field(
+        default=None,
+        description="Sistema operativo del servidor (Windows, Linux, Darwin)",
+        examples=["Windows", "Linux", "Darwin"]
+    )
 
     class Config:
         """Configuración del modelo Pydantic."""
@@ -36,7 +42,8 @@ class CredentialsResponse(BaseModel):
             "example": {
                 "azure_openai_endpoint": "https://mi-openai.openai.azure.com/",
                 "azure_openai_deployment_name": "gpt-4",
-                "message": "Credenciales cargadas exitosamente desde .env"
+                "message": "Credenciales cargadas exitosamente desde .env",
+                "server_os": "Linux"
             }
         }
 
