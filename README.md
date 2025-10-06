@@ -441,6 +441,136 @@ docker run -d --name ezekl-budget -p 8001:8001 --env-file .env ezekl-budget
 docker-compose up -d
 ```
 
+## 🌐 Configuración de Host/Binding por Sistema Operativo
+
+### ⚠️ **Diferencia Crítica: 0.0.0.0 vs 127.0.0.1**
+
+La configuración del **host binding** es **diferente** según el sistema operativo y tiene implicaciones importantes para accesibilidad:
+
+#### 🐧 **Linux y macOS (Recomendado: 0.0.0.0)**
+
+```python
+# En app/main.py (configuración actual)
+uvicorn.run(app, host="0.0.0.0", port=settings.port)
+```
+
+**Ventajas de 0.0.0.0:**
+- ✅ **Acceso externo** - Otros dispositivos pueden conectarse
+- ✅ **Docker compatible** - Funciona dentro de contenedores
+- ✅ **Redes locales** - Accesible desde otras máquinas en la red
+- ✅ **Producción** - Configuración estándar para servidores
+- ✅ **Desarrollo colaborativo** - Otros desarrolladores pueden acceder
+
+**URLs accesibles:**
+```bash
+http://localhost:8001     # ✅ Acceso local
+http://127.0.0.1:8001     # ✅ Acceso local  
+http://192.168.1.100:8001 # ✅ Acceso desde red local
+http://YOUR_IP:8001       # ✅ Acceso externo (si firewall permite)
+```
+
+#### 🪟 **Windows (Alternativa: 127.0.0.1)**
+
+Si tienes problemas con `0.0.0.0` en Windows, puedes usar:
+
+```python
+# Alternativa solo para desarrollo Windows local
+uvicorn.run(app, host="127.0.0.1", port=settings.port)
+```
+
+**Limitaciones de 127.0.0.1:**
+- ❌ **Solo acceso local** - Otros dispositivos NO pueden conectarse
+- ❌ **Docker limitado** - Problemas con port mapping
+- ❌ **Sin acceso de red** - Solo localhost funciona
+- ⚠️ **Desarrollo limitado** - Solo el desarrollador puede acceder
+
+**URLs accesibles:**
+```bash
+http://localhost:8001     # ✅ Acceso local
+http://127.0.0.1:8001     # ✅ Acceso local
+http://192.168.1.100:8001 # ❌ NO funciona
+```
+
+#### 🔧 **Configuración Condicional por OS**
+
+Para máxima compatibilidad, puedes usar:
+
+```python
+import platform
+
+# Configuración automática por SO
+if platform.system() == "Windows":
+    host = "127.0.0.1"  # Solo si 0.0.0.0 causa problemas
+else:
+    host = "0.0.0.0"    # Linux/macOS (recomendado)
+
+uvicorn.run(app, host=host, port=settings.port)
+```
+
+#### 🐳 **Docker y Contenedores**
+
+**SIEMPRE usar 0.0.0.0 en Docker:**
+
+```dockerfile
+# En Dockerfile (configuración actual correcta)
+EXPOSE 8001
+CMD ["python", "-m", "app.main"]
+```
+
+```python
+# El servidor DEBE usar 0.0.0.0 para Docker
+uvicorn.run(app, host="0.0.0.0", port=settings.port)
+```
+
+**¿Por qué?** Docker mapea puertos desde el contenedor al host:
+```bash
+docker run -p 8001:8001 ezekl-budget  # Host:Contenedor
+# 127.0.0.1 NO funcionaría aquí
+```
+
+#### 🔥 **Firewall y Seguridad**
+
+**Para producción con 0.0.0.0:**
+```bash
+# Linux: Configurar firewall
+sudo ufw allow 8001/tcp
+
+# Windows: Configurar Windows Defender Firewall
+# Permitir aplicación Python en puerto 8001
+
+# macOS: Sistema automático, generalmente no requiere configuración
+```
+
+#### 📊 **Tabla de Compatibilidad**
+
+| Sistema | Host Config | Acceso Local | Acceso Red | Docker | Producción |
+|---------|-------------|--------------|------------|---------|------------|
+| **Linux** | `0.0.0.0` | ✅ Perfecto | ✅ Perfecto | ✅ Perfecto | ✅ Recomendado |
+| **macOS** | `0.0.0.0` | ✅ Perfecto | ✅ Perfecto | ✅ Perfecto | ✅ Recomendado |
+| **Windows** | `0.0.0.0` | ✅ Funciona | ✅ Funciona | ✅ Funciona | ✅ Recomendado |
+| **Windows** | `127.0.0.1` | ✅ Solo local | ❌ No funciona | ❌ Problemas | ❌ No recomendado |
+
+#### 🎯 **Recomendación Final**
+
+**Usar SIEMPRE `0.0.0.0`** excepto en casos muy específicos:
+
+```python
+# ✅ CONFIGURACIÓN RECOMENDADA (actual en el proyecto)
+uvicorn.run(app, host="0.0.0.0", port=settings.port)
+```
+
+**Casos donde usar 127.0.0.1:**
+- 🔒 **Máxima seguridad local** - Solo desarrollo personal
+- 🚫 **Restricciones corporativas** - Políticas de red estrictas  
+- 🐛 **Debugging específico** - Problemas únicos de Windows
+
+**Esta configuración permite:**
+- ✅ Desarrollo en cualquier OS
+- ✅ Acceso desde dispositivos móviles en la red
+- ✅ Compatibilidad con Docker
+- ✅ Deploy directo a producción
+- ✅ Testing colaborativo en equipo
+
 ## 🚀 Deployment en Producción
 
 ### ⚡ Deployment Automático (Recomendado)
@@ -546,6 +676,171 @@ sudo certbot certificates
 # Probar HTTPS
 curl -I https://budget.ezekl.com
 # Debe devolver 200 OK con headers SSL
+```
+
+### 🪟 Configuración de SSL GRATUITO en Windows Server + IIS
+
+Si tienes Windows Server con IIS, también puedes obtener certificados SSL gratuitos usando **Certify The Web**:
+
+#### 🎯 **Opción Recomendada: Certify The Web (Más Fácil)**
+
+**Certify The Web** es la herramienta **MÁS FÁCIL** para Windows + IIS con interfaz gráfica intuitiva:
+
+##### **1. Instalación (2 minutos)**
+
+```powershell
+# Opción A: Microsoft Store (MÁS FÁCIL)
+# 1. Abrir Microsoft Store
+# 2. Buscar "Certify The Web"
+# 3. Click "Install"
+
+# Opción B: Descarga Directa
+# 1. Ir a https://certifytheweb.com/
+# 2. Click "Download"
+# 3. Ejecutar instalador como Administrador
+```
+
+##### **2. Configuración Visual (5 minutos)**
+
+```
+🖥️ Proceso completamente VISUAL:
+
+1. 📂 Abrir "Certify The Web"
+2. 🔍 La app detecta automáticamente todos los sitios IIS
+3. ➕ Click "New Certificate"
+4. 🎯 Seleccionar tu sitio web de la lista
+5. 📝 Verificar dominio y configuración
+6. 📧 Ingresar email para Let's Encrypt
+7. ✅ Click "Request Certificate"
+8. 🎉 ¡LISTO! Certificado creado y configurado automáticamente
+```
+
+##### **3. Configuración Automática Incluida**
+
+- ✅ **Binding HTTPS** se crea automáticamente en IIS
+- ✅ **Renovación automática** cada 60 días (Task Scheduler)
+- ✅ **Monitoreo visual** del estado de certificados
+- ✅ **Validación DNS** automática
+- ✅ **Backup automático** de configuraciones
+
+##### **4. Dashboard Visual**
+
+```
+┌─────────────────────────────────────────┐
+│  Certify The Web - Dashboard            │
+├─────────────────────────────────────────┤
+│  🌐 Certificados Activos:               │
+│  ✅ budget.midominio.com (válido 89d)   │
+│  ✅ api.midominio.com (válido 85d)      │
+│  ⚠️  www.ejemplo.com (expira en 5d)     │
+│                                         │
+│  📊 Estado: 3 activos, 0 errores        │
+│                                         │
+│  [➕ Nuevo Certificado]                 │
+│  [🔄 Renovar Todos]                     │
+│  [⚙️ Configuraciones]                   │
+└─────────────────────────────────────────┘
+```
+
+#### ⚡ **Opción Avanzada: Win-ACME (Línea de Comandos)**
+
+Para administradores que prefieren CLI:
+
+##### **1. Instalación Win-ACME**
+
+```powershell
+# 1. Descargar desde https://www.win-acme.com/
+# 2. Extraer en C:\win-acme\
+# 3. Ejecutar PowerShell como Administrador
+cd C:\win-acme
+.\wacs.exe
+```
+
+##### **2. Configuración Interactiva**
+
+```powershell
+# Menu de Win-ACME:
+# N: Create certificate (default settings)
+# 2: IIS bindings  
+# Seleccionar tu sitio web
+# Confirmar dominio (ej: budget.midominio.com)
+# Ingresar email para Let's Encrypt notifications
+# Confirmar configuración
+# ¡Listo! Certificado instalado automáticamente
+```
+
+##### **3. Verificación**
+
+```powershell
+# Verificar certificado instalado
+Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object {$_.Subject -like "*tudominio.com*"}
+
+# Verificar binding HTTPS en IIS
+Import-Module WebAdministration
+Get-WebBinding -Protocol https
+
+# Verificar renovación automática
+Get-ScheduledTask | Where-Object {$_.TaskName -like "*win-acme*"}
+```
+
+#### 🆚 **Comparación de Herramientas Windows**
+
+| Característica | **Certify The Web** | Win-ACME | ACME-PS |
+|----------------|-------------------|----------|---------|
+| **Facilidad de uso** | ⭐⭐⭐⭐⭐ GUI Visual | ⭐⭐⭐ CLI Menu | ⭐⭐ PowerShell |
+| **Auto-detección IIS** | ✅ Perfecta | ✅ Básica | ❌ Manual |
+| **Monitoreo visual** | ✅ Dashboard | ❌ Solo logs | ❌ Manual |
+| **Renovación automática** | ✅ Task Scheduler | ✅ Task Scheduler | 🔧 Script manual |
+| **Soporte técnico** | ✅ Comercial + Comunidad | ✅ Comunidad | ✅ Comunidad |
+| **Costo** | 🆓 Community (5 certs) | 🆓 Completamente | 🆓 Completamente |
+
+#### 📋 **Requisitos para Windows**
+
+##### **Sistema Operativo**
+- ✅ **Windows Server 2016+** (recomendado 2019/2022)
+- ✅ **Windows 10/11** (para testing local)
+- ✅ **IIS 8.5+** instalado y configurado
+
+##### **Red y Dominio**
+- ✅ **Dominio público** apuntando al servidor
+- ✅ **Puerto 80 abierto** (para validación Let's Encrypt)  
+- ✅ **Puerto 443 abierto** (para HTTPS)
+- ✅ **DNS configurado** correctamente
+
+##### **Permisos**
+- ✅ **Administrador local** en Windows Server
+- ✅ **Permisos IIS** para modificar bindings
+- ✅ **Firewall configurado** (puertos 80/443)
+
+#### 🎯 **Recomendación Final**
+
+**Para el 95% de casos, usar Certify The Web:**
+
+✅ **Más fácil** - Interfaz visual intuitiva  
+✅ **Más rápido** - Setup en 5 minutos  
+✅ **Más confiable** - Menos errores humanos  
+✅ **Mejor monitoreo** - Dashboard visual completo  
+✅ **Completamente gratuito** - Version Community suficiente  
+
+**Solo usar Win-ACME si:**
+- Prefieres línea de comandos
+- Necesitas automatización avanzada con scripts
+- Quieres máximo control del proceso
+
+#### 💰 **Costos Reales**
+
+```
+🆓 COMPLETAMENTE GRATIS:
+├── Let's Encrypt: Certificados SSL gratuitos
+├── Certify The Web Community: Hasta 5 certificados  
+├── Win-ACME: Certificados ilimitados
+├── IIS: Incluido en Windows Server
+└── Renovación automática: Sin costo adicional
+
+💰 Únicos gastos opcionales:
+├── Windows Server: Licencia Microsoft
+├── Dominio: Registrar/renovar dominio público
+└── Certify The Web Pro: $49/año (certificados ilimitados)
 ```
 
 ### Deployment Automático
