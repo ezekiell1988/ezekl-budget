@@ -1,0 +1,90 @@
+/**
+ * Estilos para el modal de detalle de cuenta contable
+ */
+
+ion-card {
+  margin: 0;
+
+  ion-card-header {
+    padding-bottom: 8px;
+  }
+
+  ion-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ion-color-primary);
+  }
+
+  ion-card-content {
+    padding: 0;
+  }
+}
+
+ion-list {
+  background: transparent;
+
+  ion-item {
+    --background: transparent;
+    --padding-start: 16px;
+    --inner-padding-end: 16px;
+
+    ion-label {
+      h3 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--ion-color-medium);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+      }
+
+      p {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--ion-color-dark);
+        margin: 0;
+      }
+    }
+  }
+}
+
+.info-message {
+  margin-top: 24px;
+
+  ion-note {
+    font-size: 0.875rem;
+    color: var(--ion-color-medium);
+  }
+}
+
+// Header toolbar
+ion-header {
+  ion-toolbar {
+    --background: var(--ion-color-primary);
+    --color: var(--ion-color-primary-contrast);
+
+    ion-title {
+      font-weight: 600;
+    }
+
+    ion-button {
+      --color: var(--ion-color-primary-contrast);
+    }
+  }
+}
+
+// Animación de entrada
+:host {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

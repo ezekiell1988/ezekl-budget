@@ -33,7 +33,8 @@ import {
   IonSkeletonText,
   RefresherCustomEvent,
   InfiniteScrollCustomEvent,
-  SearchbarCustomEvent
+  SearchbarCustomEvent,
+  ModalController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -43,6 +44,7 @@ import {
   chevronForward
 } from 'ionicons/icons';
 import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
+import { AccountDetailModalComponent } from './account-detail-modal/account-detail-modal.component';
 import { AccountingAccountService, AccountingAccount, PaginationState } from '../services/accounting-account';
 import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
 
@@ -92,7 +94,10 @@ export class AccountingAccountsPage implements OnInit, OnDestroy {
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  constructor(private accountService: AccountingAccountService) {
+  constructor(
+    private accountService: AccountingAccountService,
+    private modalCtrl: ModalController
+  ) {
     // Registrar iconos
     addIcons({
       documentTextOutline,
@@ -244,11 +249,21 @@ export class AccountingAccountsPage implements OnInit, OnDestroy {
 
   /**
    * Maneja el click en una cuenta contable
+   * Abre un modal con los detalles de la cuenta
    */
-  onAccountClick(account: AccountingAccount): void {
+  async onAccountClick(account: AccountingAccount): Promise<void> {
     console.log('Cuenta seleccionada:', account);
-    // TODO: Implementar navegación o modal de detalles
-    // Ejemplo: this.router.navigate(['/accounting-accounts', account.idAccountingAccount]);
+
+    const modal = await this.modalCtrl.create({
+      component: AccountDetailModalComponent,
+      componentProps: {
+        account: account
+      },
+      breakpoints: [0, 0.5, 0.75, 1],
+      initialBreakpoint: 0.75
+    });
+
+    await modal.present();
   }
 
   /**
@@ -261,12 +276,5 @@ export class AccountingAccountsPage implements OnInit, OnDestroy {
     } else {
       this.loadInitialData();
     }
-  }
-
-  /**
-   * TrackBy function para optimizar *ngFor
-   */
-  trackByAccountId(index: number, account: AccountingAccount): number {
-    return account.idAccountingAccount;
   }
 }
