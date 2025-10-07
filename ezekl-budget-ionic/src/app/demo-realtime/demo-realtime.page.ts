@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AzureOpenAIToolsService } from '../services/azure-openai-tools.service';
+import { AuthService } from '../services/auth.service';
 import {
   IonHeader,
   IonToolbar,
@@ -75,7 +76,7 @@ interface RealtimeConfig {
 
   // Configuración de sesión
   modalities: ('text' | 'audio')[];
-  instructions: string;
+  instructions: string | ((userName: string) => string); // Puede ser string o función que retorna string
   voiceType: 'alloy' | 'echo' | 'shimmer';
   inputAudioFormat: 'pcm16' | 'g711_ulaw' | 'g711_alaw';
   outputAudioFormat: 'pcm16' | 'g711_ulaw' | 'g711_alaw';
@@ -150,7 +151,11 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
     modalities: ['text', 'audio'],
 
     // Instrucciones del sistema para el asistente
-    instructions: 'Eres un asistente útil y amigable. Responde de forma concisa y clara.',
+    // Puede ser un string fijo o una función que recibe el nombre del usuario
+    instructions: (userName: string) =>
+      `Eres un asistente útil y amigable de Ezekl Budget. Estás conversando con ${userName}. ` +
+      `Dirígete a la persona por su nombre cuando sea apropiado. ` +
+      `Responde de forma concisa, clara y personalizada.`,
 
     // Tipo de voz para respuestas de audio
     voiceType: 'alloy', // Opciones: 'alloy', 'echo', 'shimmer'
@@ -238,10 +243,14 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   private reconnectAttempts = 0;
   private isReconnecting = false;
 
+  // Usuario
+  private userName: string = 'Usuario';
+
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
-    private azureToolsService: AzureOpenAIToolsService
+    private azureToolsService: AzureOpenAIToolsService,
+    private authService: AuthService
   ) {
     addIcons({
       mic,
@@ -262,7 +271,19 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   async ngOnInit() {
+    // Cargar nombre del usuario
+    this.loadUserName();
+
+    // Conectar a Azure OpenAI Realtime
     await this.connectToRealtime();
+  }
+
+  private loadUserName(): void {
+    const user = this.authService.currentUser;
+    if (user?.nameLogin) {
+      this.userName = user.nameLogin;
+      console.log('👤 Usuario identificado para chat realtime:', this.userName);
+    }
   }
 
   ngAfterViewInit() {
@@ -352,12 +373,19 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
     // Obtener herramientas disponibles del servicio
     const availableTools = this.azureToolsService.getAvailableTools();
 
+    // Obtener instrucciones personalizadas desde la configuración
+    // Si instructions es una función, la ejecutamos con el nombre del usuario
+    // Si es un string, lo usamos directamente
+    const instructions = typeof this.realtimeConfig.instructions === 'function'
+      ? this.realtimeConfig.instructions(this.userName)
+      : this.realtimeConfig.instructions;
+
     // Configurar la sesión del Realtime API usando la configuración centralizada
     const config = {
       type: 'session.update',
       session: {
         modalities: this.realtimeConfig.modalities,
-        instructions: this.realtimeConfig.instructions,
+        instructions: instructions, // Usar instrucciones desde config
         voice: this.realtimeConfig.voiceType,
         input_audio_format: this.realtimeConfig.inputAudioFormat,
         output_audio_format: this.realtimeConfig.outputAudioFormat,
@@ -370,7 +398,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
     };
 
     this.ws.send(JSON.stringify(config));
-    console.log('⚙️ Configuración de sesión enviada con herramientas:', config);
+    console.log('⚙️ Configuración de sesión enviada con instrucciones personalizadas para:', this.userName);
     console.log(`🔧 Herramientas disponibles: ${availableTools.map(t => t.name).join(', ')}`);
   }
 

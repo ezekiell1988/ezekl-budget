@@ -33,6 +33,40 @@ Toda la configuración de Azure OpenAI Realtime API está centralizada en el obj
 
 ### Parámetros Más Comunes a Modificar
 
+#### Cambiar Instrucciones del Sistema
+
+Las instrucciones pueden ser un **string fijo** o una **función que genera instrucciones dinámicas** con el nombre del usuario:
+
+**Opción 1: String fijo (sin personalización)**
+```typescript
+instructions: 'Eres un experto financiero. Responde con términos técnicos.',
+```
+
+**Opción 2: Función con personalización (recomendado)**
+```typescript
+instructions: (userName: string) => 
+  `Eres un asistente útil y amigable de Ezekl Budget. Estás conversando con ${userName}. ` +
+  `Dirígete a la persona por su nombre cuando sea apropiado. ` +
+  `Responde de forma concisa, clara y personalizada.`,
+```
+
+**⚠️ Cómo Funciona la Personalización**:
+
+1. La interfaz `RealtimeConfig` acepta `instructions` como `string | ((userName: string) => string)`
+2. Al enviar la configuración de sesión, se evalúa el tipo:
+   - Si es **función**: se ejecuta con `this.userName` como parámetro
+   - Si es **string**: se usa directamente
+3. El nombre del usuario se obtiene automáticamente del `AuthService` durante `ngOnInit`
+
+**Ejemplo de uso avanzado:**
+```typescript
+instructions: (userName: string) => {
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
+  return `${saludo}, ${userName}. Soy tu asistente financiero de Ezekl Budget. ¿En qué puedo ayudarte hoy?`;
+},
+```
+
 #### Cambiar la Voz del Asistente
 ```typescript
 voiceType: 'echo', // Opciones: 'alloy', 'echo', 'shimmer'
@@ -48,8 +82,37 @@ turnDetection: {
 ```
 
 #### Cambiar Instrucciones del Sistema
+
+Las instrucciones pueden ser un **string fijo** o una **función que genera instrucciones dinámicas** con el nombre del usuario:
+
+**Opción 1: String fijo (sin personalización)**
 ```typescript
 instructions: 'Eres un experto financiero. Responde con términos técnicos.',
+```
+
+**Opción 2: Función con personalización (recomendado)**
+```typescript
+instructions: (userName: string) => 
+  `Eres un asistente útil y amigable de Ezekl Budget. Estás conversando con ${userName}. ` +
+  `Dirígete a la persona por su nombre cuando sea apropiado. ` +
+  `Responde de forma concisa, clara y personalizada.`,
+```
+
+**⚠️ Cómo Funciona la Personalización**:
+
+1. La interfaz `RealtimeConfig` acepta `instructions` como `string | ((userName: string) => string)`
+2. Al enviar la configuración de sesión, se evalúa el tipo:
+   - Si es **función**: se ejecuta con `this.userName` como parámetro
+   - Si es **string**: se usa directamente
+3. El nombre del usuario se obtiene automáticamente del `AuthService` durante `ngOnInit`
+
+**Ejemplo de uso avanzado:**
+```typescript
+instructions: (userName: string) => {
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
+  return `${saludo}, ${userName}. Soy tu asistente financiero de Ezekl Budget. ¿En qué puedo ayudarte hoy?`;
+},
 ```
 
 #### Ajustar Temperatura de Respuestas
@@ -76,10 +139,10 @@ apiVersion: '2024-10-01-preview', // Versión preview disponible para Realtime A
 interface RealtimeConfig {
   // Configuración de API
   apiVersion: string;
-  
+
   // Configuración de sesión
   modalities: ('text' | 'audio')[];
-  instructions: string;
+  instructions: string | ((userName: string) => string); // String fijo o función dinámica
   voiceType: 'alloy' | 'echo' | 'shimmer';
   inputAudioFormat: 'pcm16' | 'g711_ulaw' | 'g711_alaw';
   outputAudioFormat: 'pcm16' | 'g711_ulaw' | 'g711_alaw';

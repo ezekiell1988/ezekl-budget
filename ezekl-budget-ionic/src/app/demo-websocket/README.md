@@ -179,12 +179,23 @@ disconnect() {
 
 ### Mensajes del Cliente
 
+#### User Info (Nuevo)
+```json
+{
+  "type": "user_info",
+  "user_name": "Nombre del Usuario",
+  "timestamp": "2025-10-07T10:30:00.000Z"
+}
+```
+**Propósito**: Enviar información del usuario al servidor al conectar.
+
 #### Ping
 ```json
 {
   "type": "ping",
   "timestamp": "2025-10-07T10:30:00.000Z",
-  "message": "ping from client"
+  "message": "ping from client",
+  "user_name": "Nombre del Usuario"
 }
 ```
 
@@ -193,11 +204,32 @@ disconnect() {
 {
   "type": "echo",
   "message": "Test echo desde cliente - 10:30:00",
-  "timestamp": "2025-10-07T10:30:00.000Z"
+  "timestamp": "2025-10-07T10:30:00.000Z",
+  "user_name": "Nombre del Usuario"
 }
 ```
 
+#### Greeting (Nuevo)
+```json
+{
+  "type": "greeting",
+  "message": "Hola, soy Nombre del Usuario",
+  "timestamp": "2025-10-07T10:30:00.000Z",
+  "user_name": "Nombre del Usuario"
+}
+```
+**Propósito**: Enviar un saludo personalizado al servidor.
+
 ### Mensajes del Servidor
+
+#### User Info Confirmed (Nuevo)
+```json
+{
+  "type": "user_info_confirmed",
+  "message": "¡Hola Nombre del Usuario! Tu información ha sido registrada.",
+  "timestamp": "2025-10-07T10:30:00.000Z"
+}
+```
 
 #### Welcome
 ```json
