@@ -48,6 +48,52 @@ class CredentialsResponse(BaseModel):
         }
 
 
+class RealtimeCredentialsResponse(BaseModel):
+    """
+    Modelo de respuesta para las credenciales completas de Azure OpenAI Realtime API.
+    
+    ⚠️ ADVERTENCIA: Este modelo incluye la API key completa.
+    Solo debe usarse en endpoints autenticados y sobre conexiones seguras.
+    """
+    
+    azure_openai_endpoint: str = Field(
+        description="URL del endpoint de Azure OpenAI configurado",
+        examples=["https://mi-openai.openai.azure.com/"]
+    )
+    
+    azure_openai_api_key: str = Field(
+        description="⚠️ API Key de Azure OpenAI (SENSIBLE - usar solo en conexiones seguras)",
+        examples=["abc123...xyz789"]
+    )
+    
+    azure_openai_deployment_name: str = Field(
+        description="Nombre del deployment/modelo de Azure OpenAI Realtime",
+        examples=["gpt-realtime", "gpt-4-realtime-preview"]
+    )
+    
+    server_os: str = Field(
+        description="Sistema operativo del servidor (Windows, Linux, Darwin)",
+        examples=["Windows", "Linux", "Darwin"]
+    )
+    
+    message: str = Field(
+        description="Mensaje descriptivo sobre el estado de las credenciales",
+        examples=["Credenciales de Azure OpenAI Realtime cargadas exitosamente"]
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "azure_openai_endpoint": "https://mi-openai.openai.azure.com/",
+                "azure_openai_api_key": "abc123...xyz789",
+                "azure_openai_deployment_name": "gpt-realtime",
+                "server_os": "Linux",
+                "message": "Credenciales de Azure OpenAI Realtime cargadas exitosamente"
+            }
+        }
+
+
 class EmailSendResponse(BaseModel):
     """
     Modelo de respuesta para el envío de emails.

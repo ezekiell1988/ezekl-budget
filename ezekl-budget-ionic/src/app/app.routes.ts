@@ -30,6 +30,13 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta demo-realtime - chat en tiempo real con Azure OpenAI
+  {
+    path: 'demo-realtime',
+    loadComponent: () => import('./demo-realtime/demo-realtime.page').then( m => m.DemoRealtimePage),
+    canActivate: [AuthGuard]
+  },
+
   // Ruta accounting-accounts - protegida, requiere autenticación
   {
     path: 'accounting-accounts',

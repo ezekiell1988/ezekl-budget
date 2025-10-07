@@ -90,6 +90,14 @@ export class MeService {
             route: '/demo-websocket',
             enabled: true,
             color: 'primary'
+          },
+          {
+            id: 'demo-realtime',
+            title: 'Chat Realtime AI',
+            icon: 'chatbubbles',
+            route: '/demo-realtime',
+            enabled: true,
+            color: 'primary'
           }
         ]
       },

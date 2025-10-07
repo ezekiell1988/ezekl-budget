@@ -1,0 +1,184 @@
+<app-header title="Chat Realtime AI"></app-header>
+
+<ion-content [fullscreen]="true">
+  <ion-grid fixed>
+    <ion-row class="ion-justify-content-center">
+      <ion-col size="12" size-md="8" size-lg="6">
+
+        <!-- Header condensado -->
+        <ion-header collapse="condense">
+          <ion-toolbar>
+            <ion-title size="large">Chat Realtime AI</ion-title>
+          </ion-toolbar>
+        </ion-header>
+
+        <!-- Estado de conexión usando ion-chip -->
+        <div class="ion-text-center ion-margin-bottom">
+          <ion-chip [color]="isConnected ? 'success' : isConnecting ? 'warning' : 'danger'">
+            <ion-icon [name]="isConnected ? 'wifi' : isConnecting ? 'refresh' : 'cloud-offline'"></ion-icon>
+            <ion-label>{{ connectionStatusText }}</ion-label>
+          </ion-chip>
+        </div>
+
+        <!-- Área de mensajes usando ion-card -->
+        <ion-card class="chat-card">
+          <ion-card-content class="chat-container" #chatContainer>
+            @for (message of messages; track message.id) {
+              <ion-card [class.message-user]="message.role === 'user'" [class.message-assistant]="message.role === 'assistant'">
+                <ion-card-content>
+                  @if (message.type === 'audio') {
+                    <div class="audio-message">
+                      <div class="audio-header">
+                        <ion-icon name="mic" [color]="message.role === 'user' ? 'primary' : 'secondary'"></ion-icon>
+                        <ion-label>
+                          @if (message.isTranscribing) {
+                            <span class="transcribing">Transcribiendo...</span>
+                          } @else if (message.transcription) {
+                            <span>{{ message.transcription }}</span>
+                          } @else {
+                            <span>Audio {{ message.role === 'user' ? 'enviado' : 'recibido' }}</span>
+                          }
+                        </ion-label>
+                      </div>
+
+                      <!-- Botón de reproducir o detener audio -->
+                      @if (message.audioBlob && !message.isTranscribing) {
+                        @if (isPlayingAudio && currentPlayingMessageId === message.id) {
+                          <!-- Si ESTE mensaje se está reproduciendo, mostrar botón Stop -->
+                          <ion-button
+                            fill="clear"
+                            size="small"
+                            color="danger"
+                            (click)="stopAudio()"
+                            class="play-button">
+                            <ion-icon slot="start" name="stop-circle"></ion-icon>
+                            Detener
+                          </ion-button>
+                        } @else {
+                          <!-- Si no se está reproduciendo, mostrar botón Play -->
+                          <ion-button
+                            fill="clear"
+                            size="small"
+                            (click)="playAudio(message)"
+                            [disabled]="isPlayingAudio"
+                            class="play-button">
+                            <ion-icon slot="start" name="play-outline"></ion-icon>
+                            Reproducir
+                          </ion-button>
+                        }
+                      }
+                    </div>
+                  } @else {
+                    <ion-text>
+                      <p class="text-message">{{ message.content }}</p>
+                    </ion-text>
+                  }
+
+                  <div class="message-footer">
+                    <ion-note color="medium">
+                      <small>{{ formatTime(message.timestamp) }}</small>
+                    </ion-note>
+                    @if (message.tokens && message.tokens > 0) {
+                      <ion-badge color="primary">
+                        <ion-icon name="flash" style="font-size: 10px;"></ion-icon>
+                        {{ message.tokens }} tokens
+                      </ion-badge>
+                    }
+                  </div>
+                </ion-card-content>
+              </ion-card>
+            }
+
+            @if (isAssistantThinking) {
+              <ion-card class="message-assistant">
+                <ion-card-content>
+                  <div class="typing-indicator">
+                    <ion-spinner name="dots" color="medium"></ion-spinner>
+                    <ion-label color="medium">Escribiendo...</ion-label>
+                  </div>
+                </ion-card-content>
+              </ion-card>
+            }
+
+            @if (messages.length === 0 && !isConnecting) {
+              <div class="empty-state ion-text-center">
+                <ion-icon name="chatbubbles-outline" color="medium"></ion-icon>
+                <ion-text color="medium">
+                  <p>Inicia una conversación por texto o voz</p>
+                </ion-text>
+              </div>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Input de texto y controles usando ion-toolbar -->
+        <ion-toolbar class="chat-input-toolbar">
+          <ion-buttons slot="start">
+            @if (!isListeningMode) {
+              <!-- Botón para iniciar escucha continua -->
+              <ion-button
+                color="primary"
+                (click)="startListening()"
+                [disabled]="!isConnected || isAssistantSpeaking">
+                <ion-icon slot="icon-only" name="mic-outline"></ion-icon>
+              </ion-button>
+            } @else {
+              <!-- Botón Mute/Unmute -->
+              <ion-button
+                [color]="isMuted ? 'warning' : 'success'"
+                (click)="toggleMute()">
+                <ion-icon slot="icon-only" [name]="isMuted ? 'mic-off' : 'mic'"></ion-icon>
+              </ion-button>
+
+              <!-- Botón Stop -->
+              <ion-button
+                color="danger"
+                (click)="stopListening()">
+                <ion-icon slot="icon-only" name="stop-circle"></ion-icon>
+              </ion-button>
+            }
+          </ion-buttons>
+
+          <!-- Campo de texto -->
+          <ion-input
+            [(ngModel)]="messageText"
+            placeholder="Escribe un mensaje..."
+            (keydown.enter)="sendTextMessage()"
+            [disabled]="!isConnected || isListeningMode"
+            fill="outline">
+          </ion-input>
+
+          <ion-buttons slot="end">
+            <!-- Botón enviar -->
+            <ion-button
+              color="primary"
+              (click)="sendTextMessage()"
+              [disabled]="!isConnected || !messageText.trim() || isListeningMode">
+              <ion-icon slot="icon-only" name="send"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+
+        <!-- Indicador de modo escucha continua -->
+        @if (isListeningMode) {
+          <ion-item [color]="isMuted ? 'warning' : isAssistantSpeaking ? 'medium' : 'success'" lines="none" class="ion-margin-top">
+            <ion-spinner name="dots" slot="start" color="light"></ion-spinner>
+            <ion-label color="light">
+              <h3>
+                @if (isMuted) {
+                  Silenciado
+                } @else if (isAssistantSpeaking) {
+                  Asistente hablando...
+                } @else {
+                  Escuchando...
+                }
+              </h3>
+            </ion-label>
+            <ion-badge slot="end" color="light">{{ recordingDuration }}s</ion-badge>
+          </ion-item>
+        }
+
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

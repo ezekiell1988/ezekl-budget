@@ -41,6 +41,7 @@ import {
   swapHorizontal,
   barChart,
   calculator,
+  chatbubbles,
 } from 'ionicons/icons';
 import { AuthService } from '../../../services/auth.service';
 import { MeService, MenuSection, MenuItem } from '../../../services/me.service';
@@ -103,6 +104,7 @@ export class SideMenuComponent implements OnInit {
       swapHorizontal,
       barChart,
       calculator,
+      chatbubbles,
     });
 
     // Configurar observables

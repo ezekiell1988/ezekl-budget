@@ -128,9 +128,9 @@ export class DemoWebsocketPage implements OnInit, OnDestroy {
 
   private async loadServerConfigAndConnect(): Promise<void> {
     try {
-      // Obtener configuración del servidor desde /api/credentials
+      // Obtener configuración del servidor desde /api/credentials/websocket
       const credentials = await firstValueFrom(
-        this.http.get<CredentialsResponse>('/api/credentials')
+        this.http.get<CredentialsResponse>('/api/credentials/websocket')
       );
 
       console.log('📋 Configuración del servidor cargada:', {

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict
 from app.core.config import settings
 from app.database.connection import test_db_connection
-from app.models.responses import CredentialsResponse, HealthCheckResponse
+from app.models.responses import CredentialsResponse, RealtimeCredentialsResponse, HealthCheckResponse
 from .email import router as email_router
 from .auth import router as auth_router, get_current_user
 from .accounting_account import router as accounting_account_router
@@ -22,15 +22,14 @@ router.include_router(accounting_account_router, prefix="/accounting-accounts", 
 
 
 @router.get(
-    "/credentials",
+    "/credentials/websocket",
     response_model=CredentialsResponse,
-    summary="Obtener credenciales de Azure OpenAI (Privado)",
-    description="""Obtiene la configuración de credenciales de Azure OpenAI desde las variables de entorno.
+    summary="Obtener configuración para WebSocket demo (Público)",
+    description="""Obtiene la configuración básica para WebSocket de demostración.
     
-    🔒 **Este endpoint requiere autenticación.**
-    
-    Este endpoint devuelve la información de configuración necesaria para conectar
-    con los servicios de Azure OpenAI, excluyendo datos sensibles como las API keys.
+    Este endpoint devuelve información de configuración del servidor necesaria
+    para establecer conexiones WebSocket desde el cliente, especialmente útil
+    para manejar diferencias entre sistemas operativos (Windows vs Linux).
     
     **Información devuelta:**
     - Endpoint de Azure OpenAI configurado
@@ -38,25 +37,16 @@ router.include_router(accounting_account_router, prefix="/accounting-accounts", 
     - Sistema operativo del servidor (para configuración de WebSocket)
     - Mensaje de confirmación de carga exitosa
     
-    **Seguridad:**
-    - Requiere token JWE válido en header Authorization
-    - Las API keys y tokens sensibles NO son devueltos
-    - Solo información de configuración pública
-    
     **Casos de uso:**
-    - Verificar configuración de Azure OpenAI desde el cliente autenticado
     - Obtener SO del servidor para configuración de WebSocket en Windows
+    - Configurar correctamente localhost vs 127.0.0.1
     - Debugging de configuración de variables de entorno
-    - Validación de conectividad con servicios Azure
     """,
-    response_description="Configuración de credenciales de Azure OpenAI (sin datos sensibles)"
+    response_description="Configuración básica del servidor para WebSocket"
 )
-async def get_credentials(current_user: Dict = Depends(get_current_user)):
+async def get_websocket_credentials():
     """
-    Obtiene las credenciales de Azure OpenAI desde las variables de entorno.
-    
-    Args:
-        current_user: Usuario autenticado (inyectado por Depends)
+    Obtiene las credenciales básicas para WebSocket demo desde las variables de entorno.
 
     Returns:
         CredentialsResponse: Las credenciales configuradas (sin incluir la API key por seguridad)
@@ -68,6 +58,55 @@ async def get_credentials(current_user: Dict = Depends(get_current_user)):
         azure_openai_deployment_name=settings.azure_openai_deployment_name,
         message="Credenciales cargadas exitosamente desde .env",
         server_os=platform.system(),  # Windows, Linux, Darwin (macOS)
+    )
+
+
+@router.get(
+    "/credentials/realtime",
+    response_model=RealtimeCredentialsResponse,
+    summary="Obtener credenciales para Azure OpenAI Realtime API (Privado)",
+    description="""Obtiene las credenciales completas de Azure OpenAI Realtime API.
+    
+    🔒 **Este endpoint requiere autenticación.**
+    
+    Este endpoint devuelve la configuración necesaria para conectar con
+    Azure OpenAI Realtime API, incluyendo endpoint, deployment y API key.
+    
+    **Información devuelta:**
+    - Endpoint de Azure OpenAI
+    - Nombre del deployment/modelo (gpt-realtime)
+    - API key de Azure OpenAI (SENSIBLE)
+    - Sistema operativo del servidor
+    
+    **Seguridad:**
+    - Requiere token JWE válido en header Authorization
+    - Devuelve API key sensible - usar solo en conexiones seguras
+    
+    **Casos de uso:**
+    - Establecer conexión WebSocket con Azure OpenAI Realtime API
+    - Chat en tiempo real con audio y texto
+    - Implementaciones de Voice Activity Detection (VAD)
+    """,
+    response_description="Credenciales completas para Azure OpenAI Realtime API"
+)
+async def get_realtime_credentials(current_user: Dict = Depends(get_current_user)):
+    """
+    Obtiene las credenciales completas para Azure OpenAI Realtime API.
+    
+    Args:
+        current_user: Usuario autenticado (inyectado por Depends)
+
+    Returns:
+        RealtimeCredentialsResponse: Credenciales completas incluyendo API key
+    """
+    import platform
+    
+    return RealtimeCredentialsResponse(
+        azure_openai_endpoint=settings.azure_openai_endpoint,
+        azure_openai_api_key=settings.azure_openai_api_key,
+        azure_openai_deployment_name=settings.azure_openai_deployment_name,
+        server_os=platform.system(),
+        message="Credenciales de Azure OpenAI Realtime cargadas exitosamente"
     )
 
 

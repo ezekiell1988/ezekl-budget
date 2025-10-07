@@ -1,0 +1,124 @@
+/* Chat Realtime - Estilo WhatsApp con componentes Ionic */
+
+ion-content {
+  --background: var(--ion-background-color);
+}
+
+.chat-card {
+  height: calc(100vh - 300px);
+  margin: 0;
+
+  ion-card-content {
+    height: 100%;
+    overflow-y: auto;
+    padding: 8px;
+  }
+}
+
+.message-user {
+  margin-left: auto;
+  margin-right: 0;
+  margin-bottom: 8px;
+  max-width: 75%;
+  background: var(--ion-color-primary);
+
+  ion-card-content {
+    padding: 8px 12px;
+  }
+
+  ion-text, ion-label, ion-note {
+    color: var(--ion-color-primary-contrast);
+  }
+}
+
+.message-assistant {
+  margin-left: 0;
+  margin-right: auto;
+  margin-bottom: 8px;
+  max-width: 75%;
+  background: var(--ion-color-light);
+
+  ion-card-content {
+    padding: 8px 12px;
+  }
+}
+
+.text-message {
+  margin: 0;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.audio-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .audio-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .transcribing {
+      font-style: italic;
+      color: var(--ion-color-medium);
+    }
+  }
+
+  .play-button {
+    margin: 0;
+    align-self: flex-start;
+  }
+}
+
+.message-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  gap: 8px;
+
+  ion-badge {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+  }
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+
+  ion-icon {
+    font-size: 4rem;
+  }
+}
+
+.chat-input-toolbar {
+  --background: var(--ion-toolbar-background);
+  --border-width: 1px 0 0 0;
+  --border-style: solid;
+  --border-color: var(--ion-border-color);
+
+  ion-input {
+    margin: 0 8px;
+  }
+}
+
+@media (min-width: 768px) {
+  .message-user,
+  .message-assistant {
+    max-width: 60%;
+  }
+}
