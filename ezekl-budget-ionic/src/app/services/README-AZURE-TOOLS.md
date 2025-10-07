@@ -153,23 +153,9 @@ async executeTool(toolName: string, args: any): Promise<ToolExecutionResult> {
 ```typescript
 private async executeMiNuevaHerramienta(args: any): Promise<ToolExecutionResult> {
   try {
-    // Obtener token de autenticación
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'No hay sesión activa'
-      };
-    }
-
-    // Configurar headers
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
-    // Hacer petición HTTP
+    // Hacer petición HTTP (AuthInterceptor agrega token automáticamente)
     const response = await firstValueFrom(
-      this.http.get<any>(`${this.apiUrl}/mi-endpoint`, { headers })
+      this.http.get<any>(`${this.apiUrl}/mi-endpoint`)
     );
 
     // Retornar resultado
@@ -181,13 +167,8 @@ private async executeMiNuevaHerramienta(args: any): Promise<ToolExecutionResult>
   } catch (error: any) {
     console.error('❌ Error:', error);
     
-    if (error.status === 401) {
-      return {
-        success: false,
-        error: 'Sesión expirada'
-      };
-    }
-
+    // El AuthInterceptor ya maneja 401 automáticamente
+    // Solo necesitas formatear el error para el asistente
     return {
       success: false,
       error: error.error?.detail || error.message || 'Error desconocido'
@@ -235,23 +216,36 @@ properties: {
 
 ### 3. Manejo de Errores
 
-Siempre manejar errores específicos:
+El **AuthInterceptor** maneja automáticamente errores 401. Para otros errores:
 
 ```typescript
-if (error.status === 401) {
+} catch (error: any) {
+  console.error('❌ Error:', error);
+  
+  // Manejar errores específicos según el código HTTP
+  if (error.status === 404) {
+    return {
+      success: false,
+      error: 'Recurso no encontrado'
+    };
+  }
+  
+  if (error.status === 400) {
+    return {
+      success: false,
+      error: 'Parámetros inválidos: ' + (error.error?.detail || 'Verifica los datos enviados')
+    };
+  }
+  
+  // Error genérico
   return {
     success: false,
-    error: 'Sesión expirada. El usuario debe iniciar sesión nuevamente.'
-  };
-}
-
-if (error.status === 404) {
-  return {
-    success: false,
-    error: 'Recurso no encontrado'
+    error: error.error?.detail || error.message || 'Error desconocido'
   };
 }
 ```
+
+**Nota**: No es necesario manejar 401 ya que el AuthInterceptor lo hace automáticamente.
 
 ### 4. Logging Apropiado
 
@@ -268,29 +262,38 @@ console.error('❌ Error:', error);
 
 ## 🔒 Seguridad
 
-### Autenticación
+### Autenticación Automática
 
-Todas las herramientas que interactúan con el backend deben:
+El proyecto utiliza un **AuthInterceptor** que automáticamente agrega el token JWT a todas las peticiones HTTP que van a `/api/`. Esto significa que:
 
-1. **Obtener el token de autenticación**:
+✅ **No necesitas agregar manualmente el token** en cada herramienta
+✅ **El interceptor lo hace automáticamente** si el usuario está autenticado
+✅ **Maneja errores 401 automáticamente** redirigiendo al login
+
+**Ejemplo de petición HTTP** (el token se agrega automáticamente):
 ```typescript
-const token = localStorage.getItem('auth_token');
-if (!token) {
-  return {
-    success: false,
-    error: 'No hay sesión activa'
-  };
-}
-```
+// ✅ CORRECTO - El AuthInterceptor agrega el token automáticamente
+const response = await firstValueFrom(
+  this.http.get<any>(`${this.apiUrl}/accounting-accounts`)
+);
 
-2. **Incluir el token en los headers**:
-```typescript
+// ❌ INNECESARIO - No necesitas agregar el token manualmente
 const headers = new HttpHeaders({
-  'Authorization': `Bearer ${token}`
+  'Authorization': `Bearer ${token}` // ← El interceptor ya hace esto
 });
+const response = await firstValueFrom(
+  this.http.get<any>(url, { headers })
+);
 ```
 
-3. **Manejar errores de autenticación**:
+### Manejo de Errores de Autenticación
+
+El **AuthInterceptor** intercepta errores 401 y automáticamente:
+1. Hace logout del usuario
+2. Redirige a la página de login
+3. Limpia el token del localStorage
+
+En tus herramientas, solo necesitas manejar el error genéricamente:
 ```typescript
 if (error.status === 401) {
   return {

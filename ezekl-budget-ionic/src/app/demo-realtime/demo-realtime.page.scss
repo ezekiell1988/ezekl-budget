@@ -47,6 +47,7 @@ ion-content {
   margin: 0;
   line-height: 1.4;
   word-wrap: break-word;
+  white-space: pre-line; /* Respeta saltos de línea (\n) */
 }
 
 .audio-message {
@@ -58,6 +59,11 @@ ion-content {
     display: flex;
     align-items: center;
     gap: 8px;
+
+    span {
+      white-space: pre-line; /* Respeta saltos de línea en transcripciones */
+      word-wrap: break-word;
+    }
 
     .transcribing {
       font-style: italic;

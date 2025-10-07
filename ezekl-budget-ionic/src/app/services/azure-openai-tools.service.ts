@@ -3,7 +3,7 @@
  * Define las funciones disponibles que el asistente puede llamar
  */
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 /**
@@ -58,7 +58,7 @@ export class AzureOpenAIToolsService {
       switch (toolName) {
         case 'get_accounting_accounts':
           return await this.executeGetAccountingAccounts(args);
-        
+
         default:
           return {
             success: false,
@@ -132,25 +132,11 @@ export class AzureOpenAIToolsService {
     try {
       // Construir query params
       const params: any = {};
-      
+
       if (args.search) params.search = args.search;
       if (args.sort) params.sort = args.sort;
       if (args.page) params.page = args.page;
       if (args.itemPerPage) params.itemPerPage = args.itemPerPage;
-
-      // Obtener token del localStorage
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        return {
-          success: false,
-          error: 'No hay sesión activa. El usuario debe iniciar sesión primero.'
-        };
-      }
-
-      // Headers con autenticación
-      const headers = new HttpHeaders({
-        'Authorization': `Bearer ${token}`
-      });
 
       // Construir URL con query params
       const queryString = new URLSearchParams(params).toString();
@@ -159,8 +145,9 @@ export class AzureOpenAIToolsService {
       console.log(`📡 Llamando a: ${url}`);
 
       // Ejecutar petición HTTP
+      // Nota: El AuthInterceptor automáticamente agrega el token Bearer
       const response = await firstValueFrom(
-        this.http.get<any>(url, { headers })
+        this.http.get<any>(url)
       );
 
       console.log('✅ Respuesta obtenida:', response);
@@ -177,7 +164,7 @@ export class AzureOpenAIToolsService {
 
     } catch (error: any) {
       console.error('❌ Error en executeGetAccountingAccounts:', error);
-      
+
       // Manejar errores HTTP específicos
       if (error.status === 401) {
         return {
