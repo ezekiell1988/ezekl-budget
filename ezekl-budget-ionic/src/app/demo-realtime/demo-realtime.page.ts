@@ -64,6 +64,44 @@ interface ChatMessage {
   isTranscribing?: boolean; // Si está transcribiendo actualmente
 }
 
+/**
+ * Configuración centralizada para Azure OpenAI Realtime API
+ * Facilita el mantenimiento y modificación de parámetros en el futuro
+ */
+interface RealtimeConfig {
+  // Configuración de API
+  apiVersion: string;
+
+  // Configuración de sesión
+  modalities: ('text' | 'audio')[];
+  instructions: string;
+  voiceType: 'alloy' | 'echo' | 'shimmer';
+  inputAudioFormat: 'pcm16' | 'g711_ulaw' | 'g711_alaw';
+  outputAudioFormat: 'pcm16' | 'g711_ulaw' | 'g711_alaw';
+  inputAudioTranscription: {
+    model: string;
+  };
+  turnDetection: {
+    type: 'server_vad';
+    threshold: number;
+    prefix_padding_ms: number;
+    silence_duration_ms: number;
+  };
+
+  // Configuración de temperatura
+  temperature: number;
+  max_response_output_tokens: number;
+
+  // Configuración de WebSocket y ping-pong
+  pingIntervalMs: number;
+  pongTimeoutMs: number;
+  maxReconnectAttempts: number;
+
+  // Configuración de audio local
+  audioSampleRate: number;
+  audioChannels: number;
+}
+
 @Component({
   selector: 'app-demo-realtime',
   templateUrl: './demo-realtime.page.html',
@@ -97,6 +135,61 @@ interface ChatMessage {
 })
 export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('chatContainer') chatContainer!: ElementRef;
+
+  // ==================== CONFIGURACIÓN CENTRALIZADA ====================
+
+  /**
+   * Configuración centralizada de Azure OpenAI Realtime API
+   * Modificar estos valores según necesidades del proyecto
+   */
+  private readonly realtimeConfig: RealtimeConfig = {
+    // API Version - Usar versión preview disponible para Realtime API
+    // Nota: La API de Realtime aún está en preview, no hay versión GA
+    apiVersion: '2024-10-01-preview',
+
+    // Modalidades soportadas
+    modalities: ['text', 'audio'],
+
+    // Instrucciones del sistema para el asistente
+    instructions: 'Eres un asistente útil y amigable. Responde de forma concisa y clara.',
+
+    // Tipo de voz para respuestas de audio
+    voiceType: 'alloy', // Opciones: 'alloy', 'echo', 'shimmer'
+
+    // Formato de audio de entrada (micrófono del usuario)
+    inputAudioFormat: 'pcm16',
+
+    // Formato de audio de salida (respuestas del asistente)
+    outputAudioFormat: 'pcm16',
+
+    // Transcripción automática del audio de entrada
+    inputAudioTranscription: {
+      model: 'whisper-1'
+    },
+
+    // Detección de actividad de voz (VAD) en el servidor
+    turnDetection: {
+      type: 'server_vad',
+      threshold: 0.5,           // Sensibilidad de detección (0.0 - 1.0)
+      prefix_padding_ms: 300,   // Audio antes de que se detecte habla
+      silence_duration_ms: 500  // Silencio para considerar fin de turno
+    },
+
+    // Temperatura para generación de respuestas (0.0 - 2.0)
+    temperature: 0.8,
+
+    // Máximo de tokens en respuestas
+    max_response_output_tokens: 4096,
+
+    // Configuración de ping-pong para mantener conexión activa
+    pingIntervalMs: 25000,      // Ping cada 25 segundos
+    pongTimeoutMs: 10000,       // Esperar pong máximo 10 segundos
+    maxReconnectAttempts: 5,    // Máximo 5 intentos de reconexión
+
+    // Configuración de audio local (Web Audio API)
+    audioSampleRate: 24000,     // Hz - debe coincidir con el formato PCM16
+    audioChannels: 1            // Mono
+  };
 
   // Estado de conexión
   isConnected = false;
@@ -147,10 +240,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   // Sistema de Ping-Pong para mantener conexión activa
   private pingInterval: any = null;
   private pongTimeout: any = null;
-  private readonly PING_INTERVAL_MS = 25000; // Ping cada 25 segundos
-  private readonly PONG_TIMEOUT_MS = 10000; // Esperar pong máximo 10 segundos
   private reconnectAttempts = 0;
-  private readonly MAX_RECONNECT_ATTEMPTS = 5;
   private isReconnecting = false;
   connectionLatency: number | null = null; // Latencia en ms
   private lastPingTime: number = 0;
@@ -208,15 +298,14 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
       // Credenciales obtenidas correctamente
 
       // Construir URL de WebSocket para Azure OpenAI Realtime API
-      // Formato: wss://<endpoint>/openai/realtime?api-version=2024-10-01-preview&deployment=<deployment>&api-key=<key>
-      // Versión 2024-10-01-preview (disponible en Sweden Central)
+      // Formato: wss://<endpoint>/openai/realtime?api-version=<version>&deployment=<deployment>&api-key=<key>
       const endpointUrl = new URL(credentials.azure_openai_endpoint);
       const wsProtocol = 'wss:';
       const wsHost = endpointUrl.hostname;
 
-      this.wsUrl = `${wsProtocol}//${wsHost}/openai/realtime?api-version=2024-10-01-preview&deployment=${credentials.azure_openai_deployment_name}&api-key=${credentials.azure_openai_api_key}`;
+      this.wsUrl = `${wsProtocol}//${wsHost}/openai/realtime?api-version=${this.realtimeConfig.apiVersion}&deployment=${credentials.azure_openai_deployment_name}&api-key=${credentials.azure_openai_api_key}`;
 
-      // Conectando a Azure OpenAI Realtime API
+      console.log(`🔌 Conectando con API version: ${this.realtimeConfig.apiVersion}`);
 
       // Crear conexión WebSocket
       this.ws = new WebSocket(this.wsUrl);
@@ -256,7 +345,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
         this.connectionLatency = null;
 
         // Intentar reconexión automática si no fue cierre intencional
-        if (!event.wasClean && !this.isReconnecting && this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+        if (!event.wasClean && !this.isReconnecting && this.reconnectAttempts < this.realtimeConfig.maxReconnectAttempts) {
           this.attemptReconnection();
         }
       };
@@ -272,30 +361,24 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   private sendSessionConfig(): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-    // Configurar la sesión del Realtime API
-    // Usando gpt-realtime deployment (versión 2024-10-01-preview)
+    // Configurar la sesión del Realtime API usando la configuración centralizada
     const config = {
       type: 'session.update',
       session: {
-        modalities: ['text', 'audio'],
-        instructions: 'Eres un asistente útil y amigable. Responde de manera concisa y clara.',
-        voice: 'alloy',
-        input_audio_format: 'pcm16',
-        output_audio_format: 'pcm16',
-        input_audio_transcription: {
-          model: 'whisper-1'
-        },
-        turn_detection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500
-        }
+        modalities: this.realtimeConfig.modalities,
+        instructions: this.realtimeConfig.instructions,
+        voice: this.realtimeConfig.voiceType,
+        input_audio_format: this.realtimeConfig.inputAudioFormat,
+        output_audio_format: this.realtimeConfig.outputAudioFormat,
+        input_audio_transcription: this.realtimeConfig.inputAudioTranscription,
+        turn_detection: this.realtimeConfig.turnDetection,
+        temperature: this.realtimeConfig.temperature,
+        max_response_output_tokens: this.realtimeConfig.max_response_output_tokens
       }
     };
 
     this.ws.send(JSON.stringify(config));
-    // Configuración de sesión enviada
+    console.log('⚙️ Configuración de sesión enviada:', config);
   }
 
   private handleRealtimeMessage(data: string): void {
@@ -457,13 +540,13 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 24000,
-          channelCount: 1
+          sampleRate: this.realtimeConfig.audioSampleRate,
+          channelCount: this.realtimeConfig.audioChannels
         }
       });
 
       // Crear AudioContext para procesar audio
-      this.audioContext = new AudioContext({ sampleRate: 24000 });
+      this.audioContext = new AudioContext({ sampleRate: this.realtimeConfig.audioSampleRate });
       const source = this.audioContext.createMediaStreamSource(this.audioStream);
 
       // Crear procesador de audio para streaming en tiempo real
@@ -843,7 +926,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
     this.currentPlayingMessageId = message.id;
 
     // Crear AudioContext para reproducir PCM16
-    const audioContext = new AudioContext({ sampleRate: 24000 });
+    const audioContext = new AudioContext({ sampleRate: this.realtimeConfig.audioSampleRate });
     const reader = new FileReader();
 
     reader.onload = async (e) => {
@@ -954,7 +1037,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
     // Enviar ping periódicamente
     this.pingInterval = setInterval(() => {
       this.sendPing();
-    }, this.PING_INTERVAL_MS);
+    }, this.realtimeConfig.pingIntervalMs);
 
     console.log('🏓 Sistema de ping-pong iniciado');
   }
@@ -994,7 +1077,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
       this.pongTimeout = setTimeout(() => {
         console.error('❌ No se recibió pong - conexión perdida');
         this.handlePongTimeout();
-      }, this.PONG_TIMEOUT_MS);
+      }, this.realtimeConfig.pongTimeoutMs);
 
     } catch (error) {
       console.error('❌ Error enviando ping:', error);
@@ -1034,7 +1117,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private async attemptReconnection(): Promise<void> {
-    if (this.isReconnecting || this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+    if (this.isReconnecting || this.reconnectAttempts >= this.realtimeConfig.maxReconnectAttempts) {
       console.error('❌ Máximo de intentos de reconexión alcanzado');
       this.connectionStatusText = 'Reconexión fallida';
       return;
@@ -1046,8 +1129,8 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
     // Backoff exponencial: 2^attempts segundos
     const delayMs = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
 
-    this.connectionStatusText = `Reconectando (${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})...`;
-    console.log(`🔄 Intento de reconexión ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS} en ${delayMs}ms`);
+    this.connectionStatusText = `Reconectando (${this.reconnectAttempts}/${this.realtimeConfig.maxReconnectAttempts})...`;
+    console.log(`🔄 Intento de reconexión ${this.reconnectAttempts}/${this.realtimeConfig.maxReconnectAttempts} en ${delayMs}ms`);
 
     await new Promise(resolve => setTimeout(resolve, delayMs));
 
@@ -1058,7 +1141,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
       this.isReconnecting = false;
 
       // Intentar de nuevo si no se alcanzó el máximo
-      if (this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+      if (this.reconnectAttempts < this.realtimeConfig.maxReconnectAttempts) {
         this.attemptReconnection();
       }
     }

@@ -14,14 +14,128 @@ Implementación completa de un chat en tiempo real estilo WhatsApp que integra l
 - **Backend**: FastAPI con endpoints para credenciales de Azure
 - **Azure AI**: Azure OpenAI Realtime API
   - **Deployment**: `gpt-realtime` (Sweden Central)
-  - **API Version**: `2024-10-01-preview`
+  - **API Version**: Configurable en `realtimeConfig.apiVersion`
   - **Región**: Sweden Central (disponibilidad regional)
 - **Audio Processing**: Web Audio API + AudioWorklet
 - **WebSocket**: Comunicación bidireccional en tiempo real
 
 ---
 
+## ⚙️ Configuración Centralizada
+
+Toda la configuración de Azure OpenAI Realtime API está centralizada en el objeto `realtimeConfig` del componente. Esto facilita el mantenimiento y la modificación de parámetros sin tener que buscar valores hardcodeados en el código.
+
+### Cómo Modificar la Configuración
+
+1. **Abrir el archivo**: `demo-realtime.page.ts`
+2. **Localizar el objeto**: Buscar `private readonly realtimeConfig: RealtimeConfig`
+3. **Modificar valores según necesidad**
+
+### Parámetros Más Comunes a Modificar
+
+#### Cambiar la Voz del Asistente
+```typescript
+voiceType: 'echo', // Opciones: 'alloy', 'echo', 'shimmer'
+```
+
+#### Ajustar Sensibilidad de Detección de Voz
+```typescript
+turnDetection: {
+  type: 'server_vad',
+  threshold: 0.7,           // Aumentar para menos sensibilidad (0.0 - 1.0)
+  silence_duration_ms: 700  // Mayor duración = más tiempo esperando silencio
+}
+```
+
+#### Cambiar Instrucciones del Sistema
+```typescript
+instructions: 'Eres un experto financiero. Responde con términos técnicos.',
+```
+
+#### Ajustar Temperatura de Respuestas
+```typescript
+temperature: 1.2, // Mayor = más creativo, Menor = más determinista (0.0 - 2.0)
+```
+
+#### Modificar Frecuencia de Ping-Pong
+```typescript
+pingIntervalMs: 30000, // Ping cada 30 segundos
+pongTimeoutMs: 15000,  // Esperar pong máximo 15 segundos
+```
+
+#### Cambiar Versión de API
+```typescript
+apiVersion: '2024-10-01-preview', // Versión preview disponible para Realtime API
+```
+
+**⚠️ Importante**: 
+- La API de Realtime actualmente solo está disponible en versión **preview**
+- Al cambiar la versión de API, verificar compatibilidad con los parámetros de configuración en la [documentación de Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/realtime-audio-quickstart)
+- Versiones disponibles: `2024-10-01-preview` (actual), `2024-12-17-preview` (más reciente)
+
+---
+
 ## 📦 Interfaces y Modelos
+
+### `RealtimeConfig`
+```typescript
+interface RealtimeConfig {
+  // Configuración de API
+  apiVersion: string;
+  
+  // Configuración de sesión
+  modalities: ('text' | 'audio')[];
+  instructions: string;
+  voiceType: 'alloy' | 'echo' | 'shimmer';
+  inputAudioFormat: 'pcm16' | 'g711_ulaw' | 'g711_alaw';
+  outputAudioFormat: 'pcm16' | 'g711_ulaw' | 'g711_alaw';
+  inputAudioTranscription: {
+    model: string;
+  };
+  turnDetection: {
+    type: 'server_vad';
+    threshold: number;
+    prefix_padding_ms: number;
+    silence_duration_ms: number;
+  };
+  
+  // Configuración de temperatura
+  temperature: number;
+  max_response_output_tokens: number;
+  
+  // Configuración de WebSocket y ping-pong
+  pingIntervalMs: number;
+  pongTimeoutMs: number;
+  maxReconnectAttempts: number;
+  
+  // Configuración de audio local
+  audioSampleRate: number;
+  audioChannels: number;
+}
+```
+
+**Propósito**: Centralizar toda la configuración de Azure OpenAI Realtime API para facilitar el mantenimiento y modificaciones futuras.
+
+**Ubicación en el componente**: 
+```typescript
+private readonly realtimeConfig: RealtimeConfig = {
+  apiVersion: '2024-10-01-preview',
+  modalities: ['text', 'audio'],
+  instructions: 'Eres un asistente útil y amigable...',
+  voiceType: 'alloy',
+  // ... resto de configuración
+};
+```
+
+**Parámetros clave**:
+- `apiVersion`: Versión de la API (usar versión estable, NO preview)
+- `voiceType`: Tipo de voz para respuestas ('alloy', 'echo', 'shimmer')
+- `turnDetection.threshold`: Sensibilidad de detección de voz (0.0 - 1.0)
+- `turnDetection.silence_duration_ms`: Silencio para considerar fin de turno
+- `pingIntervalMs`: Frecuencia de envío de pings para mantener conexión activa
+- `audioSampleRate`: Frecuencia de muestreo (debe coincidir con PCM16)
+
+---
 
 ### `RealtimeCredentials`
 ```typescript
@@ -161,11 +275,11 @@ Establece la conexión con Azure OpenAI Realtime API.
 **Flujo**:
 1. Cambia estado a `isConnecting = true`
 2. Obtiene credenciales del backend: `GET /api/credentials/realtime`
-3. Construye la URL del WebSocket:
+3. Construye la URL del WebSocket usando `realtimeConfig.apiVersion`:
    ```
-   wss://<hostname>/openai/realtime?api-version=2025-08-28&deployment=<deployment>&api-key=<key>
+   wss://<hostname>/openai/realtime?api-version=<apiVersion>&deployment=<deployment>&api-key=<key>
    ```
-   **Nota**: Usa la versión de API `2025-08-28` que es la más reciente y estable (NO preview). La versión anterior `2024-10-01-preview` fue retirada.
+   **Nota**: La versión de API se configura centralizadamente en `realtimeConfig.apiVersion`. Por defecto usa `2024-10-01-preview` (versión preview disponible).
 4. Crea la conexión WebSocket
 5. Configura event listeners:
    - `onopen`: Llama a `sendSessionConfig()` y `startPingPong()`
@@ -178,16 +292,16 @@ Establece la conexión con Azure OpenAI Realtime API.
 ---
 
 ### `sendSessionConfig()`
-Envía la configuración inicial de la sesión a Azure OpenAI.
+Envía la configuración inicial de la sesión a Azure OpenAI usando los parámetros definidos en `realtimeConfig`.
 
-**Configuración Enviada**:
+**Configuración Enviada** (basada en `realtimeConfig`):
 ```json
 {
   "type": "session.update",
   "session": {
-    "modalities": ["text", "audio"],
-    "instructions": "Eres un asistente útil y amigable...",
-    "voice": "alloy",
+    "modalities": ["text", "audio"],              // realtimeConfig.modalities
+    "instructions": "Eres un asistente útil...",  // realtimeConfig.instructions
+    "voice": "alloy",                             // realtimeConfig.voiceType
     "input_audio_format": "pcm16",
     "output_audio_format": "pcm16",
     "input_audio_transcription": {
