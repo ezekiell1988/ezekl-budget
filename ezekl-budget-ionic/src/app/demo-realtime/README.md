@@ -12,7 +12,10 @@ Implementación completa de un chat en tiempo real estilo WhatsApp que integra l
 
 - **Frontend**: Ionic 8.0.0 + Angular 20.0.0 (Standalone Components)
 - **Backend**: FastAPI con endpoints para credenciales de Azure
-- **Azure AI**: Azure OpenAI Realtime API (gpt-4o-realtime-preview)
+- **Azure AI**: Azure OpenAI Realtime API
+  - **Deployment**: `gpt-realtime` (Sweden Central)
+  - **API Version**: `2024-10-01-preview`
+  - **Región**: Sweden Central (disponibilidad regional)
 - **Audio Processing**: Web Audio API + AudioWorklet
 - **WebSocket**: Comunicación bidireccional en tiempo real
 
@@ -114,6 +117,21 @@ private currentAssistantMessageId: string | null = null; // ID del mensaje del a
 private currentUserMessageId: string | null = null;      // ID del mensaje del usuario actual
 ```
 
+### Sistema de Ping-Pong y Reconexión
+```typescript
+private pingInterval: any = null;                // Interval para enviar pings periódicos
+private pongTimeout: any = null;                 // Timeout para esperar pong
+private readonly PING_INTERVAL_MS = 25000;      // Ping cada 25 segundos
+private readonly PONG_TIMEOUT_MS = 10000;       // Esperar pong máximo 10 segundos
+private reconnectAttempts: number = 0;           // Contador de intentos de reconexión
+private readonly MAX_RECONNECT_ATTEMPTS = 5;    // Máximo 5 intentos de reconexión
+private isReconnecting: boolean = false;         // Si está en proceso de reconexión
+connectionLatency: number | null = null;         // Latencia en ms (público para UI)
+private lastPingTime: number = 0;                // Timestamp del último ping enviado
+```
+
+**Propósito**: Mantener la conexión WebSocket activa y detectar desconexiones tempranamente. Implementa reconexión automática con backoff exponencial.
+
 ---
 
 ## 🔄 Ciclo de Vida del Componente
@@ -128,9 +146,10 @@ Se ejecuta después de inicializar la vista:
 
 ### `ngOnDestroy()`
 Se ejecuta al destruir el componente:
-1. Llama a `disconnect()` para cerrar el WebSocket
-2. Llama a `stopListening()` para detener el micrófono
-3. Detiene todos los tracks del `audioStream`
+1. Llama a `stopPingPong()` para detener el sistema de ping-pong
+2. Llama a `disconnect()` para cerrar el WebSocket
+3. Llama a `stopListening()` para detener el micrófono
+4. Detiene todos los tracks del `audioStream`
 
 ---
 
@@ -144,14 +163,15 @@ Establece la conexión con Azure OpenAI Realtime API.
 2. Obtiene credenciales del backend: `GET /api/credentials/realtime`
 3. Construye la URL del WebSocket:
    ```
-   wss://<hostname>/openai/realtime?api-version=2024-10-01-preview&deployment=<deployment>&api-key=<key>
+   wss://<hostname>/openai/realtime?api-version=2025-08-28&deployment=<deployment>&api-key=<key>
    ```
+   **Nota**: Usa la versión de API `2025-08-28` que es la más reciente y estable (NO preview). La versión anterior `2024-10-01-preview` fue retirada.
 4. Crea la conexión WebSocket
 5. Configura event listeners:
-   - `onopen`: Llama a `sendSessionConfig()`
+   - `onopen`: Llama a `sendSessionConfig()` y `startPingPong()`
    - `onmessage`: Llama a `handleRealtimeMessage()`
-   - `onerror`: Registra errores
-   - `onclose`: Actualiza estado de desconexión
+   - `onerror`: Registra errores y actualiza estado
+   - `onclose`: Actualiza estado de desconexión e intenta reconexión automática si no fue cierre intencional
 
 **Manejo de Errores**: Captura excepciones y actualiza `connectionStatusText`
 
@@ -184,6 +204,7 @@ Envía la configuración inicial de la sesión a Azure OpenAI.
 ```
 
 **Parámetros Clave**:
+- `deployment`: **gpt-realtime** (configurado en Azure, API version 2024-10-01-preview)
 - `modalities`: Soporta texto y audio
 - `voice`: Voz del asistente (alloy, echo, shimmer, etc.)
 - `input_audio_format` / `output_audio_format`: PCM16 (16-bit PCM)
@@ -194,6 +215,99 @@ Envía la configuración inicial de la sesión a Azure OpenAI.
 
 ### `disconnect()`
 Cierra la conexión WebSocket de forma segura.
+
+**Flujo**:
+1. Detiene el sistema de ping-pong con `stopPingPong()`
+2. Cierra el WebSocket si existe
+3. Resetea la variable `ws` a null
+4. Limpia `connectionLatency`
+
+---
+
+## 🏓 Sistema de Ping-Pong y Reconexión Automática
+
+### `startPingPong()`
+Inicia el sistema de ping-pong para mantener la conexión activa.
+
+**Flujo**:
+1. Detiene cualquier ping-pong anterior con `stopPingPong()`
+2. Inicia un `setInterval` que ejecuta `sendPing()` cada 25 segundos
+3. Registra en consola el inicio del sistema
+
+**Propósito**: Prevenir timeouts de conexión por inactividad y detectar desconexiones tempranamente.
+
+---
+
+### `stopPingPong()`
+Detiene el sistema de ping-pong.
+
+**Flujo**:
+1. Limpia el `pingInterval` si existe
+2. Limpia el `pongTimeout` si existe
+3. Registra en consola la detención del sistema
+
+---
+
+### `sendPing()`
+Envía un mensaje ping al servidor para verificar conexión.
+
+**Flujo**:
+1. Valida que el WebSocket esté abierto
+2. Omite el ping si hay actividad activa (`isListeningMode` o `isPlayingAudio`)
+3. Guarda el timestamp actual en `lastPingTime`
+4. Envía mensaje JSON: `{ type: 'ping' }`
+5. Inicia un timeout de 10 segundos esperando el `pong`
+6. Si no se recibe pong, llama a `handlePongTimeout()`
+
+**Manejo de Errores**: Si falla el envío, llama a `handlePongTimeout()`
+
+---
+
+### `handlePong()`
+Procesa la respuesta pong del servidor.
+
+**Flujo**:
+1. Calcula latencia: `Date.now() - lastPingTime`
+2. Actualiza `connectionLatency` (visible en UI)
+3. Cancela el `pongTimeout`
+4. Registra latencia en consola
+5. Fuerza actualización de UI con `detectChanges()`
+
+---
+
+### `handlePongTimeout()`
+Maneja el caso cuando no se recibe pong a tiempo.
+
+**Flujo**:
+1. Registra error en consola
+2. Limpia el `pongTimeout`
+3. Llama a `disconnect()` para cerrar conexión
+4. Llama a `attemptReconnection()` para reintentar
+
+**Indicador**: La conexión está inactiva o perdida.
+
+---
+
+### `attemptReconnection()`
+Intenta reconectar automáticamente con backoff exponencial.
+
+**Flujo**:
+1. Valida que no esté reconectando y no haya excedido intentos máximos (5)
+2. Incrementa `reconnectAttempts`
+3. Calcula delay con backoff exponencial: `2^attempts` segundos (máx 30s)
+4. Actualiza `connectionStatusText` con intento actual
+5. Espera el delay calculado
+6. Llama a `connectToRealtime()`
+7. Si falla, reintenta recursivamente hasta alcanzar el máximo
+
+**Backoff Exponencial**:
+- Intento 1: 2 segundos
+- Intento 2: 4 segundos
+- Intento 3: 8 segundos
+- Intento 4: 16 segundos
+- Intento 5: 30 segundos (máximo)
+
+**Al Conectar**: Resetea `reconnectAttempts = 0` para futuras desconexiones.
 
 ---
 
@@ -258,7 +372,12 @@ VAD detectó inicio de habla:
 VAD detectó fin de habla:
 - `vadActive = false`
 
-#### 14. `error`
+#### 14. `pong`
+Respuesta del servidor al ping:
+- Llama a `handlePong()` para calcular latencia
+- Cancela timeout de desconexión
+
+#### 15. `error`
 Error del servidor:
 - Registra error en consola
 - `isAssistantThinking = false`
@@ -1115,6 +1234,119 @@ Actualiza los tokens utilizados en los mensajes del usuario y asistente.
 
 ---
 
+## 🏓 Diagrama del Sistema de Ping-Pong
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  SISTEMA DE PING-PONG ACTIVO                     │
+│                (Mantiene conexión WebSocket viva)                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 Cada 25 segundos (PING_INTERVAL)                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────┐
+│ ¿Hay actividad activa?              │
+│ (isListeningMode || isPlayingAudio) │
+└─────────────────────────────────────┘
+         │                    │
+    SÍ   │                    │  NO
+         ▼                    ▼
+┌─────────────────┐  ┌─────────────────────┐
+│ OMITIR PING     │  │ ENVIAR PING         │
+│ (no interferir) │  │                     │
+└─────────────────┘  └─────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ sendPing()                                                       │
+│ 1. lastPingTime = Date.now()                                    │
+│ 2. ws.send({ type: 'ping' })                                    │
+│ 3. Inicia timeout de 10 segundos (PONG_TIMEOUT)                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+              ▼                               ▼
+┌─────────────────────────┐       ┌─────────────────────────┐
+│   PONG RECIBIDO         │       │   TIMEOUT (10s)         │
+│   (antes de 10s)        │       │   (no hay pong)         │
+└─────────────────────────┘       └─────────────────────────┘
+              │                               │
+              ▼                               ▼
+┌─────────────────────────┐       ┌─────────────────────────┐
+│ handlePong()            │       │ handlePongTimeout()     │
+│ - Calcula latencia      │       │ - Registra error        │
+│ - Cancela timeout       │       │ - disconnect()          │
+│ - Actualiza UI          │       │ - attemptReconnection() │
+│ - connectionLatency     │       └─────────────────────────┘
+│   visible               │                   │
+└─────────────────────────┘                   │
+              │                               ▼
+              │                   ┌─────────────────────────┐
+              │                   │ RECONEXIÓN AUTOMÁTICA   │
+              │                   └─────────────────────────┘
+              │                               │
+              ▼                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   CONEXIÓN SALUDABLE                             │
+│              (Ping-Pong continúa cada 25s)                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Reconexión Automática con Backoff Exponencial
+
+```
+┌─────────────────────────────────────┐
+│ DESCONEXIÓN DETECTADA               │
+│ (Error, Timeout, Cierre inesperado) │
+└─────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────┐
+│ ¿reconnectAttempts < 5?             │
+└─────────────────────────────────────┘
+         │           │
+    NO   │           │  SÍ
+         ▼           ▼
+┌───────────────┐  ┌──────────────────────────┐
+│ FALLAR        │  │ attemptReconnection()    │
+│ "Reconexión   │  │                          │
+│  fallida"     │  │ 1. reconnectAttempts++   │
+└───────────────┘  │ 2. delay = 2^attempts s  │
+                   │ 3. Esperar delay         │
+                   │ 4. connectToRealtime()   │
+                   └──────────────────────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+         ÉXITO│                           │FALLO
+              ▼                           ▼
+┌──────────────────────────┐  ┌────────────────────────┐
+│ CONECTADO                │  │ Reintentar             │
+│ - reconnectAttempts = 0  │  │ (si attempts < 5)      │
+│ - startPingPong()        │  └────────────────────────┘
+│ - connectionLatency null │              │
+└──────────────────────────┘              │
+              │                           │
+              └───────────────┬───────────┘
+                              │
+                              ▼
+              ┌───────────────────────────┐
+              │  Backoff Exponencial:     │
+              │  Intento 1: 2s            │
+              │  Intento 2: 4s            │
+              │  Intento 3: 8s            │
+              │  Intento 4: 16s           │
+              │  Intento 5: 30s (máx)     │
+              └───────────────────────────┘
+```
+
+---
+
 ## 🔧 Herramientas de Desarrollo
 
 ### Angular Change Detection
@@ -1135,6 +1367,11 @@ Esto fuerza a Angular a detectar los cambios en objetos dentro del array.
 - `console.error('❌ Error WebSocket:', error)` - Errores de conexión
 - `console.log('✅ Conectado a Azure OpenAI Realtime API')` - Conexión exitosa
 - `console.log('🔌 Desconectado de Azure OpenAI Realtime API')` - Desconexión
+- `console.log('🏓 Sistema de ping-pong iniciado/detenido')` - Estado del ping-pong
+- `console.log('🏓 Ping enviado')` - Cada ping enviado
+- `console.log('🏓 Pong recibido - Latencia: Xms')` - Pong con latencia calculada
+- `console.error('❌ No se recibió pong - conexión perdida')` - Timeout de pong
+- `console.log('🔄 Intento de reconexión X/5 en Yms')` - Intentos de reconexión
 
 ---
 
@@ -1194,24 +1431,37 @@ Delay de 500ms antes de resetear estados después de reproducción para evitar q
 - **Threshold**: 0.5 (balance entre sensibilidad y falsos positivos)
 - **Silence duration**: 500ms antes de considerar fin de habla
 
+### Sistema de Ping-Pong
+- **Intervalo de ping**: 25 segundos (mantiene conexión activa)
+- **Timeout de pong**: 10 segundos (detecta desconexión)
+- **Omite pings**: Durante streaming de audio o reproducción (evita interferencias)
+- **Latencia**: Calculada y visible en UI (ms entre ping y pong)
+- **Reconexión**: Automática con backoff exponencial (hasta 5 intentos)
+- **Backoff**: 2, 4, 8, 16, 30 segundos progresivamente
+- **API Version**: 2025-08-28 (estable)
+
 ---
 
 ## 🚀 Próximas Mejoras Potenciales
 
 1. **Persistencia**: Guardar conversaciones en localStorage o backend
-2. **Reconexión automática**: Reintento de conexión WebSocket en caso de caída
+2. ✅ **Reconexión automática**: Sistema de ping-pong implementado con reconexión automática y backoff exponencial
 3. **Configuración de voz**: Permitir seleccionar entre diferentes voces (alloy, echo, shimmer)
 4. **Historial de tokens**: Acumulado total de tokens por sesión
 5. **Exportar conversación**: Descargar chat como texto o JSON
 6. **Soporte multi-idioma**: Detección automática de idioma del usuario
 7. **Compresión de audio**: Usar formato más eficiente que PCM16
 8. **Streaming de texto**: Mostrar texto del asistente mientras se genera (no solo audio)
+9. **Indicador de latencia**: Mostrar latencia de conexión en UI con código de colores
+10. **Métricas de reconexión**: Dashboard de estadísticas de conexión y reconexiones
 
 ---
 
 ## 📚 Referencias
 
 - [Azure OpenAI Realtime API Documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/realtime-audio-quickstart)
+- [Azure OpenAI API Version Lifecycle](https://learn.microsoft.com/en-us/azure/ai-services/openai/api-version-deprecation)
+- [Supported Models - gpt-realtime](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/concepts/models#audio-models)
 - [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 - [AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet)
 - [Ionic Framework](https://ionicframework.com/docs)

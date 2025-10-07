@@ -144,6 +144,17 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   private currentAssistantMessageId: string | null = null;
   private currentUserMessageId: string | null = null;
 
+  // Sistema de Ping-Pong para mantener conexión activa
+  private pingInterval: any = null;
+  private pongTimeout: any = null;
+  private readonly PING_INTERVAL_MS = 25000; // Ping cada 25 segundos
+  private readonly PONG_TIMEOUT_MS = 10000; // Esperar pong máximo 10 segundos
+  private reconnectAttempts = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = 5;
+  private isReconnecting = false;
+  connectionLatency: number | null = null; // Latencia en ms
+  private lastPingTime: number = 0;
+
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef
@@ -176,6 +187,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy() {
+    this.stopPingPong();
     this.disconnect();
     this.stopListening();
     if (this.audioStream) {
@@ -197,6 +209,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
 
       // Construir URL de WebSocket para Azure OpenAI Realtime API
       // Formato: wss://<endpoint>/openai/realtime?api-version=2024-10-01-preview&deployment=<deployment>&api-key=<key>
+      // Versión 2024-10-01-preview (disponible en Sweden Central)
       const endpointUrl = new URL(credentials.azure_openai_endpoint);
       const wsProtocol = 'wss:';
       const wsHost = endpointUrl.hostname;
@@ -212,10 +225,15 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
         console.log('✅ Conectado a Azure OpenAI Realtime API');
         this.isConnected = true;
         this.isConnecting = false;
+        this.reconnectAttempts = 0; // Resetear intentos de reconexión
+        this.isReconnecting = false;
         this.connectionStatusText = 'Conectado';
 
         // Enviar configuración inicial de sesión
         this.sendSessionConfig();
+
+        // Iniciar sistema de ping-pong
+        this.startPingPong();
       };
 
       this.ws.onmessage = (event) => {
@@ -229,11 +247,18 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
         this.isConnected = false;
       };
 
-      this.ws.onclose = () => {
-        console.log('🔌 Desconectado de Azure OpenAI Realtime API');
+      this.ws.onclose = (event) => {
+        console.log('🔌 Desconectado de Azure OpenAI Realtime API', event);
+        this.stopPingPong();
         this.isConnected = false;
         this.isConnecting = false;
         this.connectionStatusText = 'Desconectado';
+        this.connectionLatency = null;
+
+        // Intentar reconexión automática si no fue cierre intencional
+        if (!event.wasClean && !this.isReconnecting && this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+          this.attemptReconnection();
+        }
       };
 
     } catch (error) {
@@ -248,6 +273,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     // Configurar la sesión del Realtime API
+    // Usando gpt-realtime deployment (versión 2024-10-01-preview)
     const config = {
       type: 'session.update',
       session: {
@@ -371,6 +397,11 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
         case 'input_audio_buffer.speech_stopped':
           // Fin de habla detectado (VAD)
           this.vadActive = false;
+          break;
+
+        case 'pong':
+          // Respuesta pong recibida
+          this.handlePong();
           break;
 
         case 'error':
@@ -906,9 +937,130 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private disconnect(): void {
+    this.stopPingPong();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
+    }
+    this.connectionLatency = null;
+  }
+
+  // ==================== SISTEMA DE PING-PONG ====================
+
+  private startPingPong(): void {
+    // Detener cualquier ping-pong anterior
+    this.stopPingPong();
+
+    // Enviar ping periódicamente
+    this.pingInterval = setInterval(() => {
+      this.sendPing();
+    }, this.PING_INTERVAL_MS);
+
+    console.log('🏓 Sistema de ping-pong iniciado');
+  }
+
+  private stopPingPong(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+
+    if (this.pongTimeout) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = null;
+    }
+
+    console.log('🏓 Sistema de ping-pong detenido');
+  }
+
+  private sendPing(): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.warn('⚠️ No se puede enviar ping: WebSocket no está abierto');
+      return;
+    }
+
+    // No enviar ping durante actividad activa (streaming de audio o reproducción)
+    if (this.isListeningMode || this.isPlayingAudio) {
+      console.log('🏓 Ping omitido: actividad en curso');
+      return;
+    }
+
+    try {
+      this.lastPingTime = Date.now();
+      this.ws.send(JSON.stringify({ type: 'ping' }));
+      console.log('🏓 Ping enviado');
+
+      // Configurar timeout para esperar pong
+      this.pongTimeout = setTimeout(() => {
+        console.error('❌ No se recibió pong - conexión perdida');
+        this.handlePongTimeout();
+      }, this.PONG_TIMEOUT_MS);
+
+    } catch (error) {
+      console.error('❌ Error enviando ping:', error);
+      this.handlePongTimeout();
+    }
+  }
+
+  private handlePong(): void {
+    // Calcular latencia
+    if (this.lastPingTime > 0) {
+      this.connectionLatency = Date.now() - this.lastPingTime;
+      console.log(`🏓 Pong recibido - Latencia: ${this.connectionLatency}ms`);
+    }
+
+    // Cancelar timeout de pong
+    if (this.pongTimeout) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = null;
+    }
+
+    // Actualizar UI con latencia
+    this.cdr.detectChanges();
+  }
+
+  private handlePongTimeout(): void {
+    console.error('❌ Timeout esperando pong - conexión inactiva');
+
+    // Limpiar timeout
+    if (this.pongTimeout) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = null;
+    }
+
+    // Desconectar y reconectar
+    this.disconnect();
+    this.attemptReconnection();
+  }
+
+  private async attemptReconnection(): Promise<void> {
+    if (this.isReconnecting || this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+      console.error('❌ Máximo de intentos de reconexión alcanzado');
+      this.connectionStatusText = 'Reconexión fallida';
+      return;
+    }
+
+    this.isReconnecting = true;
+    this.reconnectAttempts++;
+
+    // Backoff exponencial: 2^attempts segundos
+    const delayMs = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+
+    this.connectionStatusText = `Reconectando (${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})...`;
+    console.log(`🔄 Intento de reconexión ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS} en ${delayMs}ms`);
+
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+
+    try {
+      await this.connectToRealtime();
+    } catch (error) {
+      console.error('❌ Error en reconexión:', error);
+      this.isReconnecting = false;
+
+      // Intentar de nuevo si no se alcanzó el máximo
+      if (this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+        this.attemptReconnection();
+      }
     }
   }
 
