@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { AzureOpenAIToolsService } from '../services/azure-openai-tools.service';
 import {
   IonHeader,
   IonToolbar,
@@ -247,7 +248,8 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
 
   constructor(
     private http: HttpClient,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private azureToolsService: AzureOpenAIToolsService
   ) {
     addIcons({
       mic,
@@ -361,6 +363,9 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   private sendSessionConfig(): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
+    // Obtener herramientas disponibles del servicio
+    const availableTools = this.azureToolsService.getAvailableTools();
+
     // Configurar la sesión del Realtime API usando la configuración centralizada
     const config = {
       type: 'session.update',
@@ -373,12 +378,14 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
         input_audio_transcription: this.realtimeConfig.inputAudioTranscription,
         turn_detection: this.realtimeConfig.turnDetection,
         temperature: this.realtimeConfig.temperature,
-        max_response_output_tokens: this.realtimeConfig.max_response_output_tokens
+        max_response_output_tokens: this.realtimeConfig.max_response_output_tokens,
+        tools: availableTools // Agregar herramientas disponibles
       }
     };
 
     this.ws.send(JSON.stringify(config));
-    console.log('⚙️ Configuración de sesión enviada:', config);
+    console.log('⚙️ Configuración de sesión enviada con herramientas:', config);
+    console.log(`🔧 Herramientas disponibles: ${availableTools.map(t => t.name).join(', ')}`);
   }
 
   private handleRealtimeMessage(data: string): void {
@@ -485,6 +492,17 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
         case 'pong':
           // Respuesta pong recibida
           this.handlePong();
+          break;
+
+        case 'response.function_call_arguments.delta':
+          // Argumentos parciales de función
+          console.log('🔧 Argumentos de función (delta):', message);
+          break;
+
+        case 'response.function_call_arguments.done':
+          // Argumentos completos de función - ejecutar la herramienta
+          console.log('🔧 Llamada a función completa:', message);
+          this.handleFunctionCall(message);
           break;
 
         case 'error':
@@ -1143,6 +1161,80 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
       // Intentar de nuevo si no se alcanzó el máximo
       if (this.reconnectAttempts < this.realtimeConfig.maxReconnectAttempts) {
         this.attemptReconnection();
+      }
+    }
+  }
+
+  // ==================== MANEJO DE FUNCTION CALLING ====================
+
+  /**
+   * Maneja la llamada a una función desde Azure OpenAI
+   * Ejecuta la herramienta correspondiente y envía el resultado de vuelta
+   */
+  private async handleFunctionCall(message: any): Promise<void> {
+    const callId = message.call_id;
+    const functionName = message.name;
+    const argumentsStr = message.arguments;
+
+    console.log(`🔧 Función llamada: ${functionName}`);
+    console.log(`📝 Call ID: ${callId}`);
+    console.log(`📋 Argumentos (raw): ${argumentsStr}`);
+
+    try {
+      // Parsear argumentos
+      const args = JSON.parse(argumentsStr);
+      console.log(`✅ Argumentos parseados:`, args);
+
+      // Ejecutar la herramienta
+      const result = await this.azureToolsService.executeTool(functionName, args);
+      console.log(`📊 Resultado de la herramienta:`, result);
+
+      // Enviar el resultado de vuelta a Azure OpenAI
+      const functionOutput = {
+        type: 'conversation.item.create',
+        item: {
+          type: 'function_call_output',
+          call_id: callId,
+          output: JSON.stringify(result.success ? result.data : { error: result.error })
+        }
+      };
+
+      console.log(`📤 Enviando resultado de función:`, functionOutput);
+
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(functionOutput));
+
+        // Solicitar una nueva respuesta con el resultado de la función
+        const createResponse = {
+          type: 'response.create'
+        };
+        this.ws.send(JSON.stringify(createResponse));
+        console.log('🔄 Solicitando nueva respuesta con resultado de función');
+      }
+
+    } catch (error) {
+      console.error('❌ Error ejecutando función:', error);
+
+      // Enviar error de vuelta
+      const errorOutput = {
+        type: 'conversation.item.create',
+        item: {
+          type: 'function_call_output',
+          call_id: callId,
+          output: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Error desconocido'
+          })
+        }
+      };
+
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(errorOutput));
+
+        // Solicitar nueva respuesta incluso con error
+        const createResponse = {
+          type: 'response.create'
+        };
+        this.ws.send(JSON.stringify(createResponse));
       }
     }
   }
