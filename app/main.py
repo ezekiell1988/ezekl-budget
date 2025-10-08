@@ -13,7 +13,17 @@ from app.api import api_router, websockets_router_with_prefix
 from app.services.email_queue import email_queue
 import logging
 
-# Configurar logging
+# Configurar logging global
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# Configurar logger específico para auth en nivel INFO para ver los emojis
+auth_logger = logging.getLogger('app.api.routes.auth')
+auth_logger.setLevel(logging.INFO)
+
+# Logger de este módulo
 logger = logging.getLogger(__name__)
 
 
