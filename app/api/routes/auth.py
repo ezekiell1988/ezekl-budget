@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 import logging
 import json
+import aiohttp
 from jose import jwe
 from app.core.config import settings
 from app.database.connection import execute_sp
@@ -570,6 +571,241 @@ async def microsoft_login():
     summary="Callback de autenticación con Microsoft",
     description="Procesa la respuesta de Microsoft Azure AD y completa el login"
 )
+async def microsoft_callback(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    error_description: Optional[str] = None
+):
+    """
+    Callback de Microsoft OAuth2.
+    Procesa el código de autorización y completa el flujo de autenticación.
+    """
+    try:
+        if error:
+            logger.error(f"Error de Microsoft OAuth: {error} - {error_description}")
+            # Redirigir al frontend con error
+            frontend_url = f"{settings.frontend_url}/#/login?microsoft_error={error}"
+            return RedirectResponse(url=frontend_url)
+
+        if not code:
+            logger.error("No se recibió código de autorización de Microsoft")
+            frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=no_code"
+            return RedirectResponse(url=frontend_url)
+
+        # Intercambiar código por token de acceso
+        token_url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/token"
+        
+        token_data = {
+            "client_id": settings.azure_client_id,
+            "client_secret": settings.azure_client_secret,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": f"{settings.backend_url}/api/auth/microsoft/callback",
+            "scope": "openid profile email User.Read"
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(token_url, data=token_data) as token_response:
+                if token_response.status != 200:
+                    error_text = await token_response.text()
+                    logger.error(f"Error obteniendo token: {error_text}")
+                    frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=token_error"
+                    return RedirectResponse(url=frontend_url)
+
+                token_json = await token_response.json()
+        access_token = token_json.get("access_token")
+
+        # Obtener información del usuario de Microsoft Graph
+        graph_url = "https://graph.microsoft.com/v1.0/me"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(graph_url, headers=headers) as user_response:
+                if user_response.status != 200:
+                    error_text = await user_response.text()
+                    logger.error(f"Error obteniendo datos de usuario: {error_text}")
+                    frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=user_error"
+                    return RedirectResponse(url=frontend_url)
+
+                user_data = await user_response.json()
+        
+        # Preparar datos para el stored procedure
+        microsoft_data = {
+            "displayName": user_data.get("displayName", ""),
+            "mail": user_data.get("mail") or user_data.get("userPrincipalName", ""),
+            "id": user_data.get("id", ""),
+            "userPrincipalName": user_data.get("userPrincipalName", ""),
+            "givenName": user_data.get("givenName", ""),
+            "surname": user_data.get("surname", ""),
+            "jobTitle": user_data.get("jobTitle", ""),
+            "mobilePhone": user_data.get("mobilePhone", ""),
+            "businessPhones": ",".join(user_data.get("businessPhones", [])),
+            "officeLocation": user_data.get("officeLocation", ""),
+            "preferredLanguage": user_data.get("preferredLanguage", ""),
+            "department": user_data.get("department", ""),
+            "companyName": user_data.get("companyName", ""),
+            "country": user_data.get("country", ""),
+            "city": user_data.get("city", ""),
+            "postalCode": user_data.get("postalCode", ""),
+            "state": user_data.get("state", ""),
+            "streetAddress": user_data.get("streetAddress", ""),
+            "ageGroup": user_data.get("ageGroup", ""),
+            "consentProvidedForMinor": user_data.get("consentProvidedForMinor", "")
+        }
+
+        # Llamar al stored procedure para manejar el usuario de Microsoft
+        json_param = json.dumps(microsoft_data)
+        result = await execute_stored_procedure("spLoginMicrosoftAddOrEdit", json_param)
+        
+        if not result.get("success"):
+            logger.error(f"Error en stored procedure: {result.get('message')}")
+            frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=db_error"
+            return RedirectResponse(url=frontend_url)
+
+        # Verificar si necesita asociación
+        association_status = result.get("associationStatus", "unknown")
+        
+        if association_status == "needs_association":
+            # Usuario Microsoft no asociado - redirigir para asociación
+            code_login_microsoft = result.get("codeLoginMicrosoft", "")
+            display_name = microsoft_data.get("displayName", "")
+            email = microsoft_data.get("mail", "")
+            
+            frontend_url = (f"{settings.frontend_url}/#/login?"
+                          f"microsoft_pending=true&"
+                          f"codeLoginMicrosoft={code_login_microsoft}&"
+                          f"displayName={display_name}&"
+                          f"email={email}")
+            return RedirectResponse(url=frontend_url)
+        
+        elif association_status == "associated":
+            # Usuario ya asociado - login automático
+            user_login_data = result.get("userData", {})
+            
+            # Crear token JWE para el usuario asociado
+            jwe_token, expiry_date = create_jwe_token(user_login_data)
+            
+            frontend_url = (f"{settings.frontend_url}/#/login?"
+                          f"microsoft_success=true&"
+                          f"microsoft_token={jwe_token}")
+            return RedirectResponse(url=frontend_url)
+        
+        else:
+            logger.error(f"Estado de asociación desconocido: {association_status}")
+            frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=unknown_status"
+            return RedirectResponse(url=frontend_url)
+
+    except Exception as e:
+        logger.error(f"Error en callback de Microsoft: {str(e)}")
+        frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=server_error"
+        return RedirectResponse(url=frontend_url)
+
+
+@router.post(
+    "/microsoft/associate",
+    response_model=LoginResponse,
+    summary="Asociar cuenta Microsoft con usuario existente",
+    description="""Asocia una cuenta de Microsoft con un usuario existente del sistema.
+    
+    Este endpoint:
+    1. Valida que el codeLogin existe en el sistema
+    2. Valida que el codeLoginMicrosoft existe y no está asociado
+    3. Crea la asociación entre ambas cuentas
+    4. **AUTENTICA automáticamente al usuario (igual que spLoginAuth + login())**
+    5. Genera un token JWE de sesión para el usuario
+    6. Retorna el token y datos del usuario
+    
+    **Flujo de uso:**
+    - Usuario se autentica con Microsoft (callback redirige con microsoft_pending=true)
+    - Frontend muestra formulario de asociación
+    - Usuario ingresa su codeLogin existente
+    - Frontend llama este endpoint
+    - Sistema asocia cuentas y autentica automáticamente (misma respuesta que login normal)
+    
+    **Seguridad:**
+    - Validación de existencia de ambos códigos
+    - Prevención de doble asociación
+    - Autenticación completa como en flujo de login normal
+    - Token JWE seguro con expiración
+    """,
+)
+async def associate_microsoft_account(data: dict):
+    """
+    Asocia una cuenta de Microsoft con un usuario existente y lo autentica.
+    
+    Después de asociar exitosamente, hace exactamente lo mismo que:
+    - spLoginAuth.sql (validación y autenticación)
+    - función login() de Python (generación de token JWE)
+    
+    Args:
+        data: {"codeLogin": "ABC123", "codeLoginMicrosoft": "uuid-de-microsoft"}
+
+    Returns:
+        LoginResponse idéntica al login normal con token JWE y datos del usuario
+    """
+    try:
+        code_login = data.get("codeLogin")
+        code_login_microsoft = data.get("codeLoginMicrosoft")
+        
+        if not code_login or not code_login_microsoft:
+            raise HTTPException(
+                status_code=400,
+                detail="codeLogin y codeLoginMicrosoft son requeridos"
+            )
+
+        # Preparar parámetros para el stored procedure de asociación
+        association_data = {
+            "codeLogin": code_login,
+            "codeLoginMicrosoft": code_login_microsoft
+        }
+
+        json_param = json.dumps(association_data)
+        result = await execute_stored_procedure("spLoginLoginMicrosoftAssociate", json_param)
+        
+        if not result.get("success"):
+            error_message = result.get("message", "Error desconocido en la asociación")
+            logger.error(f"Error en asociación: {error_message}")
+            
+            # Determinar tipo de error para respuesta más específica
+            if "not found" in error_message.lower():
+                raise HTTPException(status_code=404, detail=error_message)
+            elif "already associated" in error_message.lower():
+                raise HTTPException(status_code=409, detail=error_message)
+            else:
+                raise HTTPException(status_code=400, detail=error_message)
+
+        # Obtener datos del usuario asociado
+        user_data = result.get("userData", {})
+        
+        if not user_data:
+            logger.error("No se obtuvieron datos del usuario tras la asociación")
+            raise HTTPException(
+                status_code=500, 
+                detail="Error obteniendo datos del usuario"
+            )
+
+        # Crear token JWE para el usuario
+        jwe_token, expiry_date = create_jwe_token(user_data)
+
+        logger.info(f"Asociación exitosa: {code_login} <-> {code_login_microsoft}")
+        
+        return LoginResponse(
+            success=True,
+            message="Autenticación exitosa",
+            user=UserData(**user_data),
+            accessToken=jwe_token,
+            expiresAt=expiry_date.isoformat()
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error inesperado en asociación Microsoft: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error interno del servidor"
+        )
 async def microsoft_callback(code: str = None, state: str = None, error: str = None):
     """Endpoint callback para procesar la respuesta de Microsoft OAuth2."""
     try:

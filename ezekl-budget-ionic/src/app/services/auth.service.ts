@@ -24,7 +24,7 @@ import {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_BASE = '/api/auth';
+  private readonly API_BASE: string;
   private readonly TOKEN_KEY = 'ezekl_auth_token';
   private readonly USER_KEY = 'ezekl_auth_user';
 
@@ -47,6 +47,13 @@ export class AuthService {
   private initPromise: Promise<void>;
 
   constructor(private http: HttpClient) {
+    // Configurar URL base del API según el entorno
+    this.API_BASE = window.location.hostname === 'localhost'
+      ? 'http://localhost:8001/api/auth'
+      : 'https://budget.ezekl.com/api/auth';
+
+    console.log('AuthService: API_BASE configurado como:', this.API_BASE);
+
     // Cargar estado de autenticación al inicializar
     this.initPromise = this.loadAuthState();
   }
@@ -167,36 +174,47 @@ export class AuthService {
         )
       );
 
-      if (response?.success && response.accessToken) {
-        // Guardar datos de autenticación
-        await this.saveAuthData(
-          response.accessToken,
-          response.user as AuthUser,
-          response.expiresAt!
-        );
-
-        // Limpiar wizard
-        this.resetWizard();
-
-        // Actualizar estado de autenticación
-        this.updateAuthState({
-          isAuthenticated: true,
-          user: response.user as AuthUser,
-          token: response.accessToken,
-          expiresAt: new Date(response.expiresAt!)
-        });
-
-      } else {
-        this.updateWizardState({
-          isLoading: false,
-          error: response?.message || 'Error de autenticación'
-        });
-      }
-
+      // Procesar la respuesta usando el método común
+      await this.processLoginResponse(response);
       return response!;
 
     } catch (error) {
       const errorMsg = this.getErrorMessage(error);
+      this.updateWizardState({
+        isLoading: false,
+        error: errorMsg
+      });
+      throw new Error(errorMsg);
+    }
+  }
+
+  /**
+   * Procesa una respuesta de login exitosa (reutilizable para login normal y asociación Microsoft)
+   */
+  async processLoginResponse(response: LoginResponse): Promise<void> {
+    if (response?.success && response.accessToken) {
+      // Guardar datos de autenticación
+      await this.saveAuthData(
+        response.accessToken,
+        response.user as AuthUser,
+        response.expiresAt!
+      );
+
+      // Limpiar wizard
+      this.resetWizard();
+
+      // Actualizar estado de autenticación
+      this.updateAuthState({
+        isAuthenticated: true,
+        user: response.user as AuthUser,
+        token: response.accessToken,
+        expiresAt: new Date(response.expiresAt!)
+      });
+
+      console.log('✅ Login procesado exitosamente por AuthService');
+    } else {
+      // Manejar error en la respuesta
+      const errorMsg = response?.message || 'Error de autenticación';
       this.updateWizardState({
         isLoading: false,
         error: errorMsg
@@ -519,7 +537,9 @@ export class AuthService {
    * Obtener URL para autenticación con Microsoft
    */
   getMicrosoftAuthUrl(): string {
-    return `${this.API_BASE}/microsoft`;
+    const microsoftUrl = `${this.API_BASE}/microsoft`;
+    console.log('AuthService: Microsoft Auth URL:', microsoftUrl);
+    return microsoftUrl;
   }
 
   private getErrorMessage(error: any): string {

@@ -60,7 +60,15 @@ export interface AuthState {
 // Pasos del wizard de login
 export enum LoginStep {
   REQUEST_TOKEN = 'request-token',
-  ENTER_TOKEN = 'enter-token'
+  ENTER_TOKEN = 'enter-token',
+  ASSOCIATE_MICROSOFT = 'associate-microsoft'
+}
+
+// Datos de usuario de Microsoft para asociación
+export interface MicrosoftUserData {
+  codeLoginMicrosoft: string;
+  displayName: string;
+  email: string;
 }
 
 // Estado del wizard de login
@@ -68,6 +76,7 @@ export interface LoginWizardState {
   currentStep: LoginStep;
   codeLogin?: string;
   user?: AuthUser;
+  microsoftData?: MicrosoftUserData;
   isLoading: boolean;
   error?: string;
 }

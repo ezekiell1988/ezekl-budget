@@ -52,7 +52,10 @@ import {
   arrowBack,
   refresh,
   checkmarkCircle,
-  logoMicrosoft
+  logoMicrosoft,
+  informationCircle,
+  linkOutline,
+  closeCircle
 } from 'ionicons/icons';
 
 import { AuthService } from '../services/auth.service';
@@ -101,6 +104,7 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   // Formularios reactivos
   step1Form: FormGroup;
   step2Form: FormGroup;
+  associateForm: FormGroup;
 
   // Observables públicos para el template
   wizardState$: Observable<LoginWizardState>;
@@ -111,6 +115,10 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   // Controles individuales para los 5 dígitos
   tokenControls: FormControl[] = [];
 
+  // Datos temporales para asociación Microsoft
+  microsoftAssociationData: any = null;
+  currentStep = LoginStep.REQUEST_TOKEN;
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -120,7 +128,21 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
     private alertController: AlertController
   ) {
     // Registrar iconos
-    addIcons({wallet,logoMicrosoft,personCircle,alertCircle,mail,person,clipboard,arrowBack,refresh,'checkmarkCircle':checkmarkCircle,});
+    addIcons({
+      wallet,
+      logoMicrosoft,
+      personCircle,
+      alertCircle,
+      linkOutline,
+      informationCircle,
+      closeCircle,
+      mail,
+      person,
+      clipboard,
+      arrowBack,
+      refresh,
+      checkmarkCircle
+    });
 
     // Inicializar formularios
     this.step1Form = this.fb.group({
@@ -149,6 +171,18 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
       digit5: this.tokenControls[4],
     });
 
+    // Formulario para asociar cuenta Microsoft
+    this.associateForm = this.fb.group({
+      codeLogin: [
+        '',
+        [
+          Validators.required,
+          Validators.minLength(1),
+          Validators.maxLength(10),
+        ],
+      ],
+    });
+
     // Suscribirse al estado del wizard
     this.wizardState$ = this.authService.wizardState;
   }
@@ -165,6 +199,16 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
 
     // Resetear wizard al entrar
     this.authService.resetWizard();
+
+    // Suscribirse a cambios del wizard para sincronizar currentStep
+    this.wizardState$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((wizardState) => {
+        // Solo actualizar si no estamos en el step de asociación Microsoft
+        if (this.currentStep !== LoginStep.ASSOCIATE_MICROSOFT && wizardState?.currentStep) {
+          this.currentStep = wizardState.currentStep;
+        }
+      });
 
     // Suscribirse a cambios de autenticación
     this.authService.authState
@@ -206,33 +250,108 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   }
 
   /**
-   * Verifica si hay token de Microsoft en los parámetros de URL
+   * Verifica si hay token de Microsoft o necesidad de asociación en los parámetros de URL
    */
   private async checkForMicrosoftCallback() {
-    // Obtener parámetros de la URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const microsoftToken = urlParams.get('microsoft_token');
-    const microsoftSuccess = urlParams.get('microsoft_success');
-    const microsoftError = urlParams.get('microsoft_error');
+    console.log('🔍 Verificando parámetros de URL usando Angular ActivatedRoute');
+
+    // Usar Angular ActivatedRoute para obtener query parameters
+    let microsoftToken: string | null = null;
+    let microsoftSuccess: string | null = null;
+    let microsoftError: string | null = null;
+    let microsoftPending: string | null = null;
+    let codeLoginMicrosoft: string | null = null;
+    let displayName: string | null = null;
+    let email: string | null = null;
+
+    // Suscribirse a los query parameters
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      microsoftToken = params['microsoft_token'] || null;
+      microsoftSuccess = params['microsoft_success'] || null;
+      microsoftError = params['microsoft_error'] || null;
+      microsoftPending = params['microsoft_pending'] || null;
+      codeLoginMicrosoft = params['codeLoginMicrosoft'] || null;
+      displayName = params['displayName'] || null;
+      email = params['email'] || null;
+
+      console.log('📋 Query parameters detectados:', {
+        microsoftPending,
+        codeLoginMicrosoft: codeLoginMicrosoft ? 'PRESENTE' : 'AUSENTE',
+        displayName: displayName ? decodeURIComponent(displayName) : 'AUSENTE',
+        email: email ? decodeURIComponent(email) : 'AUSENTE',
+        microsoftToken: microsoftToken ? 'PRESENTE' : 'AUSENTE',
+        microsoftSuccess,
+        microsoftError
+      });
+
+      // Log específico para debugging
+      if (microsoftPending === 'true') {
+        console.log('🎯 microsoft_pending=true detectado - Mostrando componente de asociación');
+        console.log('📄 URL completa:', window.location.href);
+      } else {
+        console.log('🏠 microsoft_pending NO detectado - Mostrando componente normal de login');
+      }
+
+      // Procesar los parámetros si están presentes
+      this.processCallbackParameters(microsoftToken, microsoftSuccess, microsoftError, microsoftPending, codeLoginMicrosoft, displayName, email);
+    });
+  }
+
+  /**
+   * Procesa los parámetros del callback de Microsoft
+   */
+  private async processCallbackParameters(
+    microsoftToken: string | null,
+    microsoftSuccess: string | null,
+    microsoftError: string | null,
+    microsoftPending: string | null,
+    codeLoginMicrosoft: string | null,
+    displayName: string | null,
+    email: string | null
+  ) {
 
     // Manejar errores de Microsoft
     if (microsoftError) {
       console.error('Error de autenticación con Microsoft:', microsoftError);
       this.showErrorToast('Error en la autenticación con Microsoft');
       // Limpiar URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
       return;
     }
 
+    // Manejar errores de Microsoft
+    if (microsoftError) {
+      console.error('Error de autenticación con Microsoft:', microsoftError);
+      this.showErrorToast('Error en la autenticación con Microsoft');
+      return;
+    }
+
+    // Manejar asociación pendiente de Microsoft
+    if (microsoftPending === 'true' && codeLoginMicrosoft && displayName && email) {
+      console.log('🔗 Asociación de Microsoft pendiente detectada');
+
+      // Establecer datos de Microsoft (usar propiedades locales)
+      this.microsoftAssociationData = {
+        codeLoginMicrosoft: decodeURIComponent(codeLoginMicrosoft),
+        displayName: decodeURIComponent(displayName),
+        email: decodeURIComponent(email)
+      };
+
+      console.log('💾 Datos de Microsoft guardados:', this.microsoftAssociationData);
+
+      // Cambiar al step de asociación - MANTENER query params
+      this.currentStep = LoginStep.ASSOCIATE_MICROSOFT;
+
+      return; // Salir temprano, no procesar como login exitoso
+    }
+
+    // Manejar token exitoso de Microsoft
     if (microsoftToken && microsoftSuccess === 'true') {
       try {
         console.log('🔑 Procesando token de Microsoft:', microsoftToken);
 
         // Guardar el token directamente en localStorage
         localStorage.setItem('ezekl_auth_token', microsoftToken);
-
-        // Limpiar URL antes de proceder
-        window.history.replaceState({}, document.title, window.location.pathname);
 
         // Mostrar mensaje de éxito
         this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
@@ -260,22 +379,9 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
           }, 1500);
         }
 
-        // Limpiar URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-
-        // Mostrar mensaje de éxito y redirigir
-        this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
-
-        // Forzar recarga para que el AuthService detecte el token
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-
       } catch (error) {
         console.error('Error procesando autenticación de Microsoft:', error);
         this.showErrorToast('Error procesando autenticación de Microsoft');
-        // Limpiar URL en caso de error
-        window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
   }
@@ -467,6 +573,106 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
         inputs[0].setFocus();
       }
     }, 100);
+  }
+
+  /**
+   * Asociar cuenta Microsoft con cuenta existente
+   */
+  async associateMicrosoftAccount() {
+    if (this.associateForm.valid) {
+      try {
+        const codeLogin = this.associateForm.value.codeLogin;
+
+        if (!this.microsoftAssociationData) {
+          this.showErrorToast('Error: Datos de Microsoft no encontrados');
+          return;
+        }
+
+        console.log('🔗 Iniciando asociación de cuentas:', {
+          codeLogin,
+          codeLoginMicrosoft: this.microsoftAssociationData.codeLoginMicrosoft
+        });
+
+        // Mostrar loading mientras se procesa
+        this.showInfoToast('Asociando cuentas...');
+
+        // Llamar al endpoint de asociación
+        console.log('📞 Llamando al API de asociación...');
+        const response = await this.associateMicrosoft(codeLogin, this.microsoftAssociationData.codeLoginMicrosoft);
+        console.log('📨 Respuesta del API:', response);
+
+        if (response.success) {
+          // **HACER EXACTAMENTE LO MISMO QUE EL LOGIN NORMAL**
+          // Usar el AuthService para procesar la respuesta de asociación
+          await this.authService.processLoginResponse(response);
+
+          // Mostrar mensaje de éxito
+          this.showSuccessToast('¡Autenticación exitosa!');
+
+          // El AuthService ya actualizó el estado, el ngOnInit detectará el cambio
+          console.log('✅ Asociación y login procesados por AuthService');
+        }
+
+      } catch (error: any) {
+        console.error('❌ Error en asociación:', error);
+        this.showErrorToast(error.message || 'Error asociando cuenta Microsoft');
+      }
+    }
+  }
+
+  /**
+   * Llama al endpoint de asociación Microsoft
+   */
+  private async associateMicrosoft(codeLogin: string, codeLoginMicrosoft: string): Promise<any> {
+    // Determinar URL del backend según el entorno
+    const backendUrl = window.location.hostname === 'localhost'
+      ? 'http://localhost:8001'
+      : 'https://budget.ezekl.com';
+
+    const url = `${backendUrl}/api/auth/microsoft/associate`;
+
+    const body = {
+      codeLogin: codeLogin,
+      codeLoginMicrosoft: codeLoginMicrosoft
+    };
+
+    console.log('🌐 URL del endpoint:', url);
+    console.log('📦 Body de la request:', body);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
+      });
+
+      console.log('📡 Status de respuesta:', response.status);
+      console.log('📡 Content-Type:', response.headers.get('Content-Type'));
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Error del servidor:', errorData);
+        throw new Error(errorData.detail || `Error HTTP ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('✅ Datos de respuesta exitosa:', responseData);
+      return responseData;
+
+    } catch (error) {
+      console.error('🚨 Error en fetch:', error);
+      throw error;
+    }
+  }  /**
+   * Cancelar asociación de Microsoft
+   */
+  cancelMicrosoftAssociation() {
+    this.microsoftAssociationData = null;
+    this.currentStep = LoginStep.REQUEST_TOKEN;
+    // Resetear el wizard para volver al estado inicial
+    this.authService.resetWizard();
   }
 
   /**

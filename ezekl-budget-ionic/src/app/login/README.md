@@ -12,8 +12,8 @@ Página de autenticación con sistema de verificación en dos pasos (2FA) que so
 - **Microsoft SSO**: Integración con Azure AD para acceso empresarial
 - **Verificación Manual**: Sistema tradicional con token de 5 dígitos enviado por email
 
-### 2. **Wizard de 2 Pasos**
-El proceso de login manual sigue un flujo guiado:
+### 2. **Wizard de 3 Pasos**
+El proceso de login sigue un flujo guiado con múltiples opciones:
 
 #### Paso 1: Solicitud de Token (`REQUEST_TOKEN`)
 - Usuario ingresa su código de usuario
@@ -24,6 +24,12 @@ El proceso de login manual sigue un flujo guiado:
 - Usuario ingresa código de 5 dígitos recibido por email
 - Validación de token y autenticación
 - Redirección automática a `/home` tras éxito
+
+#### Paso 3: Asociación Microsoft (`ASSOCIATE_MICROSOFT`)
+- Se activa cuando hay `microsoft_pending=true` en la URL
+- Usuario vincula su cuenta Microsoft con su cuenta existente
+- Formulario para ingresar código de usuario existente
+- Asociación automática y login tras éxito
 
 ### 3. **Experiencia de Usuario Mejorada**
 
@@ -59,9 +65,10 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
 ```
 
 #### Formularios Reactivos
-- **`step1Form`**: Formulario para código de usuario
-- **`step2Form`**: Formulario para los 5 dígitos del token
-- **`tokenControls`**: Array de 5 FormControls individuales
+- **`step1Form`**: Formulario para código de usuario (paso 1)
+- **`step2Form`**: Formulario para los 5 dígitos del token (paso 2)
+- **`associateForm`**: Formulario para asociación Microsoft (paso 3)
+- **`tokenControls`**: Array de 5 FormControls individuales para el token
 
 #### Observables
 - **`wizardState$`**: Estado global del wizard (paso actual, loading, errores)
@@ -77,12 +84,18 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
 
 ### Flujo con Microsoft
 ```mermaid
-graph LR
+graph TD
     A[Usuario hace clic en Microsoft] --> B[Redirección a Azure AD]
     B --> C[Usuario se autentica]
-    C --> D[Callback con token]
-    D --> E[Guardar token en localStorage]
-    E --> F[Redirección a /home]
+    C --> D{¿Usuario existe en sistema?}
+    D -->|Sí| E[Callback con token JWE]
+    D -->|No| F[Callback con microsoft_pending=true]
+    E --> G[Guardar token y login automático]
+    F --> H[Mostrar formulario de asociación]
+    H --> I[Usuario ingresa código existente]
+    I --> J[Asociar cuentas y login automático]
+    G --> K[Redirección a /home]
+    J --> K
 ```
 
 ### Flujo Manual
@@ -135,15 +148,30 @@ loginWithMicrosoft()
 ```
 - Construye URL de autenticación según entorno (dev/prod)
 - Redirige a Azure AD
+
+### Backend Asociación Microsoft
+```typescript
+POST /api/auth/microsoft/associate
+{
+  "codeLogin": "user_code",           // Código del usuario existente
+  "codeLoginMicrosoft": "ms_code",    // Código Microsoft del callback
+  "displayName": "Usuario",           // Nombre de la cuenta Microsoft
+  "email": "usuario@ejemplo.com"      // Email de la cuenta Microsoft
+}
+```
+- Utiliza `spLoginLoginMicrosoftAssociate` stored procedure
+- Retorna token JWT igual que login normal
+- Aplicación procesa respuesta con `AuthService.processLoginResponse()`
 - Maneja callback automático
 
 ### Callback de Microsoft
 ```typescript
 private checkForMicrosoftCallback()
 ```
-- Detecta parámetros `token` y `expires` en URL
-- Guarda credenciales en localStorage
-- Limpia URL y recarga la página
+- Detecta parámetros en URL: `microsoft_token`, `microsoft_success`, `microsoft_pending`
+- **Login directo**: Si hay token, guarda y autentica automáticamente
+- **Asociación pendiente**: Si hay `microsoft_pending=true`, muestra formulario de asociación
+- Maneja errores de Microsoft OAuth2
 
 ### Solicitud de Token
 ```typescript
@@ -180,6 +208,16 @@ async tryAutoCopy()
 - Valida formato (5 dígitos)
 - Llena inputs automáticamente
 - Auto-submit si es válido
+
+### Asociación de Cuentas Microsoft
+```typescript
+async associateMicrosoftAccount()         // Asociar cuenta Microsoft con usuario existente
+private async associateMicrosoft()        // Llamada al API de asociación
+cancelMicrosoftAssociation()             // Cancelar proceso de asociación
+```
+- **Validación dual**: Verifica código de usuario y código Microsoft
+- **Proceso unificado**: Usa el mismo `AuthService.processLoginResponse()` que el login normal
+- **Autenticación automática**: Después de asociar, autentica inmediatamente
 
 ### Utilidades
 ```typescript

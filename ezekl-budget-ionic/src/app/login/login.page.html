@@ -1,4 +1,4 @@
-<ion-content [fullscreen]="true" class="ion-padding">
+<ion-content [fullscreen]="true" class="ion-padding" [scrollY]="true">
   <div class="login-container">
     <ion-grid fixed>
       <ion-row class="ion-justify-content-center">
@@ -16,7 +16,7 @@
         </div>
 
         <!-- Wizard Step 1: Solicitar código de usuario -->
-        @if ((wizardState$ | async)?.currentStep === loginSteps.REQUEST_TOKEN) {
+        @if (currentStep === loginSteps.REQUEST_TOKEN) {
 
         <!-- Botón de Microsoft Login -->
         <ion-card class="ion-margin microsoft-login-card">
@@ -89,8 +89,87 @@
         </ion-card>
         }
 
-        <!-- Wizard Step 2: Ingresar token -->
-        @if ((wizardState$ | async)?.currentStep === loginSteps.ENTER_TOKEN) {
+        <!-- Wizard Step 2: Asociar cuenta Microsoft -->
+        @if (currentStep === loginSteps.ASSOCIATE_MICROSOFT) {
+
+        <!-- Header compacto con información de Microsoft -->
+        @if (microsoftAssociationData) {
+        <ion-card color="light" class="ion-margin-bottom">
+          <ion-card-content class="ion-text-center">
+            <ion-chip color="primary" outline="true">
+              <ion-icon name="logo-microsoft" slot="start"></ion-icon>
+              <ion-label>Cuenta Microsoft</ion-label>
+            </ion-chip>
+
+            <div class="ion-margin-top">
+              <ion-text color="dark">
+                <h3>{{ microsoftAssociationData.displayName }}</h3>
+              </ion-text>
+              <ion-text color="medium">
+                <p>{{ microsoftAssociationData.email }}</p>
+              </ion-text>
+            </div>
+          </ion-card-content>
+        </ion-card>
+        }
+
+        <!-- Formulario de asociación -->
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title color="primary">
+              <ion-icon name="link-outline" slot="start"></ion-icon>
+              Asociar con Usuario Existente
+            </ion-card-title>
+          </ion-card-header>
+
+          <ion-card-content>
+            <form [formGroup]="associateForm" (ngSubmit)="associateMicrosoftAccount()">
+
+              <!-- Información -->
+              <div class="ion-text-center ion-margin-bottom">
+                <ion-chip color="primary" outline="true">
+                  <ion-icon name="information-circle" slot="start"></ion-icon>
+                  <ion-label>Ingresa tu código de usuario para vincular</ion-label>
+                </ion-chip>
+              </div>
+
+              <ion-item fill="outline" class="ion-margin-vertical">
+                <ion-input
+                  formControlName="codeLogin"
+                  label="Código de Usuario"
+                  labelPlacement="stacked"
+                  placeholder="Ej: ABC123"
+                  maxlength="10"
+                  clearInput="true">
+                </ion-input>
+              </ion-item>
+
+              <!-- Botón principal -->
+              <ion-button
+                expand="full"
+                type="submit"
+                [disabled]="associateForm.invalid"
+                color="primary"
+                class="ion-margin-top">
+                <ion-icon name="link-outline" slot="start"></ion-icon>
+                Vincular Cuentas
+              </ion-button>
+
+              <ion-button
+                fill="clear"
+                expand="full"
+                (click)="cancelMicrosoftAssociation()"
+                color="medium"
+                class="ion-margin-top">
+                <ion-icon name="close-circle" slot="start"></ion-icon>
+                Cancelar
+              </ion-button>
+
+            </form>
+          </ion-card-content>
+        </ion-card>
+        }        <!-- Wizard Step 3: Ingresar token -->
+        @if (currentStep === loginSteps.ENTER_TOKEN) {
         <ion-card class="ion-margin">
           <ion-card-header>
             <ion-card-title color="primary">
