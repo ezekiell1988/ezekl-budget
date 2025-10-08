@@ -694,7 +694,7 @@ async def microsoft_callback(
             
             redirect_url = (f"{settings.effective_url_base}/#/login?"
                           f"microsoft_success=true&"
-                          f"microsoft_token={jwe_token}")
+                          f"token={jwe_token}")
             return RedirectResponse(url=redirect_url)
         
         else:
