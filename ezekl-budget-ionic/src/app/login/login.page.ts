@@ -350,8 +350,15 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
       try {
         console.log('🔑 Procesando token de Microsoft:', microsoftToken);
 
-        // Guardar el token directamente en localStorage
-        localStorage.setItem('ezekl_auth_token', microsoftToken);
+        // Limpiar el token de formato bytes si es necesario
+        let cleanToken = microsoftToken;
+        if (cleanToken.startsWith("b'") && cleanToken.endsWith("'")) {
+          cleanToken = cleanToken.slice(2, -1); // Remover b' y '
+          console.log('🧹 Token limpiado de formato bytes:', cleanToken);
+        }
+
+        // Guardar el token limpio en localStorage
+        localStorage.setItem('ezekl_auth_token', cleanToken);
 
         // Mostrar mensaje de éxito
         this.showSuccessToast('¡Autenticación con Microsoft exitosa!');

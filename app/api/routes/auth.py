@@ -65,12 +65,18 @@ def create_jwe_token(user_data: Dict[str, Any]) -> tuple[str, datetime]:
     }
 
     # Crear token JWE (convertir clave a bytes)
-    token = jwe.encrypt(
+    token_bytes = jwe.encrypt(
         json.dumps(payload),
         JWE_SECRET_KEY.encode('utf-8'),
         algorithm=JWE_ALGORITHM,
         encryption=JWE_ENCRYPTION,
     )
+    
+    # Convertir bytes a string si es necesario
+    if isinstance(token_bytes, bytes):
+        token = token_bytes.decode('utf-8')
+    else:
+        token = token_bytes
 
     return token, expiry
 
