@@ -550,7 +550,7 @@ async def microsoft_login():
         params = {
             "client_id": settings.azure_client_id,
             "response_type": "code",
-            "redirect_uri": "https://budget.ezekl.com/api/auth/microsoft/callback",
+            "redirect_uri": f"{settings.effective_url_base}/api/auth/microsoft/callback",
             "scope": "openid profile email User.Read",
             "response_mode": "query",
             "state": "security_token_here"  # En producción, usar un token seguro
