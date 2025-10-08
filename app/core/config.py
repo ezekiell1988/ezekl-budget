@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     
     # Configuración de Microsoft Azure AD (opcional para autenticación)
     azure_client_id: Optional[str] = None
+    azure_client_secret: Optional[str] = None
     azure_tenant_id: Optional[str] = None
     
     # Configuración de autenticación JWE (debe ser exactamente 32 bytes)

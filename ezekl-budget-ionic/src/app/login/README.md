@@ -257,6 +257,50 @@ height: 60px;              // Desktop/Tablet
 - Token JWT desde backend
 - Almacenamiento seguro en localStorage
 
+## ☁️ Configuración de Microsoft Azure AD
+
+### **Aplicación Registrada en Azure**
+- **Display Name**: `budget-app-temp-ezequiel-dev`
+- **Application (Client) ID**: `b5c4ceb3-9bf1-4a1f-8e4e-72b852d771e9`
+- **Directory (Tenant) ID**: `2f80d4e1-da0e-4b6d-84da-30f67e280e4b`
+- **Client Secret**: `[Configurado en variables de entorno - Ver .env]`
+
+### **URLs de Redirección Configuradas**
+- **Callback URL**: `https://budget.ezekl.com/api/auth/microsoft/callback`
+- **Tipo**: Web Application
+- **Plataforma**: Web
+
+### **Permisos de API Requeridos**
+- **Microsoft Graph**:
+  - `openid` - Permitir inicio de sesión y lectura del perfil del usuario
+  - `profile` - Ver perfil básico del usuario
+  - `email` - Ver dirección de email del usuario
+  - `User.Read` - Iniciar sesión y leer perfil del usuario
+
+### **Configuración del Backend**
+Variables de entorno en `.env`:
+```bash
+AZURE_CLIENT_ID=b5c4ceb3-9bf1-4a1f-8e4e-72b852d771e9
+AZURE_CLIENT_SECRET=[Secret configurado - Ver Azure Portal]
+AZURE_TENANT_ID=2f80d4e1-da0e-4b6d-84da-30f67e280e4b
+```
+
+> ⚠️ **Importante**: El `AZURE_CLIENT_SECRET` debe configurarse desde Azure Portal y nunca debe ser expuesto en el código fuente o documentación pública.
+
+### **Endpoints del Backend**
+- **Iniciar autenticación**: `/api/auth/microsoft`
+- **Callback de Azure**: `/api/auth/microsoft/callback`
+
+### **Flujo OAuth 2.0**
+1. Usuario hace clic en "Iniciar sesión con Microsoft"
+2. Redirección a `https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/authorize`
+3. Usuario se autentica en Microsoft
+4. Azure redirige a callback con código de autorización
+5. Backend intercambia código por access token
+6. Backend consulta Microsoft Graph para datos del usuario
+7. Backend genera token JWE y redirige al frontend
+8. Frontend procesa token y autentica al usuario
+
 ### Validaciones
 - Código de usuario: 1-10 caracteres
 - Token: Exactamente 5 dígitos numéricos

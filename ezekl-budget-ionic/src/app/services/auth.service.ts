@@ -515,6 +515,13 @@ export class AuthService {
     this.wizardState$.next({ ...currentState, ...newState });
   }
 
+  /**
+   * Obtener URL para autenticación con Microsoft
+   */
+  getMicrosoftAuthUrl(): string {
+    return `${this.API_BASE}/microsoft`;
+  }
+
   private getErrorMessage(error: any): string {
     if (error instanceof HttpErrorResponse) {
       if (error.error?.detail) {

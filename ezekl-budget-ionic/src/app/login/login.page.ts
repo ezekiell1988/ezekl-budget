@@ -255,27 +255,14 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
    */
   loginWithMicrosoft() {
     try {
-      // Redirigir a la URL de autenticación de Microsoft en el backend
-      const microsoftUrl = `${this.getMicrosoftLoginUrl()}/api/auth/microsoft/login`;
+      // Usar el servicio de autenticación para obtener la URL de Microsoft
+      const microsoftUrl = this.authService.getMicrosoftAuthUrl();
 
       // Abrir en la misma ventana para manejar el callback correctamente
       window.location.href = microsoftUrl;
 
     } catch (error: any) {
       this.showErrorToast(error.message || 'Error iniciando sesión con Microsoft');
-    }
-  }
-
-  /**
-   * Obtiene la URL base para la autenticación de Microsoft
-   */
-  private getMicrosoftLoginUrl(): string {
-    // En desarrollo: localhost:8001
-    // En producción: https://budget.ezekl.com
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:8001';
-    } else {
-      return 'https://budget.ezekl.com';
     }
   }
 

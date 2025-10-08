@@ -4,6 +4,7 @@ Maneja el flujo de login de 2 pasos con tokens temporales y JWE.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi.responses import RedirectResponse
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 import logging
@@ -517,3 +518,142 @@ async def logout():
     except Exception as e:
         logger.error(f"Error en logout: {str(e)}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@router.get(
+    "/microsoft",
+    summary="Iniciar autenticación con Microsoft",
+    description="Redirige al usuario a Microsoft Azure AD para autenticación OAuth2"
+)
+async def microsoft_login():
+    """Endpoint para iniciar el flujo de autenticación con Microsoft."""
+    try:
+        # Validar que las credenciales de Azure AD estén configuradas
+        if not all([settings.azure_client_id, settings.azure_tenant_id, settings.azure_client_secret]):
+            logger.error("❌ Credenciales de Azure AD no configuradas")
+            raise HTTPException(
+                status_code=500, 
+                detail="Autenticación con Microsoft no está configurada"
+            )
+        
+        # Construir URL de autorización de Microsoft
+        base_url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/authorize"
+        
+        # Parámetros para la autenticación OAuth2
+        params = {
+            "client_id": settings.azure_client_id,
+            "response_type": "code",
+            "redirect_uri": "https://budget.ezekl.com/api/auth/microsoft/callback",
+            "scope": "openid profile email User.Read",
+            "response_mode": "query",
+            "state": "security_token_here"  # En producción, usar un token seguro
+        }
+        
+        # Construir URL completa
+        from urllib.parse import urlencode
+        auth_url = f"{base_url}?{urlencode(params)}"
+        
+        logger.info(f"🔗 Redirigiendo a Microsoft para autenticación: {auth_url}")
+        
+        # Redirigir al usuario a Microsoft
+        return RedirectResponse(url=auth_url)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"💥 Error al construir URL de Microsoft: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@router.get(
+    "/microsoft/callback",
+    summary="Callback de autenticación con Microsoft",
+    description="Procesa la respuesta de Microsoft Azure AD y completa el login"
+)
+async def microsoft_callback(code: str = None, state: str = None, error: str = None):
+    """Endpoint callback para procesar la respuesta de Microsoft OAuth2."""
+    try:
+        logger.info(f"🔄 Procesando callback de Microsoft - Code: {bool(code)}, Error: {error}")
+        
+        # Verificar si hay errores en la respuesta
+        if error:
+            logger.warning(f"❌ Error en callback de Microsoft: {error}")
+            # Redirigir al frontend con error
+            return RedirectResponse(url="/?microsoft_error=access_denied")
+        
+        if not code:
+            logger.warning("❌ No se recibió código de autorización de Microsoft")
+            return RedirectResponse(url="/?microsoft_error=no_code")
+        
+        # Intercambiar código por token de acceso
+        import httpx
+        token_url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/token"
+        
+        token_data = {
+            "client_id": settings.azure_client_id,
+            "client_secret": settings.azure_client_secret,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": "https://budget.ezekl.com/api/auth/microsoft/callback",
+        }
+        
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(token_url, data=token_data)
+            token_result = token_response.json()
+        
+        if token_response.status_code != 200:
+            logger.error(f"❌ Error obteniendo token de Microsoft: {token_result}")
+            return RedirectResponse(url="/?microsoft_error=token_failed")
+        
+        access_token = token_result.get("access_token")
+        if not access_token:
+            logger.error("❌ No se recibió access_token de Microsoft")
+            return RedirectResponse(url="/?microsoft_error=no_token")
+        
+        # Obtener información del usuario de Microsoft Graph
+        graph_url = "https://graph.microsoft.com/v1.0/me"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        
+        async with httpx.AsyncClient() as client:
+            user_response = await client.get(graph_url, headers=headers)
+            user_data = user_response.json()
+        
+        if user_response.status_code != 200:
+            logger.error(f"❌ Error obteniendo datos del usuario de Microsoft: {user_data}")
+            return RedirectResponse(url="/?microsoft_error=user_failed")
+        
+        # Extraer información del usuario
+        microsoft_email = user_data.get("mail") or user_data.get("userPrincipalName")
+        microsoft_name = user_data.get("displayName", "")
+        
+        logger.info(f"✅ Usuario autenticado con Microsoft: {microsoft_email} - {microsoft_name}")
+        
+        # Aquí deberías buscar al usuario en tu base de datos por email
+        # y crear/actualizar su información según sea necesario
+        
+        # Por ahora, crear un token JWE temporal con los datos de Microsoft
+        user_data_for_token = {
+            "codeLogin": microsoft_email,  # Usar email como codeLogin temporal
+            "name": microsoft_name,
+            "email": microsoft_email,
+            "position": "Usuario Microsoft",
+            "department": "Externo",
+            "permissions": ["user"]  # Permisos básicos
+        }
+        
+        jwe_token, expiry_datetime = create_jwe_token(user_data_for_token)
+        
+        # Redirigir al frontend con el token
+        from urllib.parse import urlencode
+        redirect_params = {
+            "microsoft_token": jwe_token,
+            "microsoft_success": "true"
+        }
+        redirect_url = f"/?{urlencode(redirect_params)}"
+        
+        logger.info(f"🚀 Redirigiendo usuario autenticado al frontend: {microsoft_email}")
+        return RedirectResponse(url=redirect_url)
+        
+    except Exception as e:
+        logger.error(f"💥 Error inesperado en callback de Microsoft: {str(e)}")
+        return RedirectResponse(url="/?microsoft_error=internal_error")
