@@ -622,35 +622,85 @@ async def microsoft_callback(code: str = None, state: str = None, error: str = N
             logger.error(f"❌ Error obteniendo datos del usuario de Microsoft: {user_data}")
             return RedirectResponse(url="/#/login?microsoft_error=user_failed")
         
-        # Extraer información del usuario
+        # Extraer información del usuario de Microsoft
         microsoft_email = user_data.get("mail") or user_data.get("userPrincipalName")
         microsoft_name = user_data.get("displayName", "")
+        microsoft_user_id = user_data.get("id", "")
         
         logger.info(f"✅ Usuario autenticado con Microsoft: {microsoft_email} - {microsoft_name}")
         
-        # Aquí deberías buscar al usuario en tu base de datos por email
-        # y crear/actualizar su información según sea necesario
-        
-        # Por ahora, crear un token JWE temporal con los datos de Microsoft
-        user_data_for_token = {
-            "codeLogin": microsoft_email,  # Usar email como codeLogin temporal
-            "name": microsoft_name,
-            "email": microsoft_email,
-            "position": "Usuario Microsoft",
-            "department": "Externo",
-            "permissions": ["user"]  # Permisos básicos
+        # Preparar datos completos de Microsoft para el stored procedure
+        microsoft_data = {
+            "id": microsoft_user_id,
+            "mail": user_data.get("mail"),
+            "displayName": user_data.get("displayName"),
+            "userPrincipalName": user_data.get("userPrincipalName"),
+            "givenName": user_data.get("givenName"),
+            "surname": user_data.get("surname"),
+            "jobTitle": user_data.get("jobTitle"),
+            "department": user_data.get("department"),
+            "companyName": user_data.get("companyName"),
+            "officeLocation": user_data.get("officeLocation"),
+            "businessPhones": user_data.get("businessPhones"),
+            "mobilePhone": user_data.get("mobilePhone"),
+            "tenantId": settings.azure_tenant_id,  # Agregar tenant ID de configuración
+            "preferredLanguage": user_data.get("preferredLanguage"),
+            "accessToken": access_token,  # Guardar token de acceso
+            "refreshToken": token_result.get("refresh_token"),
+            "tokenExpiresAt": None  # Se puede calcular basado en expires_in
         }
         
-        jwe_token, expiry_datetime = create_jwe_token(user_data_for_token)
+        # Guardar/actualizar usuario de Microsoft en base de datos
+        json_param = json.dumps(microsoft_data)
+        db_result = await execute_stored_procedure("spLoginMicrosoftAddOrEdit", json_param)
         
-        # Redirigir al frontend con el token
+        if not db_result.get("success", False):
+            logger.error(f"❌ Error guardando usuario Microsoft: {db_result.get('message', 'Error desconocido')}")
+            return RedirectResponse(url="/#/login?microsoft_error=database_error")
+        
+        # Obtener datos del usuario guardado y verificar asociación
+        microsoft_user_info = db_result.get("microsoftUser", {})
+        association_status = db_result.get("associationStatus", "needs_association")
+        linked_user = db_result.get("linkedUser")
+        
+        logger.info(f"✅ Usuario Microsoft {db_result.get('operation', 'procesado')} - Estado: {association_status}")
+        
         from urllib.parse import urlencode
-        redirect_params = {
-            "microsoft_token": jwe_token,
-            "microsoft_success": "true"
-        }
-        # Redirigir a la página de login donde está el código que maneja el callback de Microsoft
-        redirect_url = f"/#/login?{urlencode(redirect_params)}"
+        
+        # Si está asociado con tbLogin, hacer login completo con nuestro JWE
+        if association_status == "associated" and linked_user:
+            logger.info(f"🔗 Usuario Microsoft asociado con cuenta local: {linked_user.get('codeLogin')}")
+            
+            # Crear token JWE con datos de tbLogin (como spLoginAuth)
+            user_data_for_token = {
+                "codeLogin": linked_user.get("codeLogin"),
+                "name": linked_user.get("name"),
+                "email": linked_user.get("email"),
+                "phone": linked_user.get("phone", ""),
+                "source": "microsoft",
+                "microsoftUserId": linked_user.get("microsoftUserId")
+            }
+            
+            jwe_token, expiry_datetime = create_jwe_token(user_data_for_token)
+            
+            # Redirigir con login completo
+            redirect_params = {
+                "microsoft_token": jwe_token,
+                "microsoft_success": "true"
+            }
+            redirect_url = f"/#/login?{urlencode(redirect_params)}"
+            
+        else:
+            # No está asociado - redirigir para asociación de cuenta
+            logger.info(f"🔄 Usuario Microsoft requiere asociación con cuenta local")
+            
+            redirect_params = {
+                "microsoft_pending": "true",
+                "codeLoginMicrosoft": microsoft_user_info.get("microsoftUserId", microsoft_user_id),
+                "displayName": microsoft_user_info.get("displayName", microsoft_name),
+                "email": microsoft_user_info.get("email", microsoft_email)
+            }
+            redirect_url = f"/#/login?{urlencode(redirect_params)}"
         
         logger.info(f"🚀 Redirigiendo usuario autenticado al frontend: {microsoft_email}")
         return RedirectResponse(url=redirect_url)

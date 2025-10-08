@@ -6,7 +6,7 @@
     Autor: ChatGPT (GPT-5)
 ********************************************************************/
 
-DECLARE @TableName SYSNAME = 'tbAccountingAccount';
+DECLARE @TableName SYSNAME = 'tbLoginMicrosoft';
 -- 🔧 Cambiar por el nombre de la tabla
 DECLARE @SchemaName SYSNAME = 'dbo';
 -- 🔧 Cambiar si tu esquema es distinto

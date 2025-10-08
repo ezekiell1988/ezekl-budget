@@ -16,7 +16,8 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **WebSocket en tiempo real** con ping-pong y reconexión automática
 - **Cliente HTTP asíncrono** con `aiohttp` y soporte completo para todos los verbos HTTP
 - **Procesamiento de emails** via Azure Event Grid con descarga asíncrona de contenido MIME
-- **Sistema de autenticación completo** - 2 pasos con tokens por email + JWT/JWE
+- **Sistema de autenticación dual** - Login manual (2FA) + Microsoft OAuth2 SSO
+- **Microsoft OAuth2** - Azure AD con asociación de cuentas automática
 - **Cola de emails en background** - Envío asíncrono sin bloquear API
 - **Azure OpenAI** integration
 - **SQL Server** con conexiones asíncronas y stored procedures
@@ -34,6 +35,7 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **API**: https://budget.ezekl.com/api/*
 - **API Docs**: https://budget.ezekl.com/docs
 - **API Health**: https://budget.ezekl.com/api/health
+- **Microsoft Auth**: https://budget.ezekl.com/api/auth/microsoft
 - **WebSocket**: wss://budget.ezekl.com/ws/ (tiempo real)
 
 ## � Inicio Rápido (Desarrollo Local)
@@ -130,9 +132,10 @@ AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-azure-openai-api-key
 AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 
-# Microsoft Azure AD (para autenticación)
+# Microsoft Azure AD (OAuth2 SSO)
 AZURE_CLIENT_ID=your-client-id-from-azure-ad
 AZURE_TENANT_ID=your-tenant-id-from-azure-ad
+AZURE_CLIENT_SECRET=your-client-secret-from-azure-ad
 
 # Deployment Configuration
 DEPLOY_HOST=20.246.83.239
@@ -175,31 +178,51 @@ La aplicación detecta automáticamente si está en producción y usa `localhost
 - **Usuario**: `budgetuser` (permisos limitados)
 - **Puerto**: 1433 (estándar SQL Server)
 
-#### Sistema de Autenticación Implementado
+#### Sistema de Autenticación Dual Implementado
 
-La aplicación incluye un **sistema completo de autenticación de dos factores**:
+La aplicación incluye **dos métodos de autenticación**:
 
-##### Arquitectura de Autenticación
-- **Paso 1**: Usuario solicita acceso con `codeLogin`
-- **Paso 2**: Sistema genera token temporal y lo envía por email
-- **Paso 3**: Usuario verifica token y recibe JWT para sesiones
-- **JWT Format**: JWE (JSON Web Encryption) para mayor seguridad
+##### 🔐 Autenticación Manual (2FA)
+Sistema tradicional de dos factores con tokens por email:
+
+**Flujo Manual:**
+- **Paso 1**: Usuario ingresa `codeLogin`
+- **Paso 2**: Sistema genera token de 5 dígitos y envía por email
+- **Paso 3**: Usuario verifica token y recibe JWE para sesiones
+
+##### 🏢 Microsoft OAuth2 SSO
+Single Sign-On empresarial con Azure AD:
+
+**Flujo Microsoft:**
+- **Paso 1**: Usuario hace clic en "Login with Microsoft"
+- **Paso 2**: Redirección a Azure AD para autenticación
+- **Paso 3**: Sistema verifica si está asociado con cuenta local:
+  - ✅ **Si asociado**: Login automático con JWE
+  - 🔄 **No asociado**: Solicita asociación con `codeLogin` existente
+
+**Características:**
+- ✅ **Asociación automática** - Vincula cuentas Microsoft con usuarios locales
+- ✅ **Datos completos** - Obtiene perfil, email, departamento de Microsoft Graph
+- ✅ **Tokens seguros** - Almacena access/refresh tokens encriptados
+- ✅ **Login unificado** - Mismo JWE para ambos métodos tras asociación
 
 ##### Stored Procedures de Autenticación
 ```sql
--- Generar token y enviarlo por email
+-- Autenticación manual (2FA)
 EXEC spLoginTokenAdd @json = '{"codeLogin": "S"}'
-
--- Verificar token y autenticar usuario  
 EXEC spLoginAuth @json = '{"codeLogin": "S", "token": "123456"}'
+
+-- Microsoft OAuth2 (nuevo)
+EXEC spLoginMicrosoftAddOrEdit @json = '{"id": "microsoft_user_id", "mail": "user@company.com", ...}'
 ```
 
 ##### Características de Seguridad
-- ✅ **Tokens temporales** - Expiración en 10 minutos
+- ✅ **Dual authentication** - Login manual 2FA + Microsoft SSO
+- ✅ **Microsoft Azure AD** - OAuth2 con asociación automática de cuentas
+- ✅ **Tokens temporales** - Expiración en 10 minutos (manual)
 - ✅ **JWE encryption** - No solo firmado, sino encriptado
 - ✅ **Email queue** - Envío asíncrono en background
-- ✅ **Rate limiting** - Prevención de spam de tokens
-- ✅ **Logout seguro** - Invalidación de JWT
+- ✅ **Account linking** - Usuarios Microsoft se asocian con cuentas locales
 - ✅ **Base de datos** - Validación mediante stored procedures
 
 ### 4.5. Cliente HTTP Asíncrono (HTTPClient)
@@ -395,6 +418,7 @@ AZURE_OPENAI_DEPLOYMENT_NAME=tu_deployment_name
 AZURE_COMMUNICATION_ENDPOINT=tu_endpoint_de_communication_services
 AZURE_COMMUNICATION_KEY=tu_primary_key_de_communication_services
 AZURE_COMMUNICATION_SENDER_ADDRESS=noreply@tudominio.com
+AZURE_CLIENT_SECRET=tu_client_secret_de_azure_ad
 DB_PASSWORD=tu_contraseña_de_base_de_datos
 ```
 
