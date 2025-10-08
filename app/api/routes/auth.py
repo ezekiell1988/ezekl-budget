@@ -579,11 +579,11 @@ async def microsoft_callback(code: str = None, state: str = None, error: str = N
         if error:
             logger.warning(f"❌ Error en callback de Microsoft: {error}")
             # Redirigir al frontend con error
-            return RedirectResponse(url="/?microsoft_error=access_denied")
+            return RedirectResponse(url="/#/login?microsoft_error=access_denied")
         
         if not code:
             logger.warning("❌ No se recibió código de autorización de Microsoft")
-            return RedirectResponse(url="/?microsoft_error=no_code")
+            return RedirectResponse(url="/#/login?microsoft_error=no_code")
         
         # Intercambiar código por token de acceso
         import httpx
@@ -603,12 +603,12 @@ async def microsoft_callback(code: str = None, state: str = None, error: str = N
         
         if token_response.status_code != 200:
             logger.error(f"❌ Error obteniendo token de Microsoft: {token_result}")
-            return RedirectResponse(url="/?microsoft_error=token_failed")
+            return RedirectResponse(url="/#/login?microsoft_error=token_failed")
         
         access_token = token_result.get("access_token")
         if not access_token:
             logger.error("❌ No se recibió access_token de Microsoft")
-            return RedirectResponse(url="/?microsoft_error=no_token")
+            return RedirectResponse(url="/#/login?microsoft_error=no_token")
         
         # Obtener información del usuario de Microsoft Graph
         graph_url = "https://graph.microsoft.com/v1.0/me"
@@ -620,7 +620,7 @@ async def microsoft_callback(code: str = None, state: str = None, error: str = N
         
         if user_response.status_code != 200:
             logger.error(f"❌ Error obteniendo datos del usuario de Microsoft: {user_data}")
-            return RedirectResponse(url="/?microsoft_error=user_failed")
+            return RedirectResponse(url="/#/login?microsoft_error=user_failed")
         
         # Extraer información del usuario
         microsoft_email = user_data.get("mail") or user_data.get("userPrincipalName")
@@ -649,11 +649,12 @@ async def microsoft_callback(code: str = None, state: str = None, error: str = N
             "microsoft_token": jwe_token,
             "microsoft_success": "true"
         }
-        redirect_url = f"/?{urlencode(redirect_params)}"
+        # Redirigir a la página de login donde está el código que maneja el callback de Microsoft
+        redirect_url = f"/#/login?{urlencode(redirect_params)}"
         
         logger.info(f"🚀 Redirigiendo usuario autenticado al frontend: {microsoft_email}")
         return RedirectResponse(url=redirect_url)
         
     except Exception as e:
         logger.error(f"💥 Error inesperado en callback de Microsoft: {str(e)}")
-        return RedirectResponse(url="/?microsoft_error=internal_error")
+        return RedirectResponse(url="/#/login?microsoft_error=internal_error")

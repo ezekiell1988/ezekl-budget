@@ -227,16 +227,16 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
     if (microsoftToken && microsoftSuccess === 'true') {
       try {
         console.log('🔑 Procesando token de Microsoft:', microsoftToken);
-        
+
         // Guardar el token directamente en localStorage
         localStorage.setItem('ezekl_auth_token', microsoftToken);
-        
+
         // Limpiar URL antes de proceder
         window.history.replaceState({}, document.title, window.location.pathname);
-        
+
         // Mostrar mensaje de éxito
         this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
-        
+
         // Intentar verificar el token para obtener datos del usuario
         try {
           const isTokenValid = await this.authService.verifyToken();
