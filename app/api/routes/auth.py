@@ -586,7 +586,7 @@ async def microsoft_callback(code: str = None, state: str = None, error: str = N
             return RedirectResponse(url="/#/login?microsoft_error=no_code")
         
         # Intercambiar código por token de acceso
-        import httpx
+        import aiohttp
         token_url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/token"
         
         token_data = {
@@ -597,11 +597,11 @@ async def microsoft_callback(code: str = None, state: str = None, error: str = N
             "redirect_uri": "https://budget.ezekl.com/api/auth/microsoft/callback",
         }
         
-        async with httpx.AsyncClient() as client:
-            token_response = await client.post(token_url, data=token_data)
-            token_result = token_response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(token_url, data=token_data) as token_response:
+                token_result = await token_response.json()
         
-        if token_response.status_code != 200:
+        if token_response.status != 200:
             logger.error(f"❌ Error obteniendo token de Microsoft: {token_result}")
             return RedirectResponse(url="/#/login?microsoft_error=token_failed")
         
@@ -614,11 +614,11 @@ async def microsoft_callback(code: str = None, state: str = None, error: str = N
         graph_url = "https://graph.microsoft.com/v1.0/me"
         headers = {"Authorization": f"Bearer {access_token}"}
         
-        async with httpx.AsyncClient() as client:
-            user_response = await client.get(graph_url, headers=headers)
-            user_data = user_response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(graph_url, headers=headers) as user_response:
+                user_data = await user_response.json()
         
-        if user_response.status_code != 200:
+        if user_response.status != 200:
             logger.error(f"❌ Error obteniendo datos del usuario de Microsoft: {user_data}")
             return RedirectResponse(url="/#/login?microsoft_error=user_failed")
         
