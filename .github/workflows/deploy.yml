@@ -60,6 +60,9 @@ jobs:
           AZURE_COMMUNICATION_ENDPOINT=${{ secrets.AZURE_COMMUNICATION_ENDPOINT }}
           AZURE_COMMUNICATION_KEY=${{ secrets.AZURE_COMMUNICATION_KEY }}
           AZURE_COMMUNICATION_SENDER_ADDRESS=${{ secrets.AZURE_COMMUNICATION_SENDER_ADDRESS }}
+          AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
           PORT=$DEPLOY_PORT
           DB_HOST=localhost
           DB_PORT=1433
@@ -68,6 +71,7 @@ jobs:
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_DRIVER=ODBC Driver 18 for SQL Server
           DB_TRUST_CERT=yes
+          ENVIRONMENT=production
           EOF
           fi
           
