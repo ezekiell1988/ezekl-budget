@@ -364,20 +364,46 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
         const cleanUrl = window.location.pathname + window.location.hash.split('?')[0];
         window.history.replaceState({}, document.title, cleanUrl);
 
-        // Usar Preferences (como hace el AuthService internamente) para guardar el token
-        console.log('💾 Guardando token en Preferences...');
-        await Preferences.set({ key: 'ezekl_auth_token', value: cleanToken });
+        // Usar el token para obtener información completa del usuario
+        console.log('� Verificando token con el servidor para obtener datos del usuario...');
 
-        // Mostrar mensaje de éxito
-        this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
-
-        // Usar el método processLoginResponse simulando una respuesta exitosa
-        // Esto activa todo el flujo normal de autenticación
-        console.log('⚡ Activando flujo de autenticación del sistema...');
-
-        // Forzar inicialización del AuthService para que cargue el token guardado
         try {
-          await this.authService.ensureInitialized();
+          // Llamar al endpoint verify-token para obtener los datos completos del usuario
+          const backendUrl = window.location.hostname === 'localhost'
+            ? 'http://localhost:8001'
+            : 'https://budget.ezekl.com';
+
+          const response = await fetch(`${backendUrl}/api/auth/verify-token`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${cleanToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`Error HTTP ${response.status}`);
+          }
+
+          const verifyData = await response.json();
+          console.log('📋 Datos del usuario obtenidos:', verifyData);
+
+          // Crear objeto LoginResponse completo como lo esperaría processLoginResponse
+          const loginResponse = {
+            success: true,
+            message: 'Autenticación con Microsoft exitosa',
+            accessToken: cleanToken,
+            user: verifyData.user,
+            expiresAt: verifyData.expiresAt
+          };
+
+          console.log('⚡ Procesando respuesta completa con AuthService...');
+
+          // Usar el método processLoginResponse con datos completos
+          await this.authService.processLoginResponse(loginResponse);
+
+          // Mostrar mensaje de éxito
+          this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
 
           // Verificar que se autenticó correctamente
           if (this.authService.isAuthenticated) {
@@ -386,12 +412,13 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
               this.router.navigate(['/home']);
             }, 500);
           } else {
-            console.error('❌ AuthService no detectó autenticación');
+            console.error('❌ AuthService no detectó autenticación tras processLoginResponse');
             this.showErrorToast('Error procesando autenticación');
           }
+
         } catch (error) {
-          console.error('❌ Error en inicialización de AuthService:', error);
-          this.showErrorToast('Error de autenticación, intenta nuevamente');
+          console.error('💥 Error verificando token con servidor:', error);
+          this.showErrorToast('Error validando autenticación con Microsoft');
         }
 
       } catch (error) {
