@@ -585,13 +585,13 @@ async def microsoft_callback(
         if error:
             logger.error(f"Error de Microsoft OAuth: {error} - {error_description}")
             # Redirigir al frontend con error
-            frontend_url = f"{settings.frontend_url}/#/login?microsoft_error={error}"
-            return RedirectResponse(url=frontend_url)
+            redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error={error}"
+            return RedirectResponse(url=redirect_url)
 
         if not code:
             logger.error("No se recibió código de autorización de Microsoft")
-            frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=no_code"
-            return RedirectResponse(url=frontend_url)
+            redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=no_code"
+            return RedirectResponse(url=redirect_url)
 
         # Intercambiar código por token de acceso
         token_url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/token"
@@ -601,7 +601,7 @@ async def microsoft_callback(
             "client_secret": settings.azure_client_secret,
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": f"{settings.backend_url}/api/auth/microsoft/callback",
+            "redirect_uri": f"{settings.effective_url_base}/api/auth/microsoft/callback",
             "scope": "openid profile email User.Read"
         }
 
@@ -610,8 +610,8 @@ async def microsoft_callback(
                 if token_response.status != 200:
                     error_text = await token_response.text()
                     logger.error(f"Error obteniendo token: {error_text}")
-                    frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=token_error"
-                    return RedirectResponse(url=frontend_url)
+                    redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=token_error"
+                    return RedirectResponse(url=redirect_url)
 
                 token_json = await token_response.json()
         access_token = token_json.get("access_token")
@@ -625,8 +625,8 @@ async def microsoft_callback(
                 if user_response.status != 200:
                     error_text = await user_response.text()
                     logger.error(f"Error obteniendo datos de usuario: {error_text}")
-                    frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=user_error"
-                    return RedirectResponse(url=frontend_url)
+                    redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=user_error"
+                    return RedirectResponse(url=redirect_url)
 
                 user_data = await user_response.json()
         
@@ -660,8 +660,8 @@ async def microsoft_callback(
         
         if not result.get("success"):
             logger.error(f"Error en stored procedure: {result.get('message')}")
-            frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=db_error"
-            return RedirectResponse(url=frontend_url)
+            redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=db_error"
+            return RedirectResponse(url=redirect_url)
 
         # Verificar si necesita asociación
         association_status = result.get("associationStatus", "unknown")
@@ -672,12 +672,12 @@ async def microsoft_callback(
             display_name = microsoft_data.get("displayName", "")
             email = microsoft_data.get("mail", "")
             
-            frontend_url = (f"{settings.frontend_url}/#/login?"
+            redirect_url = (f"{settings.effective_url_base}/#/login?"
                           f"microsoft_pending=true&"
                           f"codeLoginMicrosoft={code_login_microsoft}&"
                           f"displayName={display_name}&"
                           f"email={email}")
-            return RedirectResponse(url=frontend_url)
+            return RedirectResponse(url=redirect_url)
         
         elif association_status == "associated":
             # Usuario ya asociado - login automático
@@ -686,20 +686,20 @@ async def microsoft_callback(
             # Crear token JWE para el usuario asociado
             jwe_token, expiry_date = create_jwe_token(user_login_data)
             
-            frontend_url = (f"{settings.frontend_url}/#/login?"
+            redirect_url = (f"{settings.effective_url_base}/#/login?"
                           f"microsoft_success=true&"
                           f"microsoft_token={jwe_token}")
-            return RedirectResponse(url=frontend_url)
+            return RedirectResponse(url=redirect_url)
         
         else:
             logger.error(f"Estado de asociación desconocido: {association_status}")
-            frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=unknown_status"
-            return RedirectResponse(url=frontend_url)
+            redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=unknown_status"
+            return RedirectResponse(url=redirect_url)
 
     except Exception as e:
         logger.error(f"Error en callback de Microsoft: {str(e)}")
-        frontend_url = f"{settings.frontend_url}/#/login?microsoft_error=server_error"
-        return RedirectResponse(url=frontend_url)
+        redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=server_error"
+        return RedirectResponse(url=redirect_url)
 
 
 @router.post(
@@ -806,141 +806,3 @@ async def associate_microsoft_account(data: dict):
             status_code=500,
             detail="Error interno del servidor"
         )
-async def microsoft_callback(code: str = None, state: str = None, error: str = None):
-    """Endpoint callback para procesar la respuesta de Microsoft OAuth2."""
-    try:
-        logger.info(f"🔄 Procesando callback de Microsoft - Code: {bool(code)}, Error: {error}")
-        
-        # Verificar si hay errores en la respuesta
-        if error:
-            logger.warning(f"❌ Error en callback de Microsoft: {error}")
-            # Redirigir al frontend con error
-            return RedirectResponse(url="/#/login?microsoft_error=access_denied")
-        
-        if not code:
-            logger.warning("❌ No se recibió código de autorización de Microsoft")
-            return RedirectResponse(url="/#/login?microsoft_error=no_code")
-        
-        # Intercambiar código por token de acceso
-        import aiohttp
-        token_url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/token"
-        
-        token_data = {
-            "client_id": settings.azure_client_id,
-            "client_secret": settings.azure_client_secret,
-            "code": code,
-            "grant_type": "authorization_code",
-            "redirect_uri": "https://budget.ezekl.com/api/auth/microsoft/callback",
-        }
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.post(token_url, data=token_data) as token_response:
-                token_result = await token_response.json()
-        
-        if token_response.status != 200:
-            logger.error(f"❌ Error obteniendo token de Microsoft: {token_result}")
-            return RedirectResponse(url="/#/login?microsoft_error=token_failed")
-        
-        access_token = token_result.get("access_token")
-        if not access_token:
-            logger.error("❌ No se recibió access_token de Microsoft")
-            return RedirectResponse(url="/#/login?microsoft_error=no_token")
-        
-        # Obtener información del usuario de Microsoft Graph
-        graph_url = "https://graph.microsoft.com/v1.0/me"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.get(graph_url, headers=headers) as user_response:
-                user_data = await user_response.json()
-        
-        if user_response.status != 200:
-            logger.error(f"❌ Error obteniendo datos del usuario de Microsoft: {user_data}")
-            return RedirectResponse(url="/#/login?microsoft_error=user_failed")
-        
-        # Extraer información del usuario de Microsoft
-        microsoft_email = user_data.get("mail") or user_data.get("userPrincipalName")
-        microsoft_name = user_data.get("displayName", "")
-        microsoft_user_id = user_data.get("id", "")
-        
-        logger.info(f"✅ Usuario autenticado con Microsoft: {microsoft_email} - {microsoft_name}")
-        
-        # Preparar datos completos de Microsoft para el stored procedure
-        microsoft_data = {
-            "id": microsoft_user_id,
-            "mail": user_data.get("mail"),
-            "displayName": user_data.get("displayName"),
-            "userPrincipalName": user_data.get("userPrincipalName"),
-            "givenName": user_data.get("givenName"),
-            "surname": user_data.get("surname"),
-            "jobTitle": user_data.get("jobTitle"),
-            "department": user_data.get("department"),
-            "companyName": user_data.get("companyName"),
-            "officeLocation": user_data.get("officeLocation"),
-            "businessPhones": user_data.get("businessPhones"),
-            "mobilePhone": user_data.get("mobilePhone"),
-            "tenantId": settings.azure_tenant_id,  # Agregar tenant ID de configuración
-            "preferredLanguage": user_data.get("preferredLanguage"),
-            "accessToken": access_token,  # Guardar token de acceso
-            "refreshToken": token_result.get("refresh_token"),
-            "tokenExpiresAt": None  # Se puede calcular basado en expires_in
-        }
-        
-        # Guardar/actualizar usuario de Microsoft en base de datos
-        json_param = json.dumps(microsoft_data)
-        db_result = await execute_stored_procedure("spLoginMicrosoftAddOrEdit", json_param)
-        
-        if not db_result.get("success", False):
-            logger.error(f"❌ Error guardando usuario Microsoft: {db_result.get('message', 'Error desconocido')}")
-            return RedirectResponse(url="/#/login?microsoft_error=database_error")
-        
-        # Obtener datos del usuario guardado y verificar asociación
-        microsoft_user_info = db_result.get("microsoftUser", {})
-        association_status = db_result.get("associationStatus", "needs_association")
-        linked_user = db_result.get("linkedUser")
-        
-        logger.info(f"✅ Usuario Microsoft {db_result.get('operation', 'procesado')} - Estado: {association_status}")
-        
-        from urllib.parse import urlencode
-        
-        # Si está asociado con tbLogin, hacer login completo con nuestro JWE
-        if association_status == "associated" and linked_user:
-            logger.info(f"🔗 Usuario Microsoft asociado con cuenta local: {linked_user.get('codeLogin')}")
-            
-            # Crear token JWE con datos de tbLogin (como spLoginAuth)
-            user_data_for_token = {
-                "codeLogin": linked_user.get("codeLogin"),
-                "name": linked_user.get("name"),
-                "email": linked_user.get("email"),
-                "phone": linked_user.get("phone", ""),
-                "source": "microsoft",
-                "microsoftUserId": linked_user.get("microsoftUserId")
-            }
-            
-            jwe_token, expiry_datetime = create_jwe_token(user_data_for_token)
-            
-            # Redirigir con login completo
-            redirect_params = {
-                "microsoft_token": jwe_token,
-                "microsoft_success": "true"
-            }
-            redirect_url = f"/#/login?{urlencode(redirect_params)}"
-            
-        else:
-            # No está asociado - redirigir para asociación de cuenta
-            logger.info(f"🔄 Usuario Microsoft requiere asociación con cuenta local")
-            
-            redirect_params = {
-                "microsoft_pending": "true",
-                "codeLoginMicrosoft": microsoft_user_info.get("microsoftUserId", microsoft_user_id),
-                "displayName": microsoft_user_info.get("displayName", microsoft_name),
-                "email": microsoft_user_info.get("email", microsoft_email)
-            }
-            redirect_url = f"/#/login?{urlencode(redirect_params)}"
-        
-        logger.info(f"🚀 Redirigiendo usuario autenticado al frontend: {microsoft_email}")
-        return RedirectResponse(url=redirect_url)
-        
-    except Exception as e:
-        logger.error(f"💥 Error inesperado en callback de Microsoft: {str(e)}")
-        return RedirectResponse(url="/#/login?microsoft_error=internal_error")

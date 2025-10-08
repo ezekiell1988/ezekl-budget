@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Configuración de autenticación JWE (debe ser exactamente 32 bytes)
     jwe_secret_key: str = "ezekl-budget-2024-jwe-secret-32b"  # Exactamente 32 bytes
     
+    # URL base de la aplicación (frontend y backend en el mismo dominio)
+    url_base: Optional[str] = None
+    
     # Configuración de Base de Datos SQL Server
     db_host: str
     db_port: int = 1433
@@ -70,6 +73,18 @@ class Settings(BaseSettings):
             pass
             
         return False
+    
+    @property
+    def effective_url_base(self) -> str:
+        """Retorna la URL base de la aplicación (frontend y backend en el mismo dominio)."""
+        if self.url_base:
+            return self.url_base
+        
+        # Detección automática por ambiente
+        if self.is_production:
+            return "https://budget.ezekl.com"
+        else:
+            return "http://localhost:8001"
     
     @property
     def effective_db_host(self) -> str:
