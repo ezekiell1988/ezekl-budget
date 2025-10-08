@@ -211,24 +211,54 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   private async checkForMicrosoftCallback() {
     // Obtener parámetros de la URL
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const expires = urlParams.get('expires');
+    const microsoftToken = urlParams.get('microsoft_token');
+    const microsoftSuccess = urlParams.get('microsoft_success');
+    const microsoftError = urlParams.get('microsoft_error');
 
-    if (token && expires) {
+    // Manejar errores de Microsoft
+    if (microsoftError) {
+      console.error('Error de autenticación con Microsoft:', microsoftError);
+      this.showErrorToast('Error en la autenticación con Microsoft');
+      // Limpiar URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    if (microsoftToken && microsoftSuccess === 'true') {
       try {
-        // Simular respuesta de login exitoso para activar el flujo normal de autenticación
-        const mockResponse: LoginResponse = {
-          success: true,
-          message: 'Autenticación con Microsoft exitosa',
-          accessToken: token,
-          expiresAt: expires,
-          user: undefined // Se obtendrá del token
-        };
-
-        // Usar el método interno del AuthService para establecer la sesión
-        // Por ahora, guardamos directamente en localStorage como lo hace el AuthService
-        localStorage.setItem('ezekl_auth_token', token);
-        localStorage.setItem('ezekl_auth_expires', expires);
+        console.log('🔑 Procesando token de Microsoft:', microsoftToken);
+        
+        // Guardar el token directamente en localStorage
+        localStorage.setItem('ezekl_auth_token', microsoftToken);
+        
+        // Limpiar URL antes de proceder
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Mostrar mensaje de éxito
+        this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
+        
+        // Intentar verificar el token para obtener datos del usuario
+        try {
+          const isTokenValid = await this.authService.verifyToken();
+          if (isTokenValid) {
+            console.log('✅ Token verificado, redirigiendo al home');
+            setTimeout(() => {
+              this.router.navigate(['/home']);
+            }, 1500);
+          } else {
+            // Si la verificación falla, recargar para que el AuthService inicialice
+            console.log('⚠️ Verificación falló, recargando página');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          }
+        } catch (error) {
+          console.error('Error verificando token:', error);
+          // Fallback: forzar recarga
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
 
         // Limpiar URL
         window.history.replaceState({}, document.title, window.location.pathname);
