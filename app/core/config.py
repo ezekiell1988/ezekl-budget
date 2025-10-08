@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Configuración de autenticación JWE (debe ser exactamente 32 bytes)
     jwe_secret_key: str = "ezekl-budget-2024-jwe-secret-32b"  # Exactamente 32 bytes
     
+    # Configuración del entorno
+    environment: str = "development"  # development, production
+    
     # URL base de la aplicación (frontend y backend en el mismo dominio)
     url_base: Optional[str] = None
     
@@ -51,28 +54,8 @@ class Settings(BaseSettings):
     
     @property
     def is_production(self) -> bool:
-        """Detecta si la aplicación está corriendo en el servidor de producción."""
-        # Método 1: Verificar si estamos en el servidor Azure por hostname
-        hostname = socket.gethostname()
-        if "demo-linux" in hostname.lower():
-            return True
-            
-        # Método 2: Verificar por variable de entorno
-        if os.getenv("ENVIRONMENT") == "production":
-            return True
-            
-        # Método 3: Verificar si SQL Server está disponible localmente
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            result = sock.connect_ex(('localhost', 1433))
-            sock.close()
-            if result == 0:  # Puerto está abierto localmente
-                return True
-        except:
-            pass
-            
-        return False
+        """Detecta si la aplicación está corriendo en producción basado en ENVIRONMENT."""
+        return self.environment.lower() == "production"
     
     @property
     def effective_url_base(self) -> str:

@@ -21,7 +21,7 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **Cola de emails en background** - Envío asíncrono sin bloquear API
 - **Azure OpenAI** integration
 - **SQL Server** con conexiones asíncronas y stored procedures
-- **Detección automática** de ambiente (localhost en producción, IP externa en desarrollo)
+- **Detección de ambiente** con variable ENVIRONMENT (development/production)
 
 ### DevOps
 - **Docker** multi-stage build optimizado
@@ -126,6 +126,7 @@ Crea un archivo `.env` basado en `.env.example`:
 ```env
 # Configuración del servidor híbrido
 PORT=8001
+ENVIRONMENT=development
 
 # Azure OpenAI Configuration (requerido)
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
@@ -164,13 +165,15 @@ La aplicación utiliza **SQL Server 2022** con un patrón específico de stored 
 - **Formato JSON**: Cada SP recibe un JSON como parámetro único y responde un JSON en columna "json"
 - **Conexiones asíncronas**: Utiliza `aioodbc` para mejor rendimiento
 
-#### Detección Automática de Ambiente
+#### Detección de Ambiente con Variable ENVIRONMENT
 ```python
-# En desarrollo (tu Mac): DB_HOST=20.246.83.239 (IP externa)
-# En producción (servidor): DB_HOST=localhost (automático)
+# En desarrollo: ENVIRONMENT=development (usa DB_HOST=20.246.83.239 - IP externa)
+# En producción: ENVIRONMENT=production (usa localhost para mejor rendimiento)
 ```
 
-La aplicación detecta automáticamente si está en producción y usa `localhost` para mejor rendimiento.
+La aplicación usa la variable `ENVIRONMENT` para determinar el comportamiento:
+- **development**: Usa IP externa del servidor para base de datos
+- **production**: Usa localhost para mejor rendimiento y URLs de producción
 
 #### Base de Datos Configurada
 - **Nombre**: `budgetdb`

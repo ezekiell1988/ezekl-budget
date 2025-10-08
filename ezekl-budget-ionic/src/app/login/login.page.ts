@@ -374,11 +374,11 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
         // Usar el método processLoginResponse simulando una respuesta exitosa
         // Esto activa todo el flujo normal de autenticación
         console.log('⚡ Activando flujo de autenticación del sistema...');
-        
+
         // Forzar inicialización del AuthService para que cargue el token guardado
         try {
           await this.authService.ensureInitialized();
-          
+
           // Verificar que se autenticó correctamente
           if (this.authService.isAuthenticated) {
             console.log('✅ Usuario autenticado exitosamente vía Microsoft');
