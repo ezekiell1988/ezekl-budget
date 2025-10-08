@@ -92,22 +92,35 @@ def verify_jwe_token(token: str) -> Dict[str, Any] | None:
         Payload del token si es válido, None si no es válido
     """
     try:
+        logger.info(f"🔍 Verificando token JWE - Longitud: {len(token)}")
+        logger.info(f"🔑 Token recibido (primeros 50 chars): {token[:50]}...")
+        
         # Decodificar token JWE (convertir clave a bytes)
         payload_str = jwe.decrypt(token, JWE_SECRET_KEY.encode('utf-8'))
+        logger.info("✅ Token JWE decodificado exitosamente")
+        
         payload = json.loads(payload_str)
+        logger.info(f"📋 Payload obtenido: {json.dumps(payload, indent=2)}")
 
         # Verificar expiración
         exp_timestamp = payload.get("exp")
-        if exp_timestamp and datetime.fromtimestamp(
-            exp_timestamp, timezone.utc
-        ) < datetime.now(timezone.utc):
-            logger.warning("Token JWE expirado")
-            return None
-
+        current_time = datetime.now(timezone.utc)
+        
+        if exp_timestamp:
+            exp_datetime = datetime.fromtimestamp(exp_timestamp, timezone.utc)
+            logger.info(f"⏰ Token expira: {exp_datetime}")
+            logger.info(f"🕐 Tiempo actual: {current_time}")
+            
+            if exp_datetime < current_time:
+                logger.warning("❌ Token JWE expirado")
+                return None
+        
+        logger.info("✅ Token válido y no expirado")
         return payload
 
     except Exception as e:
-        logger.error(f"Error verificando token JWE: {str(e)}")
+        logger.error(f"💥 Error verificando token JWE: {str(e)}")
+        logger.error(f"🔍 Tipo de error: {type(e).__name__}")
         return None
 
 
@@ -124,23 +137,32 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     Raises:
         HTTPException: Si el token no es válido o no está presente
     """
+    logger.info("🔐 get_current_user llamado")
+    
     if not authorization:
+        logger.warning("❌ No se recibió header Authorization")
         raise HTTPException(
             status_code=401, 
             detail="Token de autorización requerido",
             headers={"WWW-Authenticate": "Bearer"}
         )
     
+    logger.info(f"📨 Header Authorization recibido: {authorization[:50]}...")
+    
     # Verificar formato "Bearer {token}"
     try:
         scheme, token = authorization.split()
+        logger.info(f"🔍 Scheme: {scheme}, Token longitud: {len(token)}")
+        
         if scheme.lower() != "bearer":
+            logger.warning(f"❌ Esquema inválido: {scheme}")
             raise HTTPException(
                 status_code=401, 
                 detail="Esquema de autorización inválido. Use: Bearer <token>",
                 headers={"WWW-Authenticate": "Bearer"}
             )
-    except ValueError:
+    except ValueError as e:
+        logger.error(f"❌ Error parseando header: {str(e)}")
         raise HTTPException(
             status_code=401, 
             detail="Formato de autorización inválido. Use: Bearer <token>",
@@ -148,8 +170,10 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         )
     
     # Verificar token JWE
+    logger.info("🔍 Iniciando verificación de token JWE...")
     payload = verify_jwe_token(token)
     if not payload:
+        logger.error("❌ Token JWE inválido o expirado")
         raise HTTPException(
             status_code=401, 
             detail="Token inválido o expirado",
