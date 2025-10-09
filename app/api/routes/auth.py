@@ -92,15 +92,9 @@ def verify_jwe_token(token: str) -> Dict[str, Any] | None:
         Payload del token si es válido, None si no es válido
     """
     try:
-        logger.info(f"🔍 Verificando token JWE - Longitud: {len(token)}")
-        logger.info(f"🔑 Token recibido (primeros 50 chars): {token[:50]}...")
-        
         # Decodificar token JWE (convertir clave a bytes)
         payload_str = jwe.decrypt(token, JWE_SECRET_KEY.encode('utf-8'))
-        logger.info("✅ Token JWE decodificado exitosamente")
-        
         payload = json.loads(payload_str)
-        logger.info(f"📋 Payload obtenido: {json.dumps(payload, indent=2)}")
 
         # Verificar expiración
         exp_timestamp = payload.get("exp")
@@ -108,19 +102,15 @@ def verify_jwe_token(token: str) -> Dict[str, Any] | None:
         
         if exp_timestamp:
             exp_datetime = datetime.fromtimestamp(exp_timestamp, timezone.utc)
-            logger.info(f"⏰ Token expira: {exp_datetime}")
-            logger.info(f"🕐 Tiempo actual: {current_time}")
             
             if exp_datetime < current_time:
-                logger.warning("❌ Token JWE expirado")
+                logger.warning("Token JWE expirado")
                 return None
         
-        logger.info("✅ Token válido y no expirado")
         return payload
 
     except Exception as e:
-        logger.error(f"💥 Error verificando token JWE: {str(e)}")
-        logger.error(f"🔍 Tipo de error: {type(e).__name__}")
+        logger.error(f"Error verificando token JWE: {str(e)}")
         return None
 
 
@@ -137,32 +127,24 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     Raises:
         HTTPException: Si el token no es válido o no está presente
     """
-    logger.info("🔐 get_current_user llamado")
-    
     if not authorization:
-        logger.warning("❌ No se recibió header Authorization")
         raise HTTPException(
             status_code=401, 
             detail="Token de autorización requerido",
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    logger.info(f"📨 Header Authorization recibido: {authorization[:50]}...")
-    
     # Verificar formato "Bearer {token}"
     try:
         scheme, token = authorization.split()
-        logger.info(f"🔍 Scheme: {scheme}, Token longitud: {len(token)}")
         
         if scheme.lower() != "bearer":
-            logger.warning(f"❌ Esquema inválido: {scheme}")
             raise HTTPException(
                 status_code=401, 
                 detail="Esquema de autorización inválido. Use: Bearer <token>",
                 headers={"WWW-Authenticate": "Bearer"}
             )
     except ValueError as e:
-        logger.error(f"❌ Error parseando header: {str(e)}")
         raise HTTPException(
             status_code=401, 
             detail="Formato de autorización inválido. Use: Bearer <token>",
@@ -170,10 +152,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         )
     
     # Verificar token JWE
-    logger.info("🔍 Iniciando verificación de token JWE...")
     payload = verify_jwe_token(token)
     if not payload:
-        logger.error("❌ Token JWE inválido o expirado")
         raise HTTPException(
             status_code=401, 
             detail="Token inválido o expirado",
@@ -561,7 +541,7 @@ async def microsoft_login():
     try:
         # Validar que las credenciales de Azure AD estén configuradas
         if not all([settings.azure_client_id, settings.azure_tenant_id, settings.azure_client_secret]):
-            logger.error("❌ Credenciales de Azure AD no configuradas")
+            logger.error("Credenciales de Azure AD no configuradas")
             raise HTTPException(
                 status_code=500, 
                 detail="Autenticación con Microsoft no está configurada"
@@ -584,7 +564,7 @@ async def microsoft_login():
         from urllib.parse import urlencode
         auth_url = f"{base_url}?{urlencode(params)}"
         
-        logger.info(f"🔗 Redirigiendo a Microsoft para autenticación: {auth_url}")
+        logger.info(f"Redirigiendo a Microsoft para autenticación")
         
         # Redirigir al usuario a Microsoft
         return RedirectResponse(url=auth_url)
@@ -592,7 +572,7 @@ async def microsoft_login():
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"💥 Error al construir URL de Microsoft: {str(e)}")
+        logger.error(f"Error al construir URL de Microsoft: {str(e)}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -711,10 +691,7 @@ async def microsoft_callback(
         
         elif association_status == "associated":
             # Usuario ya asociado - login automático
-            user_login_data = result.get("linkedUser", {})  # ← Corregido: usar "linkedUser" en lugar de "userData"
-            
-            logger.info(f"🔍 Datos del usuario desde SP: {json.dumps(result, indent=2)}")
-            logger.info(f"👤 user_login_data extraído: {json.dumps(user_login_data, indent=2)}")
+            user_login_data = result.get("linkedUser", {})
             
             # Crear token JWE para el usuario asociado
             jwe_token, expiry_date = create_jwe_token(user_login_data)

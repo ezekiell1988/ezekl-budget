@@ -214,12 +214,11 @@ BEGIN
   BEGIN
     SET @linkedUserData = JSON_QUERY((
       SELECT 
+        L.idLogin,
         L.codeLogin,
-        L.nameLogin as name,
-        L.emailLogin as email,
-        L.phoneLogin as phone,
-        'microsoft' as source,
-        M.codeLoginMicrosoft as microsoftUserId
+        L.nameLogin,
+        L.emailLogin,
+        L.phoneLogin
       FROM tbLogin L
       INNER JOIN tbLoginLoginMicrosoft LM ON L.idLogin = LM.idLogin
       INNER JOIN tbLoginMicrosoft M ON LM.idLoginMicrosoft = M.idLoginMicrosoft
