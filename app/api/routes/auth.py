@@ -711,7 +711,10 @@ async def microsoft_callback(
         
         elif association_status == "associated":
             # Usuario ya asociado - login automático
-            user_login_data = result.get("userData", {})
+            user_login_data = result.get("linkedUser", {})  # ← Corregido: usar "linkedUser" en lugar de "userData"
+            
+            logger.info(f"🔍 Datos del usuario desde SP: {json.dumps(result, indent=2)}")
+            logger.info(f"👤 user_login_data extraído: {json.dumps(user_login_data, indent=2)}")
             
             # Crear token JWE para el usuario asociado
             jwe_token, expiry_date = create_jwe_token(user_login_data)
