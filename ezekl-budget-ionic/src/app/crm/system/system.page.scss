@@ -1,1 +1,37 @@
-/* Estilos para system */
+/* Sistema CRM - Estilos usando componentes nativos de Ionic */
+
+/* Encabezados de sección */
+.section-header {
+  margin-top: 16px;
+  margin-bottom: 8px;
+
+  h3 {
+    font-weight: 600;
+    color: var(--ion-color-dark);
+  }
+}
+
+/* Estilos para códigos/tokens */
+.token-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  background-color: var(--ion-color-light);
+  padding: 8px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+/* Estilos para tarjetas */
+ion-card {
+  margin-bottom: 16px;
+
+  ion-card-title {
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+}
+
+/* Espaciado para chips */
+ion-chip {
+  margin: 4px 0;
+}

@@ -210,14 +210,10 @@ export interface CRMDiagnosticCheck {
 }
 
 export interface CRMDiagnoseResponse {
-  overall_status: 'healthy' | 'warnings' | 'errors';
-  checks: CRMDiagnosticCheck[];
-  recommendations?: string[];
-  user_info?: {
-    user_id: string;
-    business_unit_name: string;
-    organization_name: string;
-  };
+  environment_variables: { [key: string]: string };
+  token_acquisition: { [key: string]: any };
+  d365_connectivity: { [key: string]: any };
+  recommendations: string[];
 }
 
 // ===============================================
