@@ -44,6 +44,36 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta CRM - protegida, con sub-rutas para tabs
+  {
+    path: 'crm',
+    loadComponent: () => import('./crm/crm.page').then(m => m.CrmPage),
+    canActivate: [AuthGuard],
+    children: [
+      {
+        path: '',
+        redirectTo: 'cases',
+        pathMatch: 'full'
+      },
+      {
+        path: 'cases',
+        loadComponent: () => import('./crm/cases/cases.page').then(m => m.CasesPage)
+      },
+      {
+        path: 'accounts',
+        loadComponent: () => import('./crm/accounts/accounts.page').then(m => m.AccountsPage)
+      },
+      {
+        path: 'contacts',
+        loadComponent: () => import('./crm/contacts/contacts.page').then(m => m.ContactsPage)
+      },
+      {
+        path: 'system',
+        loadComponent: () => import('./crm/system/system.page').then(m => m.SystemPage)
+      }
+    ]
+  },
+
   // Ruta wildcard - redirige a login para evitar bucles
   {
     path: '**',

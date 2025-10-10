@@ -1,44 +1,39 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonGrid,
-  IonRow,
-  IonCol,
-  IonButton,
+  IonTabs,
+  IonTabBar,
+  IonTabButton,
   IonIcon,
+  IonLabel,
   ViewWillLeave,
   ViewDidLeave
 } from '@ionic/angular/standalone';
-import { RouterModule } from '@angular/router';
+import { RouterModule, RouterOutlet } from '@angular/router';
+// Los iconos se importan y registran globalmente en main.ts
 
-import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
+
 
 @Component({
-  selector: 'app-home',
-  templateUrl: 'home.page.html',
-  styleUrls: ['home.page.scss'],
+  selector: 'app-crm',
+  templateUrl: './crm.page.html',
+  styleUrls: ['./crm.page.scss'],
   imports: [
     CommonModule,
     RouterModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonContent,
-    IonGrid,
-    IonRow,
-    IonCol,
-    IonButton,
+    RouterOutlet,
+    IonTabs,
+    IonTabBar,
+    IonTabButton,
     IonIcon,
-    AppHeaderComponent,
-  ],
+    IonLabel
+  ]
 })
-export class HomePage implements OnInit, ViewWillLeave, ViewDidLeave {
+export class CrmPage implements OnInit, ViewWillLeave, ViewDidLeave {
 
-  constructor() { }
+  constructor() {
+    // Los iconos se registran globalmente en main.ts
+  }
 
   ngOnInit() {
   }

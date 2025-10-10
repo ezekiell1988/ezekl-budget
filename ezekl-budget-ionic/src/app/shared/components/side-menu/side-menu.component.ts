@@ -42,6 +42,9 @@ import {
   barChart,
   calculator,
   chatbubbles,
+  chevronForward,
+  apps,
+  businessOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../../../services/auth.service';
 import { MeService, MenuSection, MenuItem } from '../../../services/me.service';
@@ -105,6 +108,9 @@ export class SideMenuComponent implements OnInit {
       barChart,
       calculator,
       chatbubbles,
+      chevronForward,
+      apps,
+      businessOutline,
     });
 
     // Configurar observables
@@ -160,11 +166,16 @@ export class SideMenuComponent implements OnInit {
   /**
    * Ejecutar una acción del menú
    */
-  async onMenuItemClick(item: MenuItem) {
+  async onMenuItemClick(item: MenuItem, event?: Event) {
     if (!item.enabled) return;
 
+    // Prevenir comportamiento por defecto si es necesario
+    if (event) {
+      event.preventDefault();
+    }
+
+    // Usar siempre el servicio para manejar las acciones
     await this.meService.executeAction(item);
-    await this.menuController.close('main-menu');
   }
 
   /**
@@ -258,6 +269,30 @@ export class SideMenuComponent implements OnInit {
    * Cerrar el menú lateral
    */
   async closeMenu() {
+    // Remover foco de elementos internos antes de cerrar
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement && activeElement.blur) {
+      activeElement.blur();
+    }
+
     await this.menuController.close('main-menu');
+  }
+
+  /**
+   * Manejar navegación con mejor control de foco
+   */
+  async navigateToSafely(path: string, event?: Event) {
+    // Prevenir comportamiento por defecto si es necesario
+    if (event) {
+      event.preventDefault();
+    }
+
+    // Cerrar menú y navegar
+    await this.closeMenu();
+
+    // Pequeño delay para asegurar que el menú se cerró completamente
+    setTimeout(() => {
+      this.router.navigate([path]);
+    }, 100);
   }
 }

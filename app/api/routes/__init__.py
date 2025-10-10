@@ -12,6 +12,9 @@ from .email import router as email_router
 from .auth import router as auth_router, get_current_user
 from .accounting_account import router as accounting_account_router
 
+# Importar routers CRM
+from app.api.crm import cases_router, accounts_router, contacts_router, system_router
+
 # Router principal para todos los endpoints de la API
 router = APIRouter()
 
@@ -19,6 +22,12 @@ router = APIRouter()
 router.include_router(email_router, prefix="/email", tags=["email"])
 router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 router.include_router(accounting_account_router, prefix="/accounting-accounts", tags=["accounting-accounts"])
+
+# Incluir routers CRM con prefijo /crm
+router.include_router(cases_router, prefix="/crm", tags=["CRM"])
+router.include_router(accounts_router, prefix="/crm", tags=["CRM"])  
+router.include_router(contacts_router, prefix="/crm", tags=["CRM"])
+router.include_router(system_router, prefix="/crm", tags=["CRM"])
 
 
 @router.get(

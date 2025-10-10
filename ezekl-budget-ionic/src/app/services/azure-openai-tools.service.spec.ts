@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { AzureOpenAIToolsService } from './azure-openai-tools.service';
 
@@ -8,8 +9,11 @@ describe('AzureOpenAIToolsService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [AzureOpenAIToolsService]
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        AzureOpenAIToolsService
+      ]
     });
     service = TestBed.inject(AzureOpenAIToolsService);
   });

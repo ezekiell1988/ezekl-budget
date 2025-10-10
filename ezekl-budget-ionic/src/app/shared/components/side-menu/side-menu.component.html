@@ -1,9 +1,21 @@
-<ion-menu contentId="main-content" menuId="main-menu" side="start" type="overlay">
+<ion-menu
+  contentId="main-content"
+  menuId="main-menu"
+  side="start"
+  type="overlay"
+  role="navigation"
+  aria-label="Menú lateral de navegación"
+  class="side-menu">
   <ion-header>
     <ion-toolbar>
       <ion-title>Mi Perfil</ion-title>
-      <ion-button slot="end" fill="clear" (click)="closeMenu()">
-        <ion-icon name="close" slot="icon-only" size="large"></ion-icon>
+      <ion-button
+        slot="end"
+        fill="clear"
+        (click)="closeMenu()"
+        aria-label="Cerrar menú lateral"
+        class="close-menu-button">
+        <ion-icon name="close" slot="icon-only" size="large" aria-hidden="true"></ion-icon>
       </ion-button>
     </ion-toolbar>
   </ion-header>
@@ -11,32 +23,33 @@
   <ion-content>
     <!-- Información del usuario -->
     @if (currentUser) {
-    <ion-card>
-      <ion-card-content>
-        <div class="profile-header">
-          <ion-avatar class="profile-avatar" color="primary">
+    <ion-card class="profile-card" color="light">
+      <ion-card-content class="ion-no-padding">
+        <ion-item lines="none" class="profile-item">
+          <ion-avatar slot="start" class="profile-avatar">
             <div class="avatar-text">{{ getUserInitials(currentUser) }}</div>
           </ion-avatar>
-          <div class="profile-info">
-            <h2>{{ currentUser.nameLogin }}</h2>
-            <p>{{ currentUser.codeLogin }}</p>
-            <ion-chip color="success" size="small">
+          <ion-label>
+            <h2 class="profile-name">{{ currentUser.nameLogin }}</h2>
+            <p class="profile-code">{{ currentUser.codeLogin }}</p>
+            <ion-chip color="success" size="small" class="profile-status">
               <ion-icon name="checkmark-circle" slot="start"></ion-icon>
               <ion-label>Conectado</ion-label>
             </ion-chip>
-          </div>
-        </div>
+          </ion-label>
+        </ion-item>
       </ion-card-content>
     </ion-card>
 
     <!-- Lista de información del usuario -->
-    <ion-list>
+    <ion-list inset="true">
       <ion-list-header>
+        <ion-icon name="person" slot="start" color="primary"></ion-icon>
         <ion-label>Información Personal</ion-label>
       </ion-list-header>
 
       @if (currentUser.emailLogin) {
-      <ion-item>
+      <ion-item button="false" lines="inset">
         <ion-icon name="mail" slot="start" color="primary"></ion-icon>
         <ion-label>
           <h3>Email</h3>
@@ -46,7 +59,7 @@
       }
 
       @if (currentUser.phoneLogin) {
-      <ion-item>
+      <ion-item button="false" lines="inset">
         <ion-icon name="call" slot="start" color="primary"></ion-icon>
         <ion-label>
           <h3>Teléfono</h3>
@@ -55,27 +68,34 @@
       </ion-item>
       }
 
-      <ion-item>
+      <ion-item button="false" lines="inset">
         <ion-icon name="card" slot="start" color="primary"></ion-icon>
         <ion-label>
           <h3>ID Usuario</h3>
           <p>#{{ currentUser.idLogin }}</p>
         </ion-label>
       </ion-item>
+    </ion-list>
 
-      <!-- Información de sesión -->
-      @if (authState$ | async; as authState) {
-      <ion-item>
+    <!-- Información de sesión -->
+    @if (authState$ | async; as authState) {
+    <ion-list inset="true">
+      <ion-list-header>
         <ion-icon name="time" slot="start" color="warning"></ion-icon>
+        <ion-label>Sesión Activa</ion-label>
+      </ion-list-header>
+
+      <ion-item button="false" lines="none">
+        <ion-icon name="pulse" slot="start" color="warning"></ion-icon>
         <ion-label>
           <h3>Token expira en</h3>
           <p>{{ formatTokenExpiry(authState.expiresAt) }}</p>
         </ion-label>
+        <ion-badge color="warning" slot="end">Auto</ion-badge>
       </ion-item>
-      }
 
       <!-- Botón de extensión de sesión -->
-      <ion-item>
+      <ion-item lines="none">
         <ion-button expand="block" fill="outline" color="success" (click)="extendSession()">
           <ion-icon name="refresh" slot="start"></ion-icon>
           Extender Sesión
@@ -83,11 +103,13 @@
       </ion-item>
     </ion-list>
     }
+    }
 
     <!-- Menú dinámico de navegación -->
     @for (section of menuSections$ | async; track section.id) {
-    <ion-list>
+    <ion-list inset="true" class="menu-section">
       <ion-list-header>
+        <ion-icon name="apps" slot="start" color="medium"></ion-icon>
         <ion-label>{{ section.title }}</ion-label>
       </ion-list-header>
 
@@ -95,20 +117,29 @@
       <ion-item
         button
         [disabled]="!item.enabled"
-        (click)="onMenuItemClick(item)"
-        [lines]="section.id === 'session' ? 'none' : 'inset'">
+        (click)="onMenuItemClick(item, $event)"
+        [lines]="section.id === 'session' ? 'none' : 'inset'"
+        class="menu-item"
+        [class.menu-item-disabled]="!item.enabled"
+        [attr.aria-label]="item.title + (item.enabled ? '' : ' - No disponible')"
+        role="menuitem"
+        [tabindex]="item.enabled ? 0 : -1">
         <ion-icon
           [name]="item.icon"
           slot="start"
-          [color]="item.color || 'primary'">
+          [color]="item.enabled ? (item.color || 'primary') : 'medium'"
+          aria-hidden="true">
         </ion-icon>
         <ion-label [color]="item.enabled ? '' : 'medium'">
-          {{ item.title }}
+          <h3 class="menu-item-title">{{ item.title }}</h3>
         </ion-label>
         @if (item.badge) {
-        <ion-badge [color]="item.badge.color" slot="end">
+        <ion-badge [color]="item.badge.color" slot="end" size="small" [attr.aria-label]="'Insignia: ' + item.badge.text">
           {{ item.badge.text }}
         </ion-badge>
+        }
+        @if (item.enabled) {
+        <ion-icon name="chevron-forward" slot="end" color="medium" size="small" aria-hidden="true"></ion-icon>
         }
       </ion-item>
       }

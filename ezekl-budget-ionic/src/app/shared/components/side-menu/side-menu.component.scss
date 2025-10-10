@@ -1,33 +1,121 @@
-/* Estilos mínimos para el side menu - usando Ionic nativo */
+/*
+ * Estilos mejorados para el side menu - Usando Ionic CSS utilities
+ * Minimizamos CSS personalizado siguiendo las mejores prácticas de Ionic
+ */
 
-.profile-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
+// === Profile Card Styling ===
+.profile-card {
+  margin: 16px;
+  border-radius: 12px;
+}
+
+.profile-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
 }
 
 .profile-avatar {
-  --size: 60px;
-  margin-right: 1rem;
+  --size: 64px;
+  --border-radius: 50%;
+  background: var(--ion-color-primary);
 }
 
 .avatar-text {
-  font-size: 24px;
-  font-weight: bold;
+  color: var(--ion-color-primary-contrast);
+  font-size: 20px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
+  width: 100%;
 }
 
-/* Responsive - solo para móviles pequeños */
-@media (max-width: 768px) {
-  .profile-header {
-    flex-direction: column;
-    text-align: center;
+.profile-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: var(--ion-color-dark);
+}
+
+.profile-code {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  margin: 0 0 8px 0;
+}
+
+.profile-status {
+  --background: var(--ion-color-success);
+}
+
+// === Menu Section Styling ===
+.menu-section {
+  margin: 16px;
+  border-radius: 12px;
+}
+
+.menu-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --min-height: 56px;
+  transition: background-color 0.2s ease;
+
+  &:hover:not(.menu-item-disabled) {
+    --background: var(--ion-color-light);
   }
 
-  .profile-avatar {
-    margin: 0 0 12px 0;
+  // Accesibilidad: Indicador visual de foco
+  &:focus-within:not(.menu-item-disabled) {
+    --background: var(--ion-color-light);
+    outline: 2px solid var(--ion-color-primary);
+    outline-offset: -2px;
+  }
+
+  // Estados de activación táctil
+  &.ion-activated:not(.menu-item-disabled) {
+    --background: var(--ion-color-primary-tint);
+  }
+}
+
+.menu-item-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+
+  // Prevenir interacciones en elementos deshabilitados
+  pointer-events: none;
+}
+
+.menu-item-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+// === Accessibility Improvements ===
+.close-menu-button {
+  &:focus {
+    outline: 2px solid var(--ion-color-primary-contrast);
+    outline-offset: 2px;
+  }
+}
+
+// === Ionic CSS Utilities Override (Cuando sea necesario) ===
+ion-list {
+  background: transparent;
+}
+
+ion-list-header {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+// === Dark Mode Support ===
+@media (prefers-color-scheme: dark) {
+  .profile-name {
+    color: var(--ion-color-light);
   }
 }

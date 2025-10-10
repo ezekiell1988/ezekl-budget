@@ -1,0 +1,136 @@
+/* Estilos mínimos para tabs CRM - usar componentes nativos de Ionic */
+
+ion-tab-button {
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+
+  ion-label {
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 4px;
+  }
+
+  ion-icon {
+    font-size: 22px;
+  }
+
+  &.tab-selected {
+    --color: var(--ion-color-primary-contrast);
+
+    ion-icon {
+      transform: scale(1.1);
+    }
+
+    ion-label {
+      font-weight: 600;
+    }
+  }
+}
+
+/* Estilos para el contenido de los tabs */
+.tab-content {
+  padding: 1rem;
+  min-height: 100vh;
+  background: var(--ion-color-light);
+}
+
+.crm-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--ion-color-medium);
+
+  h2 {
+    margin: 0;
+    color: var(--ion-color-primary);
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+
+  .section-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
+/* Estados de loading */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem;
+
+  ion-spinner {
+    --color: var(--ion-color-primary);
+  }
+}
+
+/* Estados de error */
+.error-container {
+  text-align: center;
+  padding: 2rem;
+  color: var(--ion-color-danger);
+
+  ion-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  h3 {
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    color: var(--ion-color-medium);
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Estados vacíos */
+.empty-container {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--ion-color-medium);
+
+  ion-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  h3 {
+    margin-bottom: 0.5rem;
+    color: var(--ion-color-medium);
+  }
+
+  p {
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  ion-tab-button {
+    ion-label {
+      font-size: 10px;
+    }
+
+    ion-icon {
+      font-size: 20px;
+    }
+  }
+
+  .crm-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+
+    .section-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+}

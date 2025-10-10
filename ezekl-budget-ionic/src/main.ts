@@ -3,10 +3,49 @@ import { RouteReuseStrategy, provideRouter, withPreloading, PreloadAllModules } 
 import { LocationStrategy, HashLocationStrategy } from '@angular/common';
 import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular/standalone';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { addIcons } from 'ionicons';
+import {
+  businessOutline,
+  personOutline,
+  documentTextOutline,
+  medicalOutline,
+  alertCircleOutline,
+  buildOutline,
+  clipboardOutline,
+  folderOutline,
+  settingsOutline,
+  refreshOutline,
+  add,
+  eyeOutline,
+  createOutline,
+  trashOutline,
+  closeOutline,
+  saveOutline
+} from 'ionicons/icons';
 
 import { routes } from './app/app.routes';
 import { AppComponent } from './app/app.component';
 import { AuthInterceptor } from './app/interceptors/auth.interceptor';
+
+// Registrar iconos globalmente
+addIcons({
+  'business-outline': businessOutline,
+  'person-outline': personOutline,
+  'document-text-outline': documentTextOutline,
+  'medical-outline': medicalOutline,
+  'alert-circle-outline': alertCircleOutline,
+  'build-outline': buildOutline,
+  'clipboard-outline': clipboardOutline,
+  'folder-outline': folderOutline,
+  'settings-outline': settingsOutline,
+  'refresh-outline': refreshOutline,
+  'add': add,
+  'eye-outline': eyeOutline,
+  'create-outline': createOutline,
+  'trash-outline': trashOutline,
+  'close-outline': closeOutline,
+  'save-outline': saveOutline
+});
 
 bootstrapApplication(AppComponent, {
   providers: [

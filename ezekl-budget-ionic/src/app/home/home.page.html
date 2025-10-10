@@ -19,13 +19,25 @@
           <p>El demo del WebSocket se ha movido a su propia página.</p>
 
           <!-- Enlaces a las funcionalidades -->
-          <div class="navigation-buttons">
+          <div class="navigation-buttons" role="navigation" aria-label="Funcionalidades principales">
             <ion-button
               expand="block"
               fill="outline"
-              routerLink="/accounting-accounts">
-              <ion-icon name="book-outline" slot="start"></ion-icon>
+              routerLink="/accounting-accounts"
+              aria-label="Ir a Cuentas Contables"
+              class="navigation-button">
+              <ion-icon name="book-outline" slot="start" aria-hidden="true"></ion-icon>
               Cuentas Contables
+            </ion-button>
+
+            <ion-button
+              expand="block"
+              fill="solid"
+              routerLink="/crm"
+              aria-label="Ir a Dynamics 365 CRM"
+              class="navigation-button">
+              <ion-icon name="business-outline" slot="start" aria-hidden="true"></ion-icon>
+              Dynamics 365 CRM
             </ion-button>
           </div>
         </div>

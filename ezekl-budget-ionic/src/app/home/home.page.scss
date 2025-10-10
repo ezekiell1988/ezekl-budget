@@ -21,11 +21,33 @@
     margin-left: auto;
     margin-right: auto;
 
-    ion-button {
+    .navigation-button {
       margin-bottom: 1rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
 
       ion-icon {
         margin-right: 0.5rem;
+      }
+
+      // Accesibilidad: Indicador visual de foco
+      &:focus {
+        outline: 2px solid var(--ion-color-primary-contrast);
+        outline-offset: 2px;
+        box-shadow: 0 4px 12px rgba(var(--ion-color-primary-rgb), 0.3);
+      }
+
+      // Efectos de hover para dispositivos que lo soportan
+      @media (hover: hover) {
+        &:hover:not([disabled]) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(var(--ion-color-primary-rgb), 0.2);
+        }
+      }
+
+      // Estados de activación táctil
+      &.ion-activated {
+        transform: translateY(1px);
+        transition-duration: 0.1s;
       }
     }
   }

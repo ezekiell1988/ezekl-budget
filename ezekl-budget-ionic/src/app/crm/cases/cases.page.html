@@ -1,0 +1,477 @@
+<app-header title="Casos CRM"></app-header>
+
+<!-- Barra de acciones específica de CRM -->
+<ion-toolbar>
+  <ion-buttons slot="end">
+    <ion-button fill="clear" (click)="clearFilters()" [disabled]="isLoading">
+      <ion-icon name="refresh-outline" slot="icon-only"></ion-icon>
+    </ion-button>
+    <ion-button fill="clear" (click)="openCreateModal()" [disabled]="isLoading">
+      <ion-icon name="add" slot="icon-only"></ion-icon>
+    </ion-button>
+  </ion-buttons>
+</ion-toolbar>
+
+<ion-content>
+
+  <!-- Barra de búsqueda y filtros -->
+  <ion-grid>
+    <ion-row>
+      <ion-col size="12" size-md="8">
+        <ion-searchbar
+          [(ngModel)]="searchText"
+          (ionInput)="onSearch($event)"
+          placeholder="Buscar casos por título..."
+          [debounce]="500"
+          show-clear-button="focus">
+        </ion-searchbar>
+      </ion-col>
+      <ion-col size="12" size-md="4">
+        <ion-item>
+          <ion-label>Estado:</ion-label>
+          <ion-select
+            [(ngModel)]="selectedStatus"
+            (ionChange)="onStatusFilter($event)"
+            placeholder="Todos los estados">
+            <ion-select-option [value]="null">Todos</ion-select-option>
+            <ion-select-option [value]="CaseStatus.Active">Activo</ion-select-option>
+            <ion-select-option [value]="CaseStatus.Resolved">Resuelto</ion-select-option>
+            <ion-select-option [value]="CaseStatus.Canceled">Cancelado</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <!-- Pull to refresh -->
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content
+      pulling-text="Desliza para actualizar"
+      refreshing-text="Actualizando casos...">
+    </ion-refresher-content>
+  </ion-refresher>
+
+  <!-- Lista de casos -->
+  @if (!isLoading || cases.length > 0) {
+  <div>
+
+    <!-- Casos encontrados -->
+    @if (cases.length > 0) {
+    <ion-list>
+      <ion-card *ngFor="let case of cases" class="case-card">
+        <ion-card-header>
+          <div class="case-header">
+            <ion-card-title>{{ case.title }}</ion-card-title>
+            <div class="case-badges">
+              <ion-chip [color]="getStatusColor(case.statuscode)">
+                <ion-label>{{ getStatusText(case.statuscode) }}</ion-label>
+              </ion-chip>
+              <ion-chip [color]="getPriorityColor(case.prioritycode)">
+                <ion-label>{{ getPriorityText(case.prioritycode) }}</ion-label>
+              </ion-chip>
+            </div>
+          </div>
+        </ion-card-header>
+
+        <ion-card-content>
+          @if (case.description) {
+          <p class="case-description">
+            {{ case.description | slice:0:120 }}{{ case.description && case.description.length > 120 ? '...' : '' }}
+          </p>
+          }
+
+          <div class="case-metadata">
+            <ion-item lines="none">
+              <ion-label>
+                <p><strong>Cliente:</strong> {{ case.customer_name || 'No asignado' }}</p>
+                <p><strong>Creado:</strong> {{ formatDate(case.createdon) }}</p>
+                @if (case.modifiedon) {
+                <p><strong>Modificado:</strong> {{ formatDate(case.modifiedon) }}</p>
+                }
+              </ion-label>
+            </ion-item>
+          </div>
+
+          <!-- Botones de acción -->
+          <div class="case-actions">
+            <ion-button fill="clear" size="small" (click)="openViewModal(case)">
+              <ion-icon name="eye-outline" slot="start"></ion-icon>
+              Ver
+            </ion-button>
+            <ion-button fill="clear" size="small" (click)="openEditModal(case)">
+              <ion-icon name="create-outline" slot="start"></ion-icon>
+              Editar
+            </ion-button>
+            <ion-button fill="clear" size="small" color="danger" (click)="deleteCase(case)">
+              <ion-icon name="trash-outline" slot="start"></ion-icon>
+              Eliminar
+            </ion-button>
+          </div>
+        </ion-card-content>
+      </ion-card>
+    </ion-list>
+
+    <!-- Infinite scroll -->
+    <ion-infinite-scroll (ionInfinite)="onLoadMore($event)" [disabled]="!hasNextPage">
+      <ion-infinite-scroll-content loading-text="Cargando más casos...">
+      </ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+    }
+
+  </div>
+  }
+
+  <!-- Estado de carga inicial -->
+  @if (isLoading && cases.length === 0) {
+  <div class="loading-container">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Cargando casos...</p>
+  </div>
+  }
+
+  <!-- Estado vacío -->
+  @if (!isLoading && cases.length === 0) {
+  <div class="empty-container">
+    <ion-icon name="document-text-outline"></ion-icon>
+    <h3>No hay casos</h3>
+    <p>No se encontraron casos que coincidan con los filtros aplicados.</p>
+    <ion-button fill="outline" (click)="clearFilters()">
+      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Limpiar Filtros
+    </ion-button>
+  </div>
+  }
+
+</ion-content>
+
+<!-- MODAL CREAR CASO -->
+<ion-modal [isOpen]="isCreateModalOpen" (willDismiss)="closeCreateModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Crear Nuevo Caso</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeCreateModal()">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="modal-content">
+      <form [formGroup]="createForm" (ngSubmit)="createCase()">
+        <ion-grid>
+
+          <ion-row>
+            <ion-col size="12">
+              <ion-item>
+                <ion-label position="stacked">Título del Caso *</ion-label>
+                <ion-input
+                  type="text"
+                  formControlName="title"
+                  placeholder="Ingrese el título del caso"
+                  maxlength="160">
+                </ion-input>
+              </ion-item>
+              @if (createForm.get('title')?.invalid && createForm.get('title')?.touched) {
+              <div class="error-text">
+                @if (createForm.get('title')?.errors?.['required']) {
+                <small>El título es obligatorio</small>
+                }
+                @if (createForm.get('title')?.errors?.['minlength']) {
+                <small>Mínimo 5 caracteres</small>
+                }
+              </div>
+              }
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12">
+              <ion-item>
+                <ion-label position="stacked">Descripción</ion-label>
+                <ion-textarea
+                  formControlName="description"
+                  placeholder="Describa el problema o consulta..."
+                  rows="4"
+                  maxlength="2000">
+                </ion-textarea>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">Prioridad</ion-label>
+                <ion-select formControlName="prioritycode">
+                  <ion-select-option [value]="CasePriority.High">Alta</ion-select-option>
+                  <ion-select-option [value]="CasePriority.Normal">Normal</ion-select-option>
+                  <ion-select-option [value]="CasePriority.Low">Baja</ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">Origen</ion-label>
+                <ion-select formControlName="caseorigincode">
+                  <ion-select-option [value]="CaseOrigin.Phone">Teléfono</ion-select-option>
+                  <ion-select-option [value]="CaseOrigin.Email">Email</ion-select-option>
+                  <ion-select-option [value]="CaseOrigin.Web">Web</ion-select-option>
+                  <ion-select-option [value]="CaseOrigin.Facebook">Facebook</ion-select-option>
+                  <ion-select-option [value]="CaseOrigin.Twitter">Twitter</ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">ID Cuenta Cliente (GUID)</ion-label>
+                <ion-input
+                  type="text"
+                  formControlName="customer_account_id"
+                  placeholder="629ca2a0-024a-ea11-a815-000d3a591218">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">ID Contacto Cliente (GUID)</ion-label>
+                <ion-input
+                  type="text"
+                  formControlName="customer_contact_id"
+                  placeholder="729ca2a0-024a-ea11-a815-000d3a591220">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+        </ion-grid>
+
+        <!-- Botones del modal -->
+        <div class="modal-buttons">
+          <ion-button type="button" fill="outline" (click)="closeCreateModal()">
+            Cancelar
+          </ion-button>
+          <ion-button
+            type="submit"
+            [disabled]="createForm.invalid">
+            <ion-icon name="save-outline" slot="start"></ion-icon>
+            Crear Caso
+          </ion-button>
+        </div>
+
+      </form>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL EDITAR CASO -->
+<ion-modal [isOpen]="isEditModalOpen" (willDismiss)="closeEditModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Editar Caso</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeEditModal()">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="modal-content">
+      <form [formGroup]="editForm" (ngSubmit)="updateCase()">
+        <ion-grid>
+
+          <ion-row>
+            <ion-col size="12">
+              <ion-item>
+                <ion-label position="stacked">Título del Caso *</ion-label>
+                <ion-input
+                  type="text"
+                  formControlName="title"
+                  placeholder="Ingrese el título del caso"
+                  maxlength="160">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12">
+              <ion-item>
+                <ion-label position="stacked">Descripción</ion-label>
+                <ion-textarea
+                  formControlName="description"
+                  placeholder="Describa el problema o consulta..."
+                  rows="4"
+                  maxlength="2000">
+                </ion-textarea>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12" size-md="4">
+              <ion-item>
+                <ion-label position="stacked">Estado</ion-label>
+                <ion-select formControlName="statuscode">
+                  <ion-select-option [value]="CaseStatus.Active">Activo</ion-select-option>
+                  <ion-select-option [value]="CaseStatus.Resolved">Resuelto</ion-select-option>
+                  <ion-select-option [value]="CaseStatus.Canceled">Cancelado</ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+            <ion-col size="12" size-md="4">
+              <ion-item>
+                <ion-label position="stacked">Prioridad</ion-label>
+                <ion-select formControlName="prioritycode">
+                  <ion-select-option [value]="CasePriority.High">Alta</ion-select-option>
+                  <ion-select-option [value]="CasePriority.Normal">Normal</ion-select-option>
+                  <ion-select-option [value]="CasePriority.Low">Baja</ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+            <ion-col size="12" size-md="4">
+              <ion-item>
+                <ion-label position="stacked">Tipo de Caso</ion-label>
+                <ion-input
+                  type="number"
+                  formControlName="casetypecode"
+                  placeholder="Código numérico">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+        </ion-grid>
+
+        <!-- Botones del modal -->
+        <div class="modal-buttons">
+          <ion-button type="button" fill="outline" (click)="closeEditModal()">
+            Cancelar
+          </ion-button>
+          <ion-button
+            type="submit"
+            [disabled]="editForm.invalid">
+            <ion-icon name="save-outline" slot="start"></ion-icon>
+            Actualizar Caso
+          </ion-button>
+        </div>
+
+      </form>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL VER CASO -->
+<ion-modal [isOpen]="isViewModalOpen" (willDismiss)="closeViewModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Detalles del Caso</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeViewModal()">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    @if (selectedCase) {
+    <ion-content class="modal-content">
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>{{ selectedCase.title }}</ion-card-title>
+          <div class="case-badges">
+            <ion-chip [color]="getStatusColor(selectedCase.statuscode)">
+              <ion-label>{{ getStatusText(selectedCase.statuscode) }}</ion-label>
+            </ion-chip>
+            <ion-chip [color]="getPriorityColor(selectedCase.prioritycode)">
+              <ion-label>{{ getPriorityText(selectedCase.prioritycode) }}</ion-label>
+            </ion-chip>
+          </div>
+        </ion-card-header>
+
+        <ion-card-content>
+          <ion-list>
+            <ion-item>
+              <ion-label>
+                <h3>ID del Caso</h3>
+                <p>{{ selectedCase.incidentid }}</p>
+              </ion-label>
+            </ion-item>
+
+            @if (selectedCase.description) {
+            <ion-item>
+              <ion-label>
+                <h3>Descripción</h3>
+                <p>{{ selectedCase.description }}</p>
+              </ion-label>
+            </ion-item>
+            }
+
+            @if (selectedCase.customer_name) {
+            <ion-item>
+              <ion-label>
+                <h3>Cliente</h3>
+                <p>{{ selectedCase.customer_name }}</p>
+              </ion-label>
+            </ion-item>
+            }
+
+            @if (selectedCase.customerid) {
+            <ion-item>
+              <ion-label>
+                <h3>ID Cliente</h3>
+                <p>{{ selectedCase.customerid }}</p>
+              </ion-label>
+            </ion-item>
+            }
+
+            <ion-item>
+              <ion-label>
+                <h3>Fechas</h3>
+                <p><strong>Creado:</strong> {{ formatDate(selectedCase.createdon) }}</p>
+                @if (selectedCase.modifiedon) {
+                <p><strong>Modificado:</strong> {{ formatDate(selectedCase.modifiedon) }}</p>
+                }
+              </ion-label>
+            </ion-item>
+
+            @if (selectedCase.casetypecode) {
+            <ion-item>
+              <ion-label>
+                <h3>Tipo de Caso</h3>
+                <p>{{ selectedCase.casetypecode }}</p>
+              </ion-label>
+            </ion-item>
+            }
+
+            @if (selectedCase.caseorigincode) {
+            <ion-item>
+              <ion-label>
+                <h3>Origen</h3>
+                <p>{{ selectedCase.caseorigincode }}</p>
+              </ion-label>
+            </ion-item>
+            }
+
+            @if (selectedCase.escalated !== undefined) {
+            <ion-item>
+              <ion-label>
+                <h3>Escalado</h3>
+                <p>{{ selectedCase.escalated ? 'Sí' : 'No' }}</p>
+              </ion-label>
+            </ion-item>
+            }
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+    </ion-content>
+    }
+  </ng-template>
+</ion-modal>

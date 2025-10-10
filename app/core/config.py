@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     azure_client_secret: Optional[str] = None
     azure_tenant_id: Optional[str] = None
     
+    # Configuración de Dynamics 365 CRM
+    crm_tenant_id: Optional[str] = None
+    crm_client_id: Optional[str] = None
+    crm_client_secret: Optional[str] = None
+    crm_d365_base_url: Optional[str] = None
+    crm_api_version: str = "v9.0"
+    
     # Configuración de autenticación JWE (debe ser exactamente 32 bytes)
     jwe_secret_key: str = "ezekl-budget-2024-jwe-secret-32b"  # Exactamente 32 bytes
     

@@ -1,0 +1,27 @@
+<ion-tabs>
+  <!-- Router outlet para renderizar el contenido de los tabs -->
+  <router-outlet></router-outlet>
+
+  <!-- Tab Bar -->
+  <ion-tab-bar slot="bottom">
+    <ion-tab-button tab="cases" routerLink="/crm/cases">
+      <ion-icon name="document-text-outline"></ion-icon>
+      <ion-label>Casos</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button tab="accounts" routerLink="/crm/accounts">
+      <ion-icon name="business-outline"></ion-icon>
+      <ion-label>Cuentas</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button tab="contacts" routerLink="/crm/contacts">
+      <ion-icon name="person-outline"></ion-icon>
+      <ion-label>Contactos</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button tab="system" routerLink="/crm/system">
+      <ion-icon name="medical-outline"></ion-icon>
+      <ion-label>Sistema</ion-label>
+    </ion-tab-button>
+  </ion-tab-bar>
+</ion-tabs>

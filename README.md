@@ -20,6 +20,7 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **Microsoft OAuth2** - Azure AD con asociación de cuentas automática
 - **Cola de emails en background** - Envío asíncrono sin bloquear API
 - **Azure OpenAI** integration
+- **Dynamics 365 CRM** - Integración empresarial completa: casos de soporte, cuentas corporativas, contactos, diagnósticos automáticos y filtros OData avanzados
 - **SQL Server** con conexiones asíncronas y stored procedures
 - **Detección de ambiente** con variable ENVIRONMENT (development/production)
 
@@ -36,6 +37,8 @@ Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angul
 - **API Docs**: https://budget.ezekl.com/docs
 - **API Health**: https://budget.ezekl.com/api/health
 - **Microsoft Auth**: https://budget.ezekl.com/api/auth/microsoft
+- **CRM API**: https://budget.ezekl.com/api/crm/* (Dynamics 365: casos, cuentas, contactos)
+- **CRM Health**: https://budget.ezekl.com/api/crm/system/health (diagnóstico CRM)
 - **WebSocket**: wss://budget.ezekl.com/ws/ (tiempo real)
 
 ## � Inicio Rápido (Desarrollo Local)
@@ -326,6 +329,119 @@ Esta separación permite:
 - ✅ **Testabilidad** - Fácil testing unitario de lógica de negocio
 - ✅ **Mantenibilidad** - Código organizado por responsabilidades
 - ✅ **Escalabilidad** - Agregar nuevos servicios es directo
+
+### 4.8. Integración con Dynamics 365 CRM 🏢
+
+La aplicación incluye **integración empresarial completa con Microsoft Dynamics 365 CRM**, proporcionando gestión avanzada de relaciones con clientes, seguimiento de casos de soporte y administración de cuentas corporativas.
+
+#### 🚀 Funcionalidades CRM Principales
+
+**Gestión Empresarial Completa:**
+- ✅ **Casos de Soporte (Incidents)** - Tickets, seguimiento, resolución y escalado
+- ✅ **Cuentas Corporativas (Accounts)** - Empresas, organizaciones y clientes B2B
+- ✅ **Contactos Empresariales (Contacts)** - Personas, responsables y usuarios finales
+- ✅ **Diagnósticos Automáticos** - Health check y troubleshooting integrado
+- ✅ **Búsquedas Avanzadas** - Filtros OData, paginación y ordenamiento
+
+**Características Técnicas Avanzadas:**
+- ✅ **Autenticación Azure AD** - Client credentials flow con renovación automática
+- ✅ **Caché Inteligente de Tokens** - Renovación 30 segundos antes de expirar
+- ✅ **Cliente HTTP Asíncrono** - Máximo rendimiento con aiohttp
+- ✅ **Modelos Pydantic Completos** - Validación y documentación automática
+- ✅ **Logging Empresarial** - Auditoría completa de operaciones CRM
+- ✅ **Manejo Robusto de Errores** - Recuperación automática y reintentos
+
+#### 📊 Casos de Uso Empresariales
+
+**Flujo de Trabajo Integrado:**
+```
+Cliente → Presupuesto → Cuenta D365 → Caso Soporte → Resolución → Facturación
+```
+
+**Escenarios Reales:**
+1. **Cliente nuevo** → Se crea automáticamente cuenta corporativa en D365
+2. **Presupuesto aprobado** → Genera oportunidad de venta en CRM
+3. **Incidencia técnica** → Crea caso con contexto completo del proyecto
+4. **Seguimiento comercial** → Actualiza contactos y actividades empresariales
+
+#### Endpoints CRM disponibles:
+
+**Sistema y diagnóstico:**
+- `GET /api/crm/system/health` - Health check del CRM
+- `GET /api/crm/system/diagnose` - Diagnóstico completo de configuración
+- `GET /api/crm/system/token` - Información del token (debugging)
+
+**Casos (Incidents):**
+- `GET /api/crm/cases` - Lista paginada con filtros OData
+- `GET /api/crm/cases/{id}` - Caso específico por GUID
+- `POST /api/crm/cases` - Crear nuevo caso
+- `PATCH /api/crm/cases/{id}` - Actualizar caso existente
+- `DELETE /api/crm/cases/{id}` - Eliminar caso
+
+**Cuentas (Accounts):**
+- `GET /api/crm/accounts` - Lista de empresas/organizaciones
+- `GET /api/crm/accounts/{id}` - Cuenta específica
+- `POST /api/crm/accounts` - Crear nueva cuenta
+- `PATCH /api/crm/accounts/{id}` - Actualizar cuenta
+- `DELETE /api/crm/accounts/{id}` - Eliminar cuenta
+
+**Contactos (Contacts):**
+- `GET /api/crm/contacts` - Lista de personas/contactos
+- `GET /api/crm/contacts/{id}` - Contacto específico
+- `POST /api/crm/contacts` - Crear nuevo contacto
+- `PATCH /api/crm/contacts/{id}` - Actualizar contacto
+- `DELETE /api/crm/contacts/{id}` - Eliminar contacto
+
+#### Configuración CRM:
+
+```env
+# Variables de entorno requeridas para CRM
+CRM_TENANT_ID=your-azure-tenant-id
+CRM_CLIENT_ID=your-azure-app-client-id
+CRM_CLIENT_SECRET=your-azure-app-secret
+CRM_D365_BASE_URL=https://yourorg.crm.dynamics.com
+CRM_API_VERSION=v9.0
+```
+
+#### 🔗 Documentación Completa CRM
+
+Para información detallada sobre configuración, ejemplos de uso, filtros OData, troubleshooting y características avanzadas, consulta:
+
+📖 **[Documentación CRM Completa](./app/api/crm/README.md)** - Guía técnica exhaustiva con ejemplos prácticos
+
+#### 🏥 Diagnósticos Rápidos
+
+```bash
+# Health check básico del CRM
+curl https://budget.ezekl.com/api/crm/system/health
+
+# Diagnóstico completo de configuración
+curl -H "Authorization: Bearer {token}" https://budget.ezekl.com/api/crm/system/diagnose
+
+# Ejemplo: Crear nuevo caso
+curl -X POST https://budget.ezekl.com/api/crm/cases \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Sistema facturación", "description": "Error en módulo..."}'
+```
+
+#### ⚙️ Arquitectura CRM
+
+```
+app/api/crm/
+├── README.md              # 📖 Documentación completa
+├── __init__.py           # 🔧 Exportaciones del módulo
+├── cases.py              # 🎫 Endpoints de casos/tickets
+├── accounts.py           # 🏢 Endpoints de cuentas corporativas
+├── contacts.py           # 👤 Endpoints de contactos empresariales
+└── system.py             # 🏥 Diagnósticos y health checks
+
+app/services/
+├── crm_auth.py          # 🔐 Autenticación Azure AD + caché
+└── crm_service.py       # ⚙️ Lógica de negocio CRM
+
+app/models/crm.py        # 📝 Modelos Pydantic para CRM
+```
 
 ### 4.7. WebSocket en Tiempo Real
 

@@ -76,6 +76,18 @@ export class MeService {
             color: 'primary'
           },
           {
+            id: 'crm',
+            title: 'Dynamics 365 CRM',
+            icon: 'business-outline',
+            route: '/crm',
+            enabled: true,
+            color: 'primary',
+            badge: {
+              text: 'NEW',
+              color: 'success'
+            }
+          },
+          {
             id: 'accounting-accounts',
             title: 'Cuentas Contables',
             icon: 'book-outline',

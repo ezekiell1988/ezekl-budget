@@ -2,13 +2,31 @@
   <ion-row class="ion-justify-content-center">
     <ion-col size="12" size-md="8" size-lg="6">
       <ion-header [translucent]="true">
-        <ion-toolbar>
-          <!-- Botón de menú -->
-          @if (showLogout) {
-          <ion-menu-button slot="start" color="primary" size="large"></ion-menu-button>
+        <ion-toolbar [color]="color">
+          <!-- Botón de menú o navegación -->
+          @if (showMenu) {
+          <ion-menu-button slot="start" color="light" auto-hide="false"></ion-menu-button>
           }
 
-          <ion-title>{{ title }}</ion-title>
+          <!-- Título centrado -->
+          <ion-title class="ion-text-center">
+            {{ title }}
+          </ion-title>
+
+          <!-- Botones de acción opcionales -->
+          @if (showActions) {
+          <ion-buttons slot="end">
+            <ion-button fill="clear" (click)="onSearchClick()">
+              <ion-icon name="search" slot="icon-only" color="light"></ion-icon>
+            </ion-button>
+            <ion-button fill="clear" (click)="onNotificationsClick()">
+              <ion-icon name="notifications" slot="icon-only" color="light"></ion-icon>
+            </ion-button>
+            <ion-button fill="clear" (click)="onMoreClick()">
+              <ion-icon name="ellipsis-vertical" slot="icon-only" color="light"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+          }
         </ion-toolbar>
       </ion-header>
     </ion-col>
