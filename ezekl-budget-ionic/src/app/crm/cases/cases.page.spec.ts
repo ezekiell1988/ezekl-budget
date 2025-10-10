@@ -5,14 +5,14 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { of, throwError } from 'rxjs';
 
 import { CasesPage } from './cases.page';
-import { CrmService } from '../../shared/services/crm.service';
+import { CrmService } from '../../services/crm.service';
 import {
   CaseResponse,
   CasesListResponse,
   CRMOperationResponse,
   CaseStatus,
   CasePriority
-} from '../../shared/models/crm.models';
+} from '../../models/crm.models';
 
 describe('CasesPage', () => {
   let component: CasesPage;

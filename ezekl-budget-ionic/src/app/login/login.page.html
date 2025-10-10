@@ -1,25 +1,25 @@
-<ion-content [fullscreen]="true" class="ion-padding" [scrollY]="true">
-  <div class="login-container">
+<ion-content [fullscreen]="true" [scrollY]="true">
+  <div class="login-container ion-padding">
     <ion-grid fixed>
       <ion-row class="ion-justify-content-center">
         <ion-col size="12" size-md="6" size-lg="4">
 
-        <!-- Logo y bienvenida usando ion-text y ion-note -->
+        <!-- Logo y bienvenida -->
         <div class="ion-text-center ion-margin-bottom">
-          <ion-icon name="wallet" color="primary" size="large" style="font-size: 4rem;"></ion-icon>
+          <ion-icon name="wallet" color="primary" style="font-size: 4rem; margin-bottom: 1rem;"></ion-icon>
           <ion-text color="primary">
-            <h1>Ezekl Budget</h1>
+            <h1 class="ion-no-margin">Ezekl Budget</h1>
           </ion-text>
-          <ion-note color="medium">
-            <p>Gestión inteligente de presupuesto</p>
-          </ion-note>
+          <ion-text color="medium">
+            <p style="line-height: 1.5;">Gestión inteligente de presupuesto</p>
+          </ion-text>
         </div>
 
         <!-- Wizard Step 1: Solicitar código de usuario -->
         @if (currentStep === loginSteps.REQUEST_TOKEN) {
 
         <!-- Botón de Microsoft Login -->
-        <ion-card class="ion-margin microsoft-login-card">
+        <ion-card class="ion-no-margin ion-margin-bottom">
           <ion-card-header>
             <ion-card-title color="primary">
               <ion-icon name="logo-microsoft" slot="start"></ion-icon>
@@ -31,7 +31,8 @@
           </ion-card-header>
 
           <ion-card-content>
-            <ion-button expand="full" shape="round" size="large" color="primary"
+            <ion-button expand="full" shape="round" size="large"
+              style="--background: #0078d4; --background-hover: #106ebe; --background-activated: #005a9e;"
               (click)="loginWithMicrosoft()" [disabled]="(wizardState$ | async)?.isLoading">
               <ion-icon name="logo-microsoft" slot="start"></ion-icon>
               Continuar con Microsoft
@@ -46,7 +47,7 @@
           </ion-chip>
         </div>
 
-        <ion-card class="ion-margin">
+        <ion-card class="ion-no-margin">
           <ion-card-header>
             <ion-card-title color="primary">
               <ion-icon name="person-circle" slot="start"></ion-icon>
@@ -68,10 +69,14 @@
 
               <!-- Mensaje de error -->
               @if ((wizardState$ | async)?.error) {
-              <ion-note color="danger" class="ion-margin-top">
-                <ion-icon name="alert-circle"></ion-icon>
-                {{ (wizardState$ | async)?.error }}
-              </ion-note>
+              <div class="ion-margin-top">
+                <ion-text color="danger">
+                  <p style="line-height: 1.5;">
+                    <ion-icon name="alert-circle"></ion-icon>
+                    {{ (wizardState$ | async)?.error }}
+                  </p>
+                </ion-text>
+              </div>
               }
 
               <!-- Botón continuar -->
@@ -144,23 +149,16 @@
                 </ion-input>
               </ion-item>
 
-              <!-- Botón principal -->
-              <ion-button
-                expand="full"
-                type="submit"
-                [disabled]="associateForm.invalid"
-                color="primary"
+              <!-- Botones -->
+              <ion-button expand="full" type="submit" [disabled]="associateForm.invalid"
+                style="--background: #0078d4; --background-hover: #106ebe; --background-activated: #005a9e;"
                 class="ion-margin-top">
                 <ion-icon name="link-outline" slot="start"></ion-icon>
                 Vincular Cuentas
               </ion-button>
 
-              <ion-button
-                fill="clear"
-                expand="full"
-                (click)="cancelMicrosoftAssociation()"
-                color="medium"
-                class="ion-margin-top">
+              <ion-button fill="clear" expand="full" (click)="cancelMicrosoftAssociation()"
+                color="medium" class="ion-margin-top">
                 <ion-icon name="close-circle" slot="start"></ion-icon>
                 Cancelar
               </ion-button>
@@ -237,10 +235,14 @@
 
               <!-- Mensaje de error -->
               @if ((wizardState$ | async)?.error) {
-              <ion-note color="danger" class="ion-margin-top">
-                <ion-icon name="alert-circle"></ion-icon>
-                {{ (wizardState$ | async)?.error }}
-              </ion-note>
+              <div class="ion-margin-top">
+                <ion-text color="danger">
+                  <p style="line-height: 1.5;">
+                    <ion-icon name="alert-circle"></ion-icon>
+                    {{ (wizardState$ | async)?.error }}
+                  </p>
+                </ion-text>
+              </div>
               }
 
               <!-- Botones de acción usando ion-grid -->

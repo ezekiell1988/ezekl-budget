@@ -4,12 +4,12 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 
 import { SystemPage } from './system.page';
-import { CrmService } from '../../shared/services/crm.service';
+import { CrmService } from '../../services/crm.service';
 import {
   CRMHealthResponse,
   CRMTokenResponse,
   CRMDiagnoseResponse
-} from '../../shared/models/crm.models';
+} from '../../models/crm.models';
 
 describe('SystemPage', () => {
   let component: SystemPage;
@@ -145,10 +145,10 @@ describe('SystemPage', () => {
   });
 
   it('should return correct status icon', () => {
-    expect(component.getStatusIcon('ok')).toBe('checkmarkCircle');
-    expect(component.getStatusIcon('success')).toBe('checkmarkCircle');
-    expect(component.getStatusIcon('error')).toBe('closeCircle');
-    expect(component.getStatusIcon('warning')).toBe('warningOutline');
+    expect(component.getStatusIcon('ok')).toBe('checkmark-circle');
+    expect(component.getStatusIcon('success')).toBe('checkmark-circle');
+    expect(component.getStatusIcon('error')).toBe('close-circle');
+    expect(component.getStatusIcon('warning')).toBe('warning-outline');
   });
 
   it('should clear cache and reload data', async () => {

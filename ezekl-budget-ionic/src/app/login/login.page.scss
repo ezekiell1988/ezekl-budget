@@ -1,16 +1,28 @@
+/**
+ * Estilos para la página de Login
+ * Usa componentes nativos de Ionic para minimizar CSS personalizado
+ */
+
+// Todas las utilidades de Ionic están siendo usadas:
+// - ion-padding: padding del contenedor
+// - ion-margin: márgenes
+// - ion-text-center: centrado de texto
+// - ion-justify-content-center: centrado de columnas
+// - Variables CSS: --ion-color-*
+
+// CSS mínimo necesario para funcionalidad específica
+
 /* Contenedor para centrar verticalmente */
 .login-container {
-  min-height: 100vh;
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px 0;
+  padding: 1.25rem 0;
 
-  // En dispositivos más pequeños, permitir scroll normal
   @media (max-height: 700px) {
-    min-height: auto;
     align-items: flex-start;
-    padding: 20px 0;
+    padding-top: 2rem;
   }
 }
 
@@ -18,15 +30,10 @@
 .token-grid {
   max-width: 300px;
   margin: 0 auto;
-
-  ion-col {
-    padding: 0.25rem;
-  }
 }
 
 /* Estilos para cada input de dígito del token */
 .token-digit-input {
-  // Usar variables que respetan el modo oscuro automáticamente
   --color: var(--ion-text-color);
   --background: var(--ion-background-color);
   --border-color: var(--ion-color-medium);
@@ -36,93 +43,26 @@
   text-align: center;
   font-weight: bold;
   font-size: 1.5rem;
-
-  // Asegurar que el input sea cuadrado y responsivo
   height: 60px;
 
-  // En móviles más pequeños
   @media (max-width: 480px) {
     height: 50px;
     font-size: 1.3rem;
   }
 
-  // Cuando está enfocado
   &.ion-focused {
     --border-color: var(--ion-color-primary);
     --border-width: 2px;
-    --background: var(--ion-background-color);
   }
 
-  // Cuando tiene valor
   &.ion-valid {
     --border-color: var(--ion-color-success);
     --color: var(--ion-color-success);
   }
 
-  // Estilo para el input nativo interno
   input {
     text-align: center !important;
     font-weight: bold !important;
     color: var(--ion-text-color) !important;
-  }
-}
-
-/* Estilo para la tarjeta de Microsoft */
-.microsoft-login-card {
-  ion-button[color="primary"] {
-    --background: #0078d4;
-    --background-hover: #106ebe;
-    --background-activated: #005a9e;
-  }
-}
-
-/* Estilo para la tarjeta de asociación Microsoft */
-.microsoft-association-card {
-  border-left: 4px solid var(--ion-color-primary);
-
-  .microsoft-user-info {
-    background: var(--ion-color-light);
-    border-radius: 12px;
-    padding: 12px;
-    border: 1px solid var(--ion-color-light-shade);
-
-    // Modo oscuro
-    @media (prefers-color-scheme: dark) {
-      background: var(--ion-color-dark);
-      border-color: var(--ion-color-dark-shade);
-    }
-
-    ion-item {
-      --background: transparent;
-    }
-
-    ion-avatar {
-      --border-radius: 8px;
-      width: 48px;
-      height: 48px;
-
-      ion-icon {
-        font-size: 28px;
-        margin: 10px;
-      }
-    }
-
-    h2 {
-      font-weight: 600;
-      margin: 0 0 4px 0;
-      color: var(--ion-text-color);
-    }
-
-    p {
-      margin: 0;
-      color: var(--ion-color-medium);
-      font-size: 0.9rem;
-    }
-  }
-
-  ion-button[color="primary"] {
-    --background: #0078d4;
-    --background-hover: #106ebe;
-    --background-activated: #005a9e;
   }
 }

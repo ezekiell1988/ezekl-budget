@@ -15,7 +15,7 @@ import {
   IonItem,
   IonLabel,
   IonSpinner,
-  IonNote,
+  // IonNote no usado
   ModalController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -24,8 +24,8 @@ import { closeOutline, searchOutline, personOutline, businessOutline } from 'ion
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
-import { CrmService } from '../../services/crm.service';
-import { AccountResponse, ContactResponse } from '../../models/crm.models';
+import { CrmService } from '../../../services/crm.service';
+import { AccountResponse, ContactResponse } from '../../../models/crm.models';
 
 export type CRMEntityType = 'account' | 'contact';
 
@@ -57,8 +57,8 @@ export interface CRMSearchResult {
     IonList,
     IonItem,
     IonLabel,
-    IonSpinner,
-    IonNote
+    IonSpinner
+    // IonNote no usado
   ]
 })
 export class CrmSearchComponent implements OnInit, OnDestroy {

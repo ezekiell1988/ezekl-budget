@@ -4,6 +4,7 @@ Proporciona métodos para interactuar con cuentas, contactos y casos.
 """
 
 import aiohttp
+import json
 import logging
 from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
@@ -60,7 +61,8 @@ class CRMService:
         method: str, 
         endpoint: str, 
         data: Optional[Dict] = None,
-        params: Optional[Dict] = None
+        params: Optional[Dict] = None,
+        prefer_maxpagesize: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Realiza una petición HTTP a la API de Dynamics 365.
@@ -70,6 +72,7 @@ class CRMService:
             endpoint: Endpoint relativo (ej: "accounts", "incidents")
             data: Datos JSON para el body (POST/PATCH)
             params: Parámetros de query string
+            prefer_maxpagesize: Tamaño máximo de página (usar header Prefer en lugar de $top)
             
         Returns:
             Dict con la respuesta JSON de la API
@@ -88,6 +91,10 @@ class CRMService:
             "OData-MaxVersion": "4.0",
             "OData-Version": "4.0",
         }
+        
+        # Agregar header Prefer para paginación server-driven si se especifica
+        if prefer_maxpagesize:
+            headers["Prefer"] = f"odata.maxpagesize={prefer_maxpagesize}"
         
         if data:
             headers["Content-Type"] = "application/json"
@@ -145,13 +152,21 @@ class CRMService:
         select_fields: Optional[str] = None,
         order_by: Optional[str] = None
     ) -> CasesListResponse:
-        """Obtiene una lista paginada de casos de Dynamics 365."""
+        """
+        Obtiene una lista paginada de casos de Dynamics 365.
         
+        IMPORTANTE: NO enviar $skip porque D365 no lo soporta.
+        En su lugar, usamos Prefer: odata.maxpagesize header y @odata.nextLink
+        para paginación server-driven.
+        """
+        
+        # CRÍTICO: NO enviar $skip porque D365 no lo soporta
         params = {"$count": "true"}  # Solicitar el conteo total
-        if top:
-            params["$top"] = top
-        if skip:
-            params["$skip"] = skip
+        
+        # NO incluir $skip - D365 no lo soporta
+        # if skip:
+        #     params["$skip"] = skip
+        
         if filter_query:
             params["$filter"] = filter_query
         if select_fields:
@@ -159,12 +174,20 @@ class CRMService:
         if order_by:
             params["$orderby"] = order_by
         
-        response = await self._make_request("GET", "incidents", params=params)
+        # Usar Prefer header para paginación en lugar de $top
+        response = await self._make_request(
+            "GET", 
+            "incidents", 
+            params=params,
+            prefer_maxpagesize=top  # Usar header en lugar de query param
+        )
         
         cases = [CaseResponse(**case) for case in response.get("value", [])]
         
         # Usar @odata.count si está disponible, de lo contrario usar len(cases)
         total_count = response.get("@odata.count", len(cases))
+        
+        logger.info(f"✅ Casos obtenidos: {len(cases)}, Total: {total_count}, hasNextLink: {response.get('@odata.nextLink') is not None}")
         
         return CasesListResponse(
             count=total_count,
@@ -229,6 +252,105 @@ class CRMService:
             entity_id=case_id,
             message="Caso eliminado exitosamente"
         )
+    
+    async def get_cases_by_nextlink(self, next_link: str) -> CasesListResponse:
+        """
+        Obtiene la siguiente página de casos usando nextLink de Dynamics 365.
+        
+        Dynamics 365 usa server-driven paging con @odata.nextLink que incluye
+        un $skiptoken (cookie de paginación). Este método usa el nextLink completo
+        para obtener la siguiente página sin calcular offset manualmente.
+        
+        Args:
+            next_link: URL completa del @odata.nextLink retornado por D365.
+                      Ejemplo: "/api/data/v9.2/incidents?$select=...&$skiptoken=<cookie>"
+        
+        Returns:
+            CasesListResponse con la siguiente página de casos y el nextLink
+            para la página siguiente (si existe).
+            
+        Note:
+            - NO modificar el nextLink, usarlo tal como viene
+            - NO agregar parámetros adicionales
+            - El $skiptoken es interno de D365, no intentar decodificarlo
+        """
+        self._check_configuration()
+        
+        logger.debug(f"🔗 nextLink recibido: {next_link[:150]}...")
+        
+        # Manejar URLs absolutas (https://...) y relativas (/api/data/...)
+        if next_link.startswith("http://") or next_link.startswith("https://"):
+            from urllib.parse import urlparse
+            parsed = urlparse(next_link)
+            path_and_query = parsed.path
+            if parsed.query:
+                path_and_query += f"?{parsed.query}"
+            next_link = path_and_query
+            logger.debug(f"🔗 URL convertida a relativa: {next_link[:150]}...")
+        
+        # Extraer solo la parte después de /api/data/v9.x/
+        if "/api/data/" in next_link:
+            parts = next_link.split(f"/api/data/{self.api_version}/")
+            if len(parts) > 1:
+                endpoint_with_params = parts[1]
+            else:
+                endpoint_with_params = next_link
+        else:
+            endpoint_with_params = next_link
+        
+        logger.debug(f"🔗 Endpoint extraído: {endpoint_with_params[:100]}...")
+        
+        # Construir URL manualmente para preservar el query string exacto
+        token = await crm_auth_service.get_access_token()
+        url = f"{self.api_base_url}/{endpoint_with_params}"
+        
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "OData-MaxVersion": "4.0",
+            "OData-Version": "4.0",
+            "Prefer": "odata.maxpagesize=25"
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url=url, headers=headers) as resp:
+                    
+                    if resp.status >= 400:
+                        response_text = await resp.text()
+                        logger.error(f"❌ Error en nextLink: GET {url} - HTTP {resp.status}")
+                        logger.error(f"Response: {response_text}")
+                        
+                        try:
+                            error_data = json.loads(response_text)
+                            error_msg = error_data.get("error", {}).get("message", response_text)
+                        except:
+                            error_msg = response_text
+                        
+                        raise HTTPException(
+                            status_code=resp.status,
+                            detail=f"Error de Dynamics 365: {error_msg}"
+                        )
+                    
+                    response = await resp.json()
+                    
+                    cases = [CaseResponse(**case) for case in response.get("value", [])]
+                    total_count = response.get("@odata.count", len(cases))
+                    
+                    logger.info(f"✅ nextLink procesado: {len(cases)} casos obtenidos")
+                    
+                    return CasesListResponse(
+                        count=total_count,
+                        cases=cases,
+                        next_link=response.get("@odata.nextLink")
+                    )
+                    
+        except aiohttp.ClientError as e:
+            logger.error(f"❌ Error de conexión procesando nextLink: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error de conexión con Dynamics 365: {str(e)}"
+            )
     
     # ========== MÉTODOS PARA CUENTAS (ACCOUNTS) ==========
     

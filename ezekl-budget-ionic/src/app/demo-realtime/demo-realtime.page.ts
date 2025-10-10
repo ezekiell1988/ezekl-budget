@@ -6,13 +6,11 @@ import { firstValueFrom } from 'rxjs';
 import { AzureOpenAIToolsService } from '../services/azure-openai-tools.service';
 import { AuthService } from '../services/auth.service';
 import {
-  IonHeader,
+  // IonHeader, IonTitle no usados - usa AppHeaderComponent
   IonToolbar,
-  IonTitle,
   IonContent,
   IonGrid,
-  IonRow,
-  IonCol,
+  // IonRow, IonCol no usados
   IonIcon,
   IonButton,
   IonButtons,
@@ -110,13 +108,11 @@ interface RealtimeConfig {
   imports: [
     CommonModule,
     FormsModule,
-    IonHeader,
+    // IonHeader, IonTitle no usados - usa AppHeaderComponent
     IonToolbar,
-    IonTitle,
     IonContent,
     IonGrid,
-    IonRow,
-    IonCol,
+    // IonRow, IonCol no usados
     IonIcon,
     IonButton,
     IonButtons,

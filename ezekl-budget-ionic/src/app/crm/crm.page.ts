@@ -6,9 +6,7 @@ import {
   IonTabButton,
   IonIcon,
   IonLabel,
-  IonGrid,
-  IonRow,
-  IonCol,
+  // IonGrid, IonRow, IonCol no usados
   ViewWillLeave,
   ViewDidLeave
 } from '@ionic/angular/standalone';
@@ -29,10 +27,8 @@ import { RouterModule, RouterOutlet } from '@angular/router';
     IonTabBar,
     IonTabButton,
     IonIcon,
-    IonLabel,
-    IonGrid,
-    IonRow,
-    IonCol
+    IonLabel
+    // IonGrid, IonRow, IonCol no usados en template
   ]
 })
 export class CrmPage implements OnInit, ViewWillLeave, ViewDidLeave {

@@ -76,8 +76,14 @@ Para configurar la autenticación, necesitas:
 ### Casos (Incidents)
 
 ```bash
+# Listar primera página de casos (25 items)
+GET /api/crm/cases?top=25&order_by=incidentid
+
 # Listar casos con filtros
 GET /api/crm/cases?filter_query=statuscode eq 1&top=25
+
+# Obtener siguiente página usando nextLink de D365
+GET /api/crm/cases/by-nextlink?next_link={encoded_next_link}
 
 # Crear nuevo caso
 POST /api/crm/cases
@@ -163,9 +169,9 @@ filter_query=contains(jobtitle,'Gerente') and contains(emailaddress1,'@empresa.c
 
 ### Flujo de Paginación
 
-#### 1. Primera Página
+#### 1. Primera Página (Casos)
 ```bash
-GET /api/crm/accounts?top=25&order_by=accountid
+GET /api/crm/cases?top=25&order_by=incidentid
 ```
 
 **Request Headers:**
@@ -176,24 +182,33 @@ Prefer: odata.maxpagesize=25
 **Respuesta:**
 ```json
 {
-  "count": 5000,
-  "accounts": [...],  // 25 items
-  "next_link": "/api/data/v9.0/accounts?$select=accountid,name&$skiptoken=<cookie>..."
+  "count": 150,
+  "cases": [...],  // 25 items
+  "next_link": "/api/data/v9.0/incidents?$select=incidentid,title&$skiptoken=<cookie>..."
 }
 ```
 
-#### 2. Páginas Siguientes
+#### 2. Páginas Siguientes (Casos)
 ```bash
-GET /api/crm/accounts/by-nextlink?next_link={url_encoded_next_link}
+GET /api/crm/cases/by-nextlink?next_link={url_encoded_next_link}
 ```
 
 **Respuesta:**
 ```json
 {
-  "count": 5000,
-  "accounts": [...],  // 25 items siguientes
-  "next_link": "/api/data/v9.0/accounts?$skiptoken=<cookie>..."
+  "count": 150,
+  "cases": [...],  // 25 items siguientes
+  "next_link": "/api/data/v9.0/incidents?$skiptoken=<cookie>..."
 }
+```
+
+#### Ejemplo con Cuentas (Accounts)
+```bash
+# Primera página
+GET /api/crm/accounts?top=25&order_by=accountid
+
+# Páginas siguientes
+GET /api/crm/accounts/by-nextlink?next_link={url_encoded_next_link}
 ```
 
 ### ⚠️ Comportamiento de nextLink
@@ -212,10 +227,13 @@ https://orgname.crm.dynamics.com/api/data/v9.0/accounts?$select=accountid,name&$
 
 ### 🔧 Implementación en el Backend
 
-El backend maneja **automáticamente ambos formatos**:
+El backend maneja **automáticamente ambos formatos** para todas las entidades:
 
 ```python
-# crm_service.py - get_accounts_by_nextlink() / get_contacts_by_nextlink()
+# crm_service.py - Métodos de paginación:
+# - get_cases_by_nextlink()
+# - get_accounts_by_nextlink()
+# - get_contacts_by_nextlink()
 
 # 1. Detectar si es URL absoluta
 if next_link.startswith("http://") or next_link.startswith("https://"):
@@ -230,7 +248,7 @@ if next_link.startswith("http://") or next_link.startswith("https://"):
 # 2. Extraer endpoint después de /api/data/v9.x/
 if "/api/data/" in next_link:
     parts = next_link.split(f"/api/data/{self.api_version}/")
-    endpoint_with_params = parts[1]  # "accounts?$skiptoken=..."
+    endpoint_with_params = parts[1]  # "incidents?$skiptoken=..." o "accounts?$skiptoken=..."
 
 # 3. Construir URL final
 url = f"{self.api_base_url}/{endpoint_with_params}"
@@ -314,23 +332,23 @@ url = f"{base_url}/{path_and_query.lstrip('/')}"
 ### 📊 Ejemplo Completo de Paginación
 
 ```python
-# Primera página
-async def get_contacts(top: int = 25):
+# Primera página de casos
+async def get_cases(top: int = 25):
     headers = {
         "Prefer": f"odata.maxpagesize={top}",
         "Authorization": f"Bearer {token}"
     }
-    url = f"{base_url}/contacts?$select=contactid,fullname"
+    url = f"{base_url}/incidents?$select=incidentid,title,statuscode"
     response = await client.get(url, headers=headers)
     
     data = response.json()
     return {
-        "contacts": data.get("value", []),
+        "cases": data.get("value", []),
         "next_link": data.get("@odata.nextLink")  # Puede ser absoluta o relativa
     }
 
-# Páginas siguientes
-async def get_contacts_by_nextlink(next_link: str):
+# Páginas siguientes de casos
+async def get_cases_by_nextlink(next_link: str):
     # Manejar URL absoluta
     if next_link.startswith("http"):
         from urllib.parse import urlparse
@@ -339,7 +357,7 @@ async def get_contacts_by_nextlink(next_link: str):
         if parsed.query:
             next_link += f"?{parsed.query}"
     
-    # Extraer endpoint
+    # Extraer endpoint (incidents, accounts, contacts, etc.)
     endpoint = next_link.split(f"/api/data/{api_version}/")[1]
     
     # Request sin Prefer header
@@ -349,18 +367,20 @@ async def get_contacts_by_nextlink(next_link: str):
     
     data = response.json()
     return {
-        "contacts": data.get("value", []),
+        "cases": data.get("value", []),
         "next_link": data.get("@odata.nextLink")
     }
 ```
 
+**Nota:** El mismo patrón aplica para `accounts` y `contacts`, solo cambia el endpoint y el nombre de la colección retornada.
+
 ### 📱 Integración Frontend (Ionic)
 
 ```typescript
-// contacts.page.ts
-async loadContacts() {
-  const response = await this.crmService.getContacts(25);
-  this.contacts = response.contacts;
+// cases.page.ts - Ejemplo con casos
+async loadCases() {
+  const response = await this.crmService.getCases(25);
+  this.cases = response.cases;
   this.nextLink = response.next_link;  // Guardar para siguiente página
 }
 
@@ -372,14 +392,19 @@ async onLoadMore(event: any) {
   
   // Encodear nextLink antes de enviarlo
   const encodedLink = encodeURIComponent(this.nextLink);
-  const response = await this.crmService.getContactsByNextLink(encodedLink);
+  const response = await this.crmService.getCasesByNextLink(encodedLink);
   
-  this.contacts.push(...response.contacts);
+  this.cases.push(...response.cases);
   this.nextLink = response.next_link;  // Actualizar para siguiente iteración
   
   event.target.complete();
 }
 ```
+
+**Nota:** El mismo patrón de paginación aplica para todas las entidades:
+- `getCases()` / `getCasesByNextLink()` - Casos
+- `getAccounts()` / `getAccountsByNextLink()` - Cuentas
+- `getContacts()` / `getContactsByNextLink()` - Contactos
 
 ### 📚 Documentación Completa
 

@@ -65,7 +65,7 @@ import {
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
-import { CrmService } from '../../shared/services/crm.service';
+import { CrmService } from '../../services/crm.service';
 import {
   CaseResponse,
   CaseCreateRequest,
@@ -75,7 +75,7 @@ import {
   CaseStatus,
   CasePriority,
   CaseOrigin
-} from '../../shared/models/crm.models';
+} from '../../models/crm.models';
 
 @Component({
   selector: 'app-crm-cases',
@@ -139,8 +139,9 @@ export class CasesPage implements OnInit, OnDestroy {
   selectedStatus: number | null = null;
   currentPage = 1;
   totalCount = 0;
-  pageSize = 25;
+  pageSize = 5; // 🔧 Cambiado a 5 para testing de paginación
   hasNextPage = false;
+  nextLink: string | undefined = undefined; // Para paginación con cookies de D365
 
   // Modales
   isCreateModalOpen = false;
@@ -221,8 +222,7 @@ export class CasesPage implements OnInit, OnDestroy {
     try {
       const params: CRMListParams = {
         top: this.pageSize,
-        skip: refresh ? 0 : (this.currentPage - 1) * this.pageSize,
-        order_by: 'createdon desc'
+        order_by: 'incidentid' // Usar primary key para ordenamiento determinístico
       };
 
       // Aplicar filtros
@@ -245,12 +245,14 @@ export class CasesPage implements OnInit, OnDestroy {
       if (refresh) {
         this.cases = response.cases;
         this.currentPage = 1;
+        this.nextLink = response.next_link;
       } else {
         this.cases = [...this.cases, ...response.cases];
       }
 
       this.totalCount = response.count;
       this.hasNextPage = !!response.next_link;
+      this.nextLink = response.next_link;
 
     } catch (error) {
       await this.showErrorToast(`Error cargando casos: ${error}`);
@@ -266,15 +268,29 @@ export class CasesPage implements OnInit, OnDestroy {
   }
 
   async onLoadMore(event: any) {
-    if (!this.hasNextPage) {
+    if (!this.hasNextPage || !this.nextLink) {
       event.target.complete();
       return;
     }
 
     this.isLoadingMore = true;
     this.currentPage++;
-    await this.loadCases();
-    event.target.complete();
+
+    try {
+      // Usar nextLink para paginación server-driven (D365)
+      const response: CasesListResponse = await this.crmService.getCasesByNextLink(this.nextLink).toPromise() as CasesListResponse;
+
+      this.cases = [...this.cases, ...response.cases];
+      this.totalCount = response.count;
+      this.hasNextPage = !!response.next_link;
+      this.nextLink = response.next_link;
+
+    } catch (error) {
+      await this.showErrorToast(`Error cargando más casos: ${error}`);
+    } finally {
+      this.isLoadingMore = false;
+      event.target.complete();
+    }
   }
 
   // ===============================================

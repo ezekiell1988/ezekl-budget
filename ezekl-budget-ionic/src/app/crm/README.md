@@ -279,8 +279,8 @@ CasesListResponse, CRMOperationResponse
 
 ### Backend y Servicios
 - [Documentación Backend CRM](../../../app/api/crm/README.md)
-- [Modelos TypeScript](../shared/models/crm.models.ts)
-- [Servicio CRM](../shared/services/crm.service.ts)
+- [Modelos TypeScript](../models/crm.models.ts)
+- [Servicio CRM](../services/crm.service.ts)
 - [Documentación principal](../../../README.md)
 
 ---

@@ -104,6 +104,75 @@ async def get_cases(
 
 
 @router.get(
+    "/by-nextlink",
+    response_model=CasesListResponse,
+    summary="Obtener siguiente página usando nextLink",
+    description="""
+    Obtiene la siguiente página de casos usando el @odata.nextLink de Dynamics 365.
+    
+    **⚠️ Importante - Server-Driven Paging:**
+    - Dynamics 365 NO soporta el parámetro $skip para paginación
+    - Usa server-driven paging con $skiptoken (cookie de paginación)
+    - El nextLink incluye automáticamente el $skiptoken correcto
+    
+    **Flujo de Paginación:**
+    1. Primera petición: GET /cases?top=25 → retorna @odata.nextLink
+    2. Siguientes páginas: GET /by-nextlink?next_link=<url> → retorna más datos + nextLink
+    3. Continuar hasta que nextLink sea null (última página)
+    
+    **Reglas Críticas:**
+    - ✅ Usar el nextLink completo tal como viene en la respuesta
+    - ❌ NO modificar el nextLink ni agregar parámetros adicionales
+    - ❌ NO intentar decodificar o manipular el $skiptoken
+    - ✅ Mantener el mismo page size en todas las peticiones
+    
+    **Ejemplo de nextLink:**
+    ```
+    /api/data/v9.2/incidents?$select=title&$skiptoken=%3Ccookie%20pagenumber=%222%22...
+    ```
+    """,
+    responses={
+        200: {"description": "Siguiente página obtenida exitosamente"},
+        400: {"description": "nextLink inválido o malformado"},
+        401: {"description": "Token de autorización requerido"},
+        500: {"description": "Error interno del servidor"}
+    }
+)
+async def get_cases_by_nextlink(
+    next_link: str = Query(
+        ...,
+        description="URL completa del @odata.nextLink retornado por Dynamics 365",
+        examples=[
+            "/api/data/v9.2/incidents?$select=incidentid,title&$skiptoken=%3Ccookie...",
+            "/api/data/v9.2/incidents?$orderby=incidentid&$top=25&$skiptoken=%3Ccookie..."
+        ]
+    ),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene la siguiente página de casos usando nextLink de Dynamics 365.
+    
+    Este endpoint implementa server-driven paging correctamente según la
+    especificación OData v4.0 y las limitaciones de Dynamics 365 Web API.
+    """
+    
+    try:
+        logger.info(f"📄 Obteniendo siguiente página de casos - Usuario: {current_user.get('email', 'Unknown')}")
+        logger.debug(f"nextLink: {next_link[:100]}...")  # Log primeros 100 chars
+        
+        result = await crm_service.get_cases_by_nextlink(next_link)
+        
+        logger.info(f"✅ Página obtenida: {len(result.cases)} casos, hasMore: {result.next_link is not None}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error obteniendo siguiente página: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+@router.get(
     "/{case_id}",
     response_model=CaseResponse,
     summary="Obtener caso por ID",

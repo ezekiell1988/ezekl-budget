@@ -308,8 +308,8 @@ npm test -- --include='**/cases.page.spec.ts'
 ## 🔗 Enlaces Relacionados
 
 - [README principal CRM](../README.md)
-- [Servicio CRM](../../shared/services/crm.service.ts)
-- [Modelos TypeScript](../../shared/models/crm.models.ts)
+- [Servicio CRM](../../services/crm.service.ts)
+- [Modelos TypeScript](../../models/crm.models.ts)
 - [Backend API](../../../../app/api/crm/cases.py)
 
 ---

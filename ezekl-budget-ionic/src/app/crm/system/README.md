@@ -263,5 +263,5 @@ npm test -- --include='**/system.page.spec.ts'
 - **Servicio CRM**: `app/services/crm_service.py`
 - **Autenticación**: `app/services/crm_auth.py`
 - **Modelos**: `app/models/crm.py`
-- **Frontend Service**: `src/app/shared/services/crm.service.ts`
-- **Modelos Frontend**: `src/app/shared/models/crm.models.ts`
+- **Frontend Service**: `src/app/services/crm.service.ts`
+- **Modelos Frontend**: `src/app/models/crm.models.ts`

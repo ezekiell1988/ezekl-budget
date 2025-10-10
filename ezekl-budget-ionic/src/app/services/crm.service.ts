@@ -164,6 +164,38 @@ export class CrmService {
     );
   }
 
+  /**
+   * Obtiene la siguiente página de casos usando @odata.nextLink de Dynamics 365.
+   *
+   * **⚠️ Server-Driven Paging:**
+   * Dynamics 365 usa paginación basada en cookies ($skiptoken), no offset ($skip).
+   * El nextLink incluye automáticamente el $skiptoken correcto para la siguiente página.
+   *
+   * @param nextLink URL completa del @odata.nextLink retornado por el backend
+   *                 Ejemplo: "/api/data/v9.2/incidents?$select=...&$skiptoken=..."
+   * @returns Observable con la siguiente página de casos y el nextLink para más páginas
+   *
+   * **⚠️ Importante:**
+   * - Dynamics 365 NO soporta $skip, usa $skiptoken
+   * - NO modificar el nextLink
+   * - Usar exactamente como viene en la respuesta
+   *
+   * @see D365_PAGINATION_GUIDE.md para más detalles
+   */
+  getCasesByNextLink(nextLink: string): Observable<CasesListResponse> {
+    // URL encode del nextLink para enviarlo como query parameter
+    const encodedNextLink = encodeURIComponent(nextLink);
+
+    return this.http.get<CasesListResponse>(
+      `${this.baseUrl}/cases/by-nextlink?next_link=${encodedNextLink}`,
+      {
+        headers: this.getHeaders()
+      }
+    ).pipe(
+      catchError(this.handleError)
+    );
+  }
+
   // ===============================================
   // ENDPOINTS DE CUENTAS (ACCOUNTS)
   // ===============================================

@@ -28,15 +28,16 @@ import {
   warningOutline,
   timeOutline,
   serverOutline,
-  cloudOutline
+  cloudOutline,
+  helpCircleOutline
 } from 'ionicons/icons';
 
-import { CrmService } from '../../shared/services/crm.service';
+import { CrmService } from '../../services/crm.service';
 import {
   CRMHealthResponse,
   CRMTokenResponse,
   CRMDiagnoseResponse
-} from '../../shared/models/crm.models';
+} from '../../models/crm.models';
 import { AppHeaderComponent } from '../../shared/components/app-header/app-header.component';
 
 @Component({
@@ -78,16 +79,17 @@ export class SystemPage implements OnInit {
 
   constructor() {
     addIcons({
-      heartOutline,
-      keyOutline,
-      bugOutline,
-      refreshOutline,
-      checkmarkCircle,
-      closeCircle,
-      warningOutline,
-      timeOutline,
-      serverOutline,
-      cloudOutline
+      'heart-outline': heartOutline,
+      'key-outline': keyOutline,
+      'bug-outline': bugOutline,
+      'refresh-outline': refreshOutline,
+      'checkmark-circle': checkmarkCircle,
+      'close-circle': closeCircle,
+      'warning-outline': warningOutline,
+      'time-outline': timeOutline,
+      'server-outline': serverOutline,
+      'cloud-outline': cloudOutline,
+      'help-circle-outline': helpCircleOutline
     });
   }
 
@@ -211,10 +213,10 @@ export class SystemPage implements OnInit {
    */
   getStatusIcon(status: string): string {
     const statusLower = status.toLowerCase();
-    if (statusLower === 'ok' || statusLower === 'success') return 'checkmarkCircle';
-    if (statusLower === 'error' || statusLower === 'failed') return 'closeCircle';
-    if (statusLower === 'warning') return 'warningOutline';
-    return 'helpCircleOutline';
+    if (statusLower === 'ok' || statusLower === 'success') return 'checkmark-circle';
+    if (statusLower === 'error' || statusLower === 'failed') return 'close-circle';
+    if (statusLower === 'warning') return 'warning-outline';
+    return 'help-circle-outline';
   }
 
   /**

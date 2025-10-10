@@ -5,8 +5,8 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { of } from 'rxjs';
 
 import { AccountsPage } from './accounts.page';
-import { CrmService } from '../../shared/services/crm.service';
-import { AccountResponse, AccountsListResponse, CRMOperationResponse } from '../../shared/models/crm.models';
+import { CrmService } from '../../services/crm.service';
+import { AccountResponse, AccountsListResponse, CRMOperationResponse } from '../../models/crm.models';
 
 describe('AccountsPage', () => {
   let component: AccountsPage;

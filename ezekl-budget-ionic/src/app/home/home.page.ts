@@ -1,13 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
+  // IonHeader, IonToolbar, IonTitle no usados
   IonContent,
   IonGrid,
-  IonRow,
-  IonCol,
+  // IonRow, IonCol no usados
   IonCard,
   IonCardHeader,
   IonCardTitle,
@@ -29,13 +26,10 @@ import { AppHeaderComponent } from '../shared/components/app-header/app-header.c
   imports: [
     CommonModule,
     RouterModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
+    // IonHeader, IonToolbar, IonTitle no usados - usa AppHeaderComponent
     IonContent,
     IonGrid,
-    IonRow,
-    IonCol,
+    // IonRow, IonCol no usados
     IonCard,
     IonCardHeader,
     IonCardTitle,

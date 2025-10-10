@@ -17,8 +17,8 @@ import {
   IonTitle,
   IonToolbar,
   IonGrid,
-  IonRow,
-  IonCol,
+  // IonRow, // No usado
+  // IonCol, // No usado
   IonSearchbar,
   IonList,
   IonItem,
@@ -26,6 +26,8 @@ import {
   IonIcon,
   IonText,
   IonButton,
+  IonCard,
+  IonCardContent,
   IonRefresher,
   IonRefresherContent,
   IonInfiniteScroll,
@@ -61,8 +63,8 @@ import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
     IonTitle,
     IonToolbar,
     IonGrid,
-    IonRow,
-    IonCol,
+    // IonRow, // No usado en template
+    // IonCol, // No usado en template
     IonSearchbar,
     IonList,
     IonItem,
@@ -70,6 +72,8 @@ import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
     IonIcon,
     IonText,
     IonButton,
+    IonCard,
+    IonCardContent,
     IonRefresher,
     IonRefresherContent,
     IonInfiniteScroll,

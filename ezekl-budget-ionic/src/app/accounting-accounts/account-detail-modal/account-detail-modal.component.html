@@ -1,5 +1,5 @@
 <ion-header>
-  <ion-toolbar>
+  <ion-toolbar color="primary">
     <ion-title>Detalle de Cuenta</ion-title>
     <ion-buttons slot="end">
       <ion-button (click)="dismiss()">
@@ -11,44 +11,56 @@
 
 <ion-content class="ion-padding">
   @if (account) {
-    <ion-card>
+    <ion-card class="ion-no-margin">
       <ion-card-header>
-        <ion-card-title>{{ account.nameAccountingAccount }}</ion-card-title>
+        <ion-card-title color="primary">{{ account.nameAccountingAccount }}</ion-card-title>
       </ion-card-header>
 
-      <ion-card-content>
-        <ion-list>
+      <ion-card-content class="ion-no-padding">
+        <ion-list class="ion-no-padding">
           <ion-item lines="full">
-            <ion-label>
-              <h3>ID de Cuenta</h3>
-              <p>{{ account.idAccountingAccount }}</p>
+            <ion-label class="ion-text-wrap">
+              <ion-text color="medium">
+                <p class="ion-no-margin ion-margin-bottom" style="font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                  ID de Cuenta
+                </p>
+              </ion-text>
+              <h2 class="ion-no-margin" style="font-weight: 500;">{{ account.idAccountingAccount }}</h2>
             </ion-label>
           </ion-item>
 
           <ion-item lines="full">
-            <ion-label>
-              <h3>Código Contable</h3>
-              <p>{{ account.codeAccountingAccount }}</p>
+            <ion-label class="ion-text-wrap">
+              <ion-text color="medium">
+                <p class="ion-no-margin ion-margin-bottom" style="font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                  Código Contable
+                </p>
+              </ion-text>
+              <h2 class="ion-no-margin" style="font-weight: 500;">{{ account.codeAccountingAccount }}</h2>
             </ion-label>
           </ion-item>
 
           <ion-item lines="none">
-            <ion-label>
-              <h3>Nombre de Cuenta</h3>
-              <p>{{ account.nameAccountingAccount }}</p>
+            <ion-label class="ion-text-wrap">
+              <ion-text color="medium">
+                <p class="ion-no-margin ion-margin-bottom" style="font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                  Nombre de Cuenta
+                </p>
+              </ion-text>
+              <h2 class="ion-no-margin" style="font-weight: 500;">{{ account.nameAccountingAccount }}</h2>
             </ion-label>
           </ion-item>
         </ion-list>
       </ion-card-content>
     </ion-card>
 
-    <!-- Aquí puedes agregar más información de la cuenta cuando esté disponible -->
-    <div class="info-message">
-      <p class="ion-text-center">
-        <ion-note>
+    <!-- Nota informativa -->
+    <div class="ion-text-center ion-margin-top">
+      <ion-text color="medium">
+        <p style="font-size: 0.875rem; line-height: 1.5;">
           Información detallada de la cuenta contable
-        </ion-note>
-      </p>
+        </p>
+      </ion-text>
     </div>
   }
 </ion-content>

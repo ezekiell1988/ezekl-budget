@@ -3,9 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
+  // IonHeader, IonToolbar, IonTitle no usados
   IonContent,
   IonCard,
   IonCardHeader,
@@ -19,8 +17,7 @@ import {
   IonList,
   IonBadge,
   IonGrid,
-  IonRow,
-  IonCol,
+  // IonRow, IonCol no usados
   AlertController,
   ToastController,
   MenuController,
@@ -61,9 +58,7 @@ type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
   styleUrls: ['./demo-websocket.page.scss'],
   imports: [
     CommonModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
+    // IonHeader, IonToolbar, IonTitle no usados - usa AppHeaderComponent
     IonContent,
     IonCard,
     IonCardHeader,
@@ -77,8 +72,7 @@ type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
     IonList,
     IonBadge,
     IonGrid,
-    IonRow,
-    IonCol,
+    // IonRow, IonCol no usados
     AppHeaderComponent,
   ],
 })

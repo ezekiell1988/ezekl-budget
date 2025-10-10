@@ -1,7 +1,3 @@
-/**
- * Componente Modal para mostrar detalles de una cuenta contable
- */
-
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -15,7 +11,7 @@ import {
   IonList,
   IonItem,
   IonLabel,
-  IonNote,
+  IonText,
   IonCard,
   IonCardHeader,
   IonCardTitle,
@@ -23,7 +19,7 @@ import {
   ModalController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { close } from 'ionicons/icons';
+import { close, closeOutline } from 'ionicons/icons';
 import { AccountingAccount } from '../../services/accounting-account';
 
 @Component({
@@ -43,7 +39,7 @@ import { AccountingAccount } from '../../services/accounting-account';
     IonList,
     IonItem,
     IonLabel,
-    IonNote,
+    IonText,
     IonCard,
     IonCardHeader,
     IonCardTitle,
@@ -55,7 +51,7 @@ export class AccountDetailModalComponent {
 
   constructor(private modalCtrl: ModalController) {
     // Registrar iconos
-    addIcons({ close });
+    addIcons({closeOutline,close});
   }
 
   /**
