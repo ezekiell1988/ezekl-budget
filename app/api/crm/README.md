@@ -168,12 +168,17 @@ filter_query=contains(jobtitle,'Gerente') and contains(emailaddress1,'@empresa.c
 GET /api/crm/accounts?top=25&order_by=accountid
 ```
 
+**Request Headers:**
+```http
+Prefer: odata.maxpagesize=25
+```
+
 **Respuesta:**
 ```json
 {
   "count": 5000,
   "accounts": [...],  // 25 items
-  "next_link": "https://org.crm.dynamics.com/api/data/v9.0/accounts?$skiptoken=<cookie>..."
+  "next_link": "/api/data/v9.0/accounts?$select=accountid,name&$skiptoken=<cookie>..."
 }
 ```
 
@@ -182,30 +187,207 @@ GET /api/crm/accounts?top=25&order_by=accountid
 GET /api/crm/accounts/by-nextlink?next_link={url_encoded_next_link}
 ```
 
+**Respuesta:**
+```json
+{
+  "count": 5000,
+  "accounts": [...],  // 25 items siguientes
+  "next_link": "/api/data/v9.0/accounts?$skiptoken=<cookie>..."
+}
+```
+
+### ⚠️ Comportamiento de nextLink
+
+D365 puede devolver `@odata.nextLink` en **dos formatos diferentes**:
+
+#### Formato 1: URL Relativa (común)
+```
+/api/data/v9.0/accounts?$select=accountid,name&$skiptoken=<cookie>
+```
+
+#### Formato 2: URL Absoluta (ocasional)
+```
+https://orgname.crm.dynamics.com/api/data/v9.0/accounts?$select=accountid,name&$skiptoken=<cookie>
+```
+
+### 🔧 Implementación en el Backend
+
+El backend maneja **automáticamente ambos formatos**:
+
+```python
+# crm_service.py - get_accounts_by_nextlink() / get_contacts_by_nextlink()
+
+# 1. Detectar si es URL absoluta
+if next_link.startswith("http://") or next_link.startswith("https://"):
+    # Extraer solo path y query
+    from urllib.parse import urlparse
+    parsed = urlparse(next_link)
+    path_and_query = parsed.path
+    if parsed.query:
+        path_and_query += f"?{parsed.query}"
+    next_link = path_and_query  # Convertir a relativa
+
+# 2. Extraer endpoint después de /api/data/v9.x/
+if "/api/data/" in next_link:
+    parts = next_link.split(f"/api/data/{self.api_version}/")
+    endpoint_with_params = parts[1]  # "accounts?$skiptoken=..."
+
+# 3. Construir URL final
+url = f"{self.api_base_url}/{endpoint_with_params}"
+```
+
 ### Headers Requeridos
 
-Para activar server-driven paging, el backend usa:
+#### Primera Página
 ```http
 Prefer: odata.maxpagesize=25
+Authorization: Bearer {token}
+Accept: application/json
+OData-MaxVersion: 4.0
+OData-Version: 4.0
 ```
+
+#### Páginas Siguientes (nextLink)
+```http
+Authorization: Bearer {token}
+Accept: application/json
+OData-MaxVersion: 4.0
+OData-Version: 4.0
+```
+
+**Nota:** No se debe enviar `Prefer: odata.maxpagesize` en requests de nextLink, ya que el tamaño de página está definido en el $skiptoken.
 
 ### Mejores Prácticas
 
 ✅ **DO:**
-- Usar `order_by` con primary key (`accountid`) para resultados determinísticos
-- Usar el `next_link` completo sin modificaciones
-- Mantener el mismo `maxpagesize` en todas las requests
+- Usar `order_by` con primary key (`accountid`, `contactid`) para resultados determinísticos
+- Usar el `next_link` completo **sin modificaciones**
+- URL-encodear el nextLink al pasarlo como query parameter
+- Mantener el mismo `maxpagesize` en la primera request
+- Manejar tanto URLs absolutas como relativas en el código
 
 ❌ **DON'T:**
-- No usar `$skip` (D365 retorna error 400)
-- No modificar el `$skiptoken` en el nextLink
-- No agregar parámetros adicionales al nextLink
+- ❌ No usar `$skip` (D365 retorna error 400: "Query option '$skip' is not allowed")
+- ❌ No modificar el `$skiptoken` en el nextLink
+- ❌ No agregar parámetros adicionales al nextLink
+- ❌ No asumir que nextLink siempre será relativo
+- ❌ No concatenar nextLink absoluto con base_url
 
-### Documentación Completa
+### 🐛 Errores Comunes y Soluciones
+
+#### Error: "Query option '$skip' is not allowed"
+```json
+{
+  "error": {
+    "code": "0x8006088A",
+    "message": "Query option '$skip' is not allowed..."
+  }
+}
+```
+**Solución:** Usar `Prefer: odata.maxpagesize` en lugar de `$skip`.
+
+#### Error: "Resource not found for the segment 'https:'"
+```json
+{
+  "error": {
+    "code": "0x80060888", 
+    "message": "Resource not found for the segment 'https:'."
+  }
+}
+```
+**Causa:** Concatenar URL absoluta con base_url:
+```python
+# ❌ INCORRECTO
+url = f"{base_url}/{next_link}"  
+# Resultado: https://org.crm.dynamics.com/https://org.crm.dynamics.com/api/...
+```
+
+**Solución:** Parsear URL absoluta con `urllib.parse`:
+```python
+# ✅ CORRECTO
+from urllib.parse import urlparse
+parsed = urlparse(next_link)
+path_and_query = parsed.path + (f"?{parsed.query}" if parsed.query else "")
+url = f"{base_url}/{path_and_query.lstrip('/')}"
+```
+
+### 📊 Ejemplo Completo de Paginación
+
+```python
+# Primera página
+async def get_contacts(top: int = 25):
+    headers = {
+        "Prefer": f"odata.maxpagesize={top}",
+        "Authorization": f"Bearer {token}"
+    }
+    url = f"{base_url}/contacts?$select=contactid,fullname"
+    response = await client.get(url, headers=headers)
+    
+    data = response.json()
+    return {
+        "contacts": data.get("value", []),
+        "next_link": data.get("@odata.nextLink")  # Puede ser absoluta o relativa
+    }
+
+# Páginas siguientes
+async def get_contacts_by_nextlink(next_link: str):
+    # Manejar URL absoluta
+    if next_link.startswith("http"):
+        from urllib.parse import urlparse
+        parsed = urlparse(next_link)
+        next_link = parsed.path
+        if parsed.query:
+            next_link += f"?{parsed.query}"
+    
+    # Extraer endpoint
+    endpoint = next_link.split(f"/api/data/{api_version}/")[1]
+    
+    # Request sin Prefer header
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"{base_url}/{endpoint}"
+    response = await client.get(url, headers=headers)
+    
+    data = response.json()
+    return {
+        "contacts": data.get("value", []),
+        "next_link": data.get("@odata.nextLink")
+    }
+```
+
+### 📱 Integración Frontend (Ionic)
+
+```typescript
+// contacts.page.ts
+async loadContacts() {
+  const response = await this.crmService.getContacts(25);
+  this.contacts = response.contacts;
+  this.nextLink = response.next_link;  // Guardar para siguiente página
+}
+
+async onLoadMore(event: any) {
+  if (!this.nextLink) {
+    event.target.complete();
+    return;
+  }
+  
+  // Encodear nextLink antes de enviarlo
+  const encodedLink = encodeURIComponent(this.nextLink);
+  const response = await this.crmService.getContactsByNextLink(encodedLink);
+  
+  this.contacts.push(...response.contacts);
+  this.nextLink = response.next_link;  // Actualizar para siguiente iteración
+  
+  event.target.complete();
+}
+```
+
+### 📚 Documentación Completa
 
 Para detalles técnicos completos, ver:
 - `ezekl-budget-ionic/src/app/crm/accounts/D365_PAGINATION_GUIDE.md`
+- `ezekl-budget-ionic/src/app/crm/contacts/README.md`
 - [Microsoft Learn - Page Results](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/query/page-results)
+- [OData v4.0 Server-Driven Paging](https://docs.oasis-open.org/odata/odata/v4.0/errata03/os/complete/part1-protocol/odata-v4.0-errata03-os-part1-protocol-complete.html#_Toc453752298)
 
 ## 🏥 Diagnósticos y Health Check
 

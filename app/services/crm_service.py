@@ -335,10 +335,23 @@ class CRMService:
         """
         self._check_configuration()
         
-        # El nextLink viene como path relativo con query params
-        # Ejemplo: "/api/data/v9.2/accounts?$select=accountid,name&$skiptoken=%3Ccookie..."
+        logger.debug(f"🔗 nextLink recibido: {next_link[:150]}...")
         
-        # Extraer solo la parte después de /api/data/v9.2/
+        # Manejar URLs absolutas (https://...) y relativas (/api/data/...)
+        if next_link.startswith("http://") or next_link.startswith("https://"):
+            # URL absoluta de D365 - extraer solo la parte del path y query
+            # Ejemplo: "https://org.crm.dynamics.com/api/data/v9.2/accounts?..."
+            from urllib.parse import urlparse
+            parsed = urlparse(next_link)
+            # parsed.path = "/api/data/v9.2/accounts"
+            # parsed.query = "$select=...&$skiptoken=..."
+            path_and_query = parsed.path
+            if parsed.query:
+                path_and_query += f"?{parsed.query}"
+            next_link = path_and_query  # Ahora es relativo
+            logger.debug(f"🔗 URL convertida a relativa: {next_link[:150]}...")
+        
+        # Extraer solo la parte después de /api/data/v9.x/
         if "/api/data/" in next_link:
             # next_link viene como: "/api/data/v9.2/accounts?$select=..."
             # Necesitamos solo: "accounts?$select=..."
@@ -350,12 +363,7 @@ class CRMService:
         else:
             endpoint_with_params = next_link
         
-        # Separar endpoint y query params
-        if "?" in endpoint_with_params:
-            endpoint, query_string = endpoint_with_params.split("?", 1)
-        else:
-            endpoint = endpoint_with_params
-            query_string = ""
+        logger.debug(f"🔗 Endpoint extraído: {endpoint_with_params[:100]}...")
         
         # Construir URL manualmente para preservar el query string exacto
         token = await crm_auth_service.get_access_token()
@@ -493,11 +501,14 @@ class CRMService:
     ) -> ContactsListResponse:
         """Obtiene una lista paginada de contactos de Dynamics 365."""
         
+        # CRÍTICO: NO enviar $skip porque D365 no lo soporta
+        # En su lugar, usamos Prefer: odata.maxpagesize header
         params = {"$count": "true"}  # Solicitar el conteo total
-        if top:
-            params["$top"] = top
-        if skip:
-            params["$skip"] = skip
+        
+        # NO incluir $skip - D365 no lo soporta
+        # if skip:
+        #     params["$skip"] = skip
+        
         if filter_query:
             params["$filter"] = filter_query
         if select_fields:
@@ -505,18 +516,148 @@ class CRMService:
         if order_by:
             params["$orderby"] = order_by
         
-        response = await self._make_request("GET", "contacts", params=params)
+        # Preparar headers con Prefer para paginación
+        token = await crm_auth_service.get_access_token()
+        url = f"{self.api_base_url}/contacts"
         
-        contacts = [ContactResponse(**contact) for contact in response.get("value", [])]
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "OData-MaxVersion": "4.0",
+            "OData-Version": "4.0",
+            "Prefer": f"odata.maxpagesize={top}"  # ✅ Usar Prefer header en lugar de $top
+        }
         
-        # Usar @odata.count si está disponible, de lo contrario usar len(contacts)
-        total_count = response.get("@odata.count", len(contacts))
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, params=params) as resp:
+                    if resp.status == 401:
+                        logger.error("❌ Token de acceso expirado o inválido")
+                        raise HTTPException(status_code=401, detail="Token de acceso inválido")
+                    
+                    if resp.status == 400:
+                        error_text = await resp.text()
+                        logger.error(f"❌ Error 400 en get_contacts: {error_text}")
+                        raise HTTPException(status_code=400, detail=f"Error en la petición: {error_text}")
+                    
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(f"❌ Error {resp.status} obteniendo contactos: {error_text}")
+                        raise HTTPException(
+                            status_code=resp.status,
+                            detail=f"Error obteniendo contactos de D365: {error_text}"
+                        )
+                    
+                    response = await resp.json()
+                    
+                    contacts = [ContactResponse(**contact) for contact in response.get("value", [])]
+                    total_count = response.get("@odata.count", len(contacts))
+                    
+                    logger.info(f"✅ {len(contacts)} contactos obtenidos, hasNextLink: {response.get('@odata.nextLink') is not None}")
+                    
+                    return ContactsListResponse(
+                        count=total_count,
+                        contacts=contacts,
+                        next_link=response.get("@odata.nextLink")
+                    )
+                    
+        except aiohttp.ClientError as e:
+            logger.error(f"❌ Error de conexión obteniendo contactos: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error de conexión con D365: {str(e)}")
+    
+    async def get_contacts_by_nextlink(self, next_link: str) -> ContactsListResponse:
+        """
+        Obtiene la siguiente página de contactos usando nextLink de Dynamics 365.
         
-        return ContactsListResponse(
-            count=total_count,
-            contacts=contacts,
-            next_link=response.get("@odata.nextLink")
-        )
+        Dynamics 365 usa server-driven paging con @odata.nextLink que incluye
+        un $skiptoken (cookie de paginación). Este método usa el nextLink completo
+        para obtener la siguiente página sin calcular offset manualmente.
+        
+        Args:
+            next_link: URL completa del @odata.nextLink retornado por D365.
+                      Puede ser relativa: "/api/data/v9.2/contacts?..."
+                      O absoluta: "https://org.crm.dynamics.com/api/data/v9.2/contacts?..."
+        
+        Returns:
+            ContactsListResponse con la siguiente página de contactos y el nextLink
+            para la página siguiente (si existe).
+            
+        Note:
+            - NO modificar el nextLink, usarlo tal como viene
+            - NO agregar parámetros adicionales
+            - El $skiptoken es interno de D365, no intentar decodificarlo
+        """
+        self._check_configuration()
+        
+        logger.debug(f"🔗 nextLink recibido: {next_link[:150]}...")
+        
+        # Manejar URLs absolutas (https://...) y relativas (/api/data/...)
+        if next_link.startswith("http://") or next_link.startswith("https://"):
+            # URL absoluta de D365 - extraer solo la parte del path y query
+            # Ejemplo: "https://org.crm.dynamics.com/api/data/v9.2/contacts?..."
+            from urllib.parse import urlparse
+            parsed = urlparse(next_link)
+            # parsed.path = "/api/data/v9.2/contacts"
+            # parsed.query = "$select=...&$skiptoken=..."
+            path_and_query = parsed.path
+            if parsed.query:
+                path_and_query += f"?{parsed.query}"
+            next_link = path_and_query  # Ahora es relativo
+            logger.debug(f"🔗 URL convertida a relativa: {next_link[:150]}...")
+        
+        # Extraer solo la parte después de /api/data/v9.x/
+        if "/api/data/" in next_link:
+            # next_link viene como: "/api/data/v9.2/contacts?$select=..."
+            # Necesitamos solo: "contacts?$select=..."
+            parts = next_link.split(f"/api/data/{self.api_version}/")
+            if len(parts) > 1:
+                endpoint_with_params = parts[1]
+            else:
+                endpoint_with_params = next_link
+        else:
+            endpoint_with_params = next_link
+        
+        logger.debug(f"🔗 Endpoint extraído: {endpoint_with_params[:100]}...")
+        
+        # Construir URL manualmente para preservar el query string exacto
+        token = await crm_auth_service.get_access_token()
+        url = f"{self.api_base_url}/{endpoint_with_params}"
+        
+        # CRÍTICO: Agregar Prefer header también en nextLink para mantener paginación
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "OData-MaxVersion": "4.0",
+            "OData-Version": "4.0",
+            "Prefer": "odata.maxpagesize=25"  # ✅ Mantener el mismo page size
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(f"❌ Error {resp.status} en nextLink: {error_text}")
+                        raise HTTPException(
+                            status_code=resp.status,
+                            detail=f"Error obteniendo siguiente página de contactos: {error_text}"
+                        )
+                    
+                    response = await resp.json()
+                    
+                    contacts = [ContactResponse(**contact) for contact in response.get("value", [])]
+                    
+                    logger.info(f"✅ {len(contacts)} contactos obtenidos, hasNextLink: {response.get('@odata.nextLink') is not None}")
+                    
+                    return ContactsListResponse(
+                        count=len(contacts),  # Count de esta página
+                        contacts=contacts,
+                        next_link=response.get("@odata.nextLink")  # Siguiente página
+                    )
+                    
+        except aiohttp.ClientError as e:
+            logger.error(f"❌ Error de conexión en nextLink de contactos: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error de conexión: {str(e)}")
     
     async def get_contact_by_id(self, contact_id: str) -> ContactResponse:
         """Obtiene un contacto específico por su ID."""

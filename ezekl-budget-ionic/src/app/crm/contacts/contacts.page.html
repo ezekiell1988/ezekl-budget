@@ -1,16 +1,601 @@
-<app-header title="Gestión de Contactos"></app-header>
+<app-header
+  title="Contactos"
+  [showMenu]="true"
+  [showActions]="true"
+  [showSearch]="true"
+  searchPlaceholder="Buscar contactos por nombre..."
+  (searchChange)="onHeaderSearch($event)"
+  (searchToggle)="onHeaderSearchToggle($event)">
+</app-header>
 
 <ion-content>
-  <div style="display: flex; flex-direction: column; align-items: center; padding: 3rem 2rem; text-align: center;">
-    <ion-icon name="people-outline"
-      style="font-size: 4rem; color: var(--ion-color-medium-shade); margin-bottom: 1rem;"></ion-icon>
-    <h3 style="color: var(--ion-color-medium); margin-bottom: 0.5rem;">Contactos CRM</h3>
-    <p style="color: var(--ion-color-medium); line-height: 1.6; margin-bottom: 1.5rem;">
-      Gestiona tu red de contactos empresariales desde aquí.
+
+  <!-- Pull to refresh -->
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content
+      pulling-text="Desliza para actualizar"
+      refreshing-text="Actualizando contactos...">
+    </ion-refresher-content>
+  </ion-refresher>
+
+  <ion-grid fixed>
+
+  <!-- Lista de contactos -->
+  @if (!isLoading || contacts.length > 0) {
+  <div>
+
+    <!-- Contactos encontrados -->
+    @if (contacts.length > 0) {
+    <ion-list>
+      @for (contact of contacts; track contact.contactid) {
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>{{ contact.fullname }}</ion-card-title>
+
+          <!-- Información básica -->
+          <div style="margin-top: 8px; font-size: 0.9rem; color: var(--ion-color-medium);">
+            @if (contact.jobtitle) {
+              <ion-note>{{ contact.jobtitle }}</ion-note>
+            }
+          </div>
+        </ion-card-header>
+
+        <ion-card-content>
+          <!-- Información de contacto -->
+          @if (contact.telephone1 || contact.emailaddress1 || contact.mobilephone) {
+          <div style="margin-bottom: 12px;">
+            <ion-text color="medium" style="font-size: 0.85rem; font-weight: 600;">
+              Contacto:
+            </ion-text>
+
+            @if (contact.telephone1) {
+            <div style="margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+              <ion-icon name="call-outline" color="medium" style="font-size: 1rem;"></ion-icon>
+              <span style="font-size: 0.9rem;">{{ contact.telephone1 }}</span>
+            </div>
+            }
+
+            @if (contact.mobilephone) {
+            <div style="margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+              <ion-icon name="phone-portrait-outline" color="medium" style="font-size: 1rem;"></ion-icon>
+              <span style="font-size: 0.9rem;">{{ contact.mobilephone }}</span>
+            </div>
+            }
+
+            @if (contact.emailaddress1) {
+            <div style="margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+              <ion-icon name="mail-outline" color="medium" style="font-size: 1rem;"></ion-icon>
+              <span style="font-size: 0.9rem;">{{ contact.emailaddress1 }}</span>
+            </div>
+            }
+          </div>
+          }
+
+          <!-- Ubicación -->
+          @if (contact.address1_city || contact.address1_country) {
+          <div style="margin-bottom: 12px;">
+            <ion-text color="medium" style="font-size: 0.85rem; font-weight: 600;">
+              Ubicación:
+            </ion-text>
+            <div style="margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+              <ion-icon name="location-outline" color="medium" style="font-size: 1rem;"></ion-icon>
+              <span style="font-size: 0.9rem;">
+                {{ contact.address1_city }}@if (contact.address1_city && contact.address1_country) {, } {{ contact.address1_country }}
+              </span>
+            </div>
+          </div>
+          }
+
+          <!-- Fechas -->
+          <div style="margin-bottom: 12px;">
+            <ion-text color="medium" style="font-size: 0.85rem;">
+              Creado: {{ formatDate(contact.createdon) }}
+            </ion-text>
+          </div>
+
+          <!-- Acciones -->
+          <div style="display: flex; gap: 8px; margin-top: 16px;">
+            <ion-button size="small" fill="outline" (click)="openViewModal(contact)">
+              <ion-icon slot="start" name="eye-outline"></ion-icon>
+              Ver
+            </ion-button>
+
+            <ion-button size="small" fill="outline" color="primary" (click)="openEditModal(contact)">
+              <ion-icon slot="start" name="create-outline"></ion-icon>
+              Editar
+            </ion-button>
+
+            <ion-button size="small" fill="outline" color="danger" (click)="deleteContact(contact)">
+              <ion-icon slot="start" name="trash-outline"></ion-icon>
+              Eliminar
+            </ion-button>
+          </div>
+        </ion-card-content>
+      </ion-card>
+      }
+    </ion-list>
+
+    <!-- Infinite scroll -->
+    <ion-infinite-scroll (ionInfinite)="onLoadMore($event)" [disabled]="!hasNextPage">
+      <ion-infinite-scroll-content loading-text="Cargando más contactos...">
+      </ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+    }
+
+  </div>
+  }
+
+  <!-- Estado de carga inicial - Skeleton -->
+  @if (isLoading && contacts.length === 0) {
+  <ion-list class="ion-padding">
+    @for (item of [1,2,3,4,5]; track item) {
+    <ion-card>
+      <ion-card-header>
+        <ion-skeleton-text animated style="width: 70%; height: 24px; margin-bottom: 8px;"></ion-skeleton-text>
+        <ion-skeleton-text animated style="width: 40%; height: 16px;"></ion-skeleton-text>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-skeleton-text animated style="width: 100%; height: 16px; margin-bottom: 8px;"></ion-skeleton-text>
+        <ion-skeleton-text animated style="width: 90%; height: 16px; margin-bottom: 8px;"></ion-skeleton-text>
+        <ion-skeleton-text animated style="width: 80%; height: 16px; margin-bottom: 16px;"></ion-skeleton-text>
+
+        <div style="display: flex; gap: 8px;">
+          <ion-skeleton-text animated style="width: 80px; height: 32px; border-radius: 8px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 80px; height: 32px; border-radius: 8px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 100px; height: 32px; border-radius: 8px;"></ion-skeleton-text>
+        </div>
+      </ion-card-content>
+    </ion-card>
+    }
+  </ion-list>
+  }
+
+  <!-- Estado vacío -->
+  @if (!isLoading && contacts.length === 0) {
+  <div class="ion-padding ion-text-center" style="margin-top: 64px;">
+    <ion-icon name="people-outline" size="large" color="medium"></ion-icon>
+    <h3 class="ion-margin-top" style="color: var(--ion-color-medium);">No hay contactos</h3>
+    <p class="ion-margin-bottom" style="color: var(--ion-color-medium);">
+      No se encontraron contactos que coincidan con los filtros aplicados.
     </p>
-    <ion-button fill="outline" color="primary">
-      <ion-icon name="person-add-outline" slot="start"></ion-icon>
-      Crear Primer Contacto
+    <ion-button fill="outline" (click)="clearFilters()">
+      <ion-icon name="filter-outline" slot="start"></ion-icon>
+      Limpiar Filtros
     </ion-button>
   </div>
+  }
+  </ion-grid>
+
+  <!-- Botón flotante para agregar contacto -->
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button (click)="openCreateModal()" [disabled]="isLoading">
+      <ion-icon name="add"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
 </ion-content>
+
+<!-- MODAL CREAR CONTACTO -->
+<ion-modal [isOpen]="isCreateModalOpen" (willDismiss)="closeCreateModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Crear Nuevo Contacto</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeCreateModal()">
+            <ion-icon name="close-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding">
+      <form [formGroup]="createForm" (ngSubmit)="createContact()">
+
+        <!-- Nombre (requerido) -->
+        <ion-item>
+          <ion-input
+            label="Nombre *"
+            labelPlacement="floating"
+            formControlName="firstname"
+            placeholder="Ej: María"
+            [counter]="true"
+            maxlength="50">
+          </ion-input>
+        </ion-item>
+        @if (createForm.get('firstname')?.invalid && createForm.get('firstname')?.touched) {
+          <ion-text color="danger" style="font-size: 0.85rem; padding-left: 16px;">
+            <p>El nombre es requerido (1-50 caracteres)</p>
+          </ion-text>
+        }
+
+        <!-- Apellido (requerido) -->
+        <ion-item>
+          <ion-input
+            label="Apellido *"
+            labelPlacement="floating"
+            formControlName="lastname"
+            placeholder="Ej: García"
+            [counter]="true"
+            maxlength="50">
+          </ion-input>
+        </ion-item>
+        @if (createForm.get('lastname')?.invalid && createForm.get('lastname')?.touched) {
+          <ion-text color="danger" style="font-size: 0.85rem; padding-left: 16px;">
+            <p>El apellido es requerido (1-50 caracteres)</p>
+          </ion-text>
+        }
+
+        <!-- Puesto de trabajo -->
+        <ion-item>
+          <ion-input
+            label="Puesto de Trabajo"
+            labelPlacement="floating"
+            formControlName="jobtitle"
+            placeholder="Ej: Gerente de Ventas">
+          </ion-input>
+        </ion-item>
+
+        <!-- Teléfono -->
+        <ion-item>
+          <ion-input
+            label="Teléfono"
+            labelPlacement="floating"
+            formControlName="telephone1"
+            type="tel"
+            placeholder="Ej: +34 912 345 678">
+          </ion-input>
+        </ion-item>
+
+        <!-- Móvil -->
+        <ion-item>
+          <ion-input
+            label="Móvil"
+            labelPlacement="floating"
+            formControlName="mobilephone"
+            type="tel"
+            placeholder="Ej: +34 612 345 678">
+          </ion-input>
+        </ion-item>
+
+        <!-- Email -->
+        <ion-item>
+          <ion-input
+            label="Email"
+            labelPlacement="floating"
+            formControlName="emailaddress1"
+            type="email"
+            placeholder="Ej: maria.garcia@empresa.com">
+          </ion-input>
+        </ion-item>
+        @if (createForm.get('emailaddress1')?.invalid && createForm.get('emailaddress1')?.touched) {
+          <ion-text color="danger" style="font-size: 0.85rem; padding-left: 16px;">
+            <p>Email inválido</p>
+          </ion-text>
+        }
+
+        <!-- Dirección línea 1 -->
+        <ion-item>
+          <ion-input
+            label="Dirección"
+            labelPlacement="floating"
+            formControlName="address1_line1"
+            placeholder="Ej: Calle Principal 123">
+          </ion-input>
+        </ion-item>
+
+        <!-- Ciudad -->
+        <ion-item>
+          <ion-input
+            label="Ciudad"
+            labelPlacement="floating"
+            formControlName="address1_city"
+            placeholder="Ej: Madrid">
+          </ion-input>
+        </ion-item>
+
+        <!-- Código postal -->
+        <ion-item>
+          <ion-input
+            label="Código Postal"
+            labelPlacement="floating"
+            formControlName="address1_postalcode"
+            placeholder="Ej: 28001">
+          </ion-input>
+        </ion-item>
+
+        <!-- País -->
+        <ion-item>
+          <ion-input
+            label="País"
+            labelPlacement="floating"
+            formControlName="address1_country"
+            placeholder="Ej: España">
+          </ion-input>
+        </ion-item>
+
+        <!-- Botones -->
+        <div style="margin-top: 24px; display: flex; gap: 12px;">
+          <ion-button expand="block" type="submit" [disabled]="createForm.invalid || isLoading">
+            <ion-icon name="checkmark-outline" slot="start"></ion-icon>
+            Crear Contacto
+          </ion-button>
+
+          <ion-button expand="block" fill="outline" (click)="closeCreateModal()" [disabled]="isLoading">
+            Cancelar
+          </ion-button>
+        </div>
+      </form>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL EDITAR CONTACTO -->
+<ion-modal [isOpen]="isEditModalOpen" (willDismiss)="closeEditModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Editar Contacto</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeEditModal()">
+            <ion-icon name="close-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding">
+      <form [formGroup]="editForm" (ngSubmit)="updateContact()">
+
+        <!-- Nombre (requerido) -->
+        <ion-item>
+          <ion-input
+            label="Nombre *"
+            labelPlacement="floating"
+            formControlName="firstname"
+            placeholder="Ej: María"
+            [counter]="true"
+            maxlength="50">
+          </ion-input>
+        </ion-item>
+        @if (editForm.get('firstname')?.invalid && editForm.get('firstname')?.touched) {
+          <ion-text color="danger" style="font-size: 0.85rem; padding-left: 16px;">
+            <p>El nombre es requerido (1-50 caracteres)</p>
+          </ion-text>
+        }
+
+        <!-- Apellido (requerido) -->
+        <ion-item>
+          <ion-input
+            label="Apellido *"
+            labelPlacement="floating"
+            formControlName="lastname"
+            placeholder="Ej: García"
+            [counter]="true"
+            maxlength="50">
+          </ion-input>
+        </ion-item>
+        @if (editForm.get('lastname')?.invalid && editForm.get('lastname')?.touched) {
+          <ion-text color="danger" style="font-size: 0.85rem; padding-left: 16px;">
+            <p>El apellido es requerido (1-50 caracteres)</p>
+          </ion-text>
+        }
+
+        <!-- Puesto de trabajo -->
+        <ion-item>
+          <ion-input
+            label="Puesto de Trabajo"
+            labelPlacement="floating"
+            formControlName="jobtitle"
+            placeholder="Ej: Gerente de Ventas">
+          </ion-input>
+        </ion-item>
+
+        <!-- Teléfono -->
+        <ion-item>
+          <ion-input
+            label="Teléfono"
+            labelPlacement="floating"
+            formControlName="telephone1"
+            type="tel"
+            placeholder="Ej: +34 912 345 678">
+          </ion-input>
+        </ion-item>
+
+        <!-- Móvil -->
+        <ion-item>
+          <ion-input
+            label="Móvil"
+            labelPlacement="floating"
+            formControlName="mobilephone"
+            type="tel"
+            placeholder="Ej: +34 612 345 678">
+          </ion-input>
+        </ion-item>
+
+        <!-- Email -->
+        <ion-item>
+          <ion-input
+            label="Email"
+            labelPlacement="floating"
+            formControlName="emailaddress1"
+            type="email"
+            placeholder="Ej: maria.garcia@empresa.com">
+          </ion-input>
+        </ion-item>
+        @if (editForm.get('emailaddress1')?.invalid && editForm.get('emailaddress1')?.touched) {
+          <ion-text color="danger" style="font-size: 0.85rem; padding-left: 16px;">
+            <p>Email inválido</p>
+          </ion-text>
+        }
+
+        <!-- Dirección línea 1 -->
+        <ion-item>
+          <ion-input
+            label="Dirección"
+            labelPlacement="floating"
+            formControlName="address1_line1"
+            placeholder="Ej: Calle Principal 123">
+          </ion-input>
+        </ion-item>
+
+        <!-- Ciudad -->
+        <ion-item>
+          <ion-input
+            label="Ciudad"
+            labelPlacement="floating"
+            formControlName="address1_city"
+            placeholder="Ej: Madrid">
+          </ion-input>
+        </ion-item>
+
+        <!-- Código postal -->
+        <ion-item>
+          <ion-input
+            label="Código Postal"
+            labelPlacement="floating"
+            formControlName="address1_postalcode"
+            placeholder="Ej: 28001">
+          </ion-input>
+        </ion-item>
+
+        <!-- País -->
+        <ion-item>
+          <ion-input
+            label="País"
+            labelPlacement="floating"
+            formControlName="address1_country"
+            placeholder="Ej: España">
+          </ion-input>
+        </ion-item>
+
+        <!-- Botones -->
+        <div style="margin-top: 24px; display: flex; gap: 12px;">
+          <ion-button expand="block" type="submit" [disabled]="editForm.invalid || isLoading">
+            <ion-icon name="save-outline" slot="start"></ion-icon>
+            Actualizar Contacto
+          </ion-button>
+
+          <ion-button expand="block" fill="outline" (click)="closeEditModal()" [disabled]="isLoading">
+            Cancelar
+          </ion-button>
+        </div>
+      </form>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- MODAL VER CONTACTO -->
+<ion-modal [isOpen]="isViewModalOpen" (willDismiss)="closeViewModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Detalles del Contacto</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeViewModal()">
+            <ion-icon name="close-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    @if (selectedContact) {
+    <ion-content class="ion-padding">
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>{{ selectedContact.fullname }}</ion-card-title>
+          @if (selectedContact.jobtitle) {
+            <ion-note>{{ selectedContact.jobtitle }}</ion-note>
+          }
+        </ion-card-header>
+
+        <ion-card-content>
+          <!-- Información de contacto -->
+          <div style="margin-bottom: 16px;">
+            <ion-text color="primary" style="font-weight: 600;">
+              <h3>Información de Contacto</h3>
+            </ion-text>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">Teléfono</p>
+                <h3>{{ selectedContact.telephone1 || '(No especificado)' }}</h3>
+              </ion-label>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">Móvil</p>
+                <h3>{{ selectedContact.mobilephone || '(No especificado)' }}</h3>
+              </ion-label>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">Email</p>
+                <h3>{{ selectedContact.emailaddress1 || '(No especificado)' }}</h3>
+              </ion-label>
+            </ion-item>
+          </div>
+
+          <!-- Dirección -->
+          <div style="margin-bottom: 16px;">
+            <ion-text color="primary" style="font-weight: 600;">
+              <h3>Dirección</h3>
+            </ion-text>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">Calle</p>
+                <h3>{{ selectedContact.address1_line1 || '(No especificado)' }}</h3>
+              </ion-label>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">Ciudad</p>
+                <h3>{{ selectedContact.address1_city || '(No especificado)' }}</h3>
+              </ion-label>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">Código Postal</p>
+                <h3>{{ selectedContact.address1_postalcode || '(No especificado)' }}</h3>
+              </ion-label>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">País</p>
+                <h3>{{ selectedContact.address1_country || '(No especificado)' }}</h3>
+              </ion-label>
+            </ion-item>
+          </div>
+
+          <!-- Fechas del sistema -->
+          <div>
+            <ion-text color="primary" style="font-weight: 600;">
+              <h3>Información del Sistema</h3>
+            </ion-text>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">Fecha de Creación</p>
+                <h3>{{ formatDate(selectedContact.createdon) }}</h3>
+              </ion-label>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label>
+                <p style="color: var(--ion-color-medium); font-size: 0.85rem;">Última Modificación</p>
+                <h3>{{ formatDate(selectedContact.modifiedon) }}</h3>
+              </ion-label>
+            </ion-item>
+          </div>
+        </ion-card-content>
+      </ion-card>
+    </ion-content>
+    }
+  </ng-template>
+</ion-modal>

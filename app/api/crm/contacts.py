@@ -104,6 +104,69 @@ async def get_contacts(
 
 
 @router.get(
+    "/by-nextlink",
+    response_model=ContactsListResponse,
+    summary="Obtener siguiente página usando nextLink",
+    description="""
+    Obtiene la siguiente página de contactos usando el @odata.nextLink de Dynamics 365.
+    
+    **⚠️ Importante - Server-Driven Paging:**
+    - Dynamics 365 NO soporta el parámetro $skip para paginación
+    - Usa server-driven paging con $skiptoken (cookie de paginación)
+    - El nextLink incluye automáticamente el $skiptoken correcto
+    
+    **Flujo de Paginación:**
+    1. Primera petición: GET /contacts?top=25 → retorna @odata.nextLink
+    2. Siguientes páginas: GET /by-nextlink?next_link=<url> → retorna más datos + nextLink
+    3. Continuar hasta que nextLink sea null (última página)
+    
+    **Reglas Críticas:**
+    - ✅ Usar el nextLink completo tal como viene en la respuesta
+    - ❌ NO modificar el nextLink ni agregar parámetros adicionales
+    - ❌ NO intentar decodificar o manipular el $skiptoken
+    - ✅ Mantener el mismo page size en todas las peticiones
+    
+    **Ejemplo de nextLink:**
+    ```
+    /api/data/v9.2/contacts?$select=fullname&$skiptoken=%3Ccookie%20pagenumber=%222%22...
+    ```
+    
+    Ver guía completa: src/app/crm/accounts/D365_PAGINATION_GUIDE.md
+    """,
+    responses={
+        200: {"description": "Siguiente página obtenida exitosamente"},
+        400: {"description": "nextLink inválido o malformado"},
+        401: {"description": "Token de autorización requerido"},
+        500: {"description": "Error interno del servidor"}
+    }
+)
+async def get_contacts_by_nextlink(
+    next_link: str = Query(
+        ...,
+        description="URL completa del @odata.nextLink retornado por la primera llamada a get_contacts",
+        examples=["/api/data/v9.2/contacts?$select=fullname&$skiptoken=%3Ccookie..."]
+    ),
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene la siguiente página de contactos usando el nextLink de D365."""
+    
+    try:
+        logger.info(f"📄 Obteniendo siguiente página de contactos - Usuario: {current_user.get('email', 'Unknown')}")
+        logger.debug(f"nextLink recibido: {next_link[:100]}...")  # Log truncado
+        
+        result = await crm_service.get_contacts_by_nextlink(next_link)
+        
+        logger.info(f"✅ {result.count} contactos obtenidos en siguiente página")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error obteniendo siguiente página de contactos: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+@router.get(
     "/{contact_id}",
     response_model=ContactResponse,
     summary="Obtener contacto por ID",
