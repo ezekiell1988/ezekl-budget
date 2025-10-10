@@ -27,6 +27,16 @@ import { routes } from './app/app.routes';
 import { AppComponent } from './app/app.component';
 import { AuthInterceptor } from './app/interceptors/auth.interceptor';
 
+// Suprimir warning de iconos duplicados de Ionicons
+// Este warning ocurre cuando Ionic registra iconos por defecto que también registramos manualmente
+const originalConsoleWarn = console.warn;
+console.warn = function(...args: any[]) {
+  if (args[0]?.includes?.('Multiple icons were mapped to name')) {
+    return; // Ignorar este warning específico
+  }
+  originalConsoleWarn.apply(console, args);
+};
+
 // Registrar iconos globalmente
 addIcons({
   'business-outline': businessOutline,
