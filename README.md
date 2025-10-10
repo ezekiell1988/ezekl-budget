@@ -528,18 +528,37 @@ El componente `DemoWebsocketPage` incluye un cliente WebSocket completo con:
 En tu repositorio de GitHub, ve a **Settings → Secrets and variables → Actions** y agrega:
 
 ```
+# Deployment SSH
 SSH_PRIVATE_KEY=contenido_completo_de_tu_archivo_.pem
 SSH_HOST=20.246.83.239
 SSH_USER=azureuser
+
+# Azure OpenAI
 AZURE_OPENAI_ENDPOINT=tu_endpoint_de_azure
 AZURE_OPENAI_API_KEY=tu_api_key_de_azure
 AZURE_OPENAI_DEPLOYMENT_NAME=tu_deployment_name
+
+# Azure Communication Services
 AZURE_COMMUNICATION_ENDPOINT=tu_endpoint_de_communication_services
 AZURE_COMMUNICATION_KEY=tu_primary_key_de_communication_services
 AZURE_COMMUNICATION_SENDER_ADDRESS=noreply@tudominio.com
+
+# Azure AD (OAuth)
+AZURE_CLIENT_ID=tu_client_id_de_azure_ad
 AZURE_CLIENT_SECRET=tu_client_secret_de_azure_ad
+AZURE_TENANT_ID=tu_tenant_id_de_azure_ad
+
+# Dynamics 365 CRM (opcional)
+CRM_TENANT_ID=tu_tenant_id_para_dynamics365
+CRM_CLIENT_ID=tu_client_id_de_la_app_dynamics365
+CRM_CLIENT_SECRET=tu_client_secret_de_la_app_dynamics365
+CRM_D365_BASE_URL=https://tuorganizacion.crm.dynamics.com
+
+# Base de Datos
 DB_PASSWORD=tu_contraseña_de_base_de_datos
 ```
+
+**Nota:** El workflow de GitHub Actions sincroniza automáticamente estos secretos al archivo `.env` del servidor en cada deployment.
 
 ## 🖥️ Desarrollo Local
 

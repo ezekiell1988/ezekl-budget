@@ -50,10 +50,9 @@ jobs:
             cd $PROJECT_PATH
           fi
           
-          # Crear archivo .env si no existe
-          if [ ! -f .env ]; then
-            echo "📝 Creando archivo .env..."
-            cat > .env << EOF
+          # Crear/actualizar archivo .env (siempre sobrescribir para consistencia)
+          echo "📝 Creando/actualizando archivo .env con secretos de GitHub..."
+          cat > .env << EOF
           AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT_NAME=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
@@ -72,8 +71,12 @@ jobs:
           DB_DRIVER=ODBC Driver 18 for SQL Server
           DB_TRUST_CERT=yes
           ENVIRONMENT=production
+          CRM_TENANT_ID=${{ secrets.CRM_TENANT_ID }}
+          CRM_CLIENT_ID=${{ secrets.CRM_CLIENT_ID }}
+          CRM_CLIENT_SECRET=${{ secrets.CRM_CLIENT_SECRET }}
+          CRM_D365_BASE_URL=${{ secrets.CRM_D365_BASE_URL }}
+          CRM_API_VERSION=v9.0
           EOF
-          fi
           
           # Detener contenedor anterior si existe
           echo "🛑 Deteniendo contenedor anterior..."
