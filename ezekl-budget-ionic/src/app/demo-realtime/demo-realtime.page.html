@@ -1,18 +1,8 @@
-<app-header title="Chat Realtime AI"></app-header>
+<app-header title="Chat Realtime AI" [showMenu]="true"></app-header>
 
 <ion-content [fullscreen]="true">
   <ion-grid fixed>
-    <ion-row class="ion-justify-content-center">
-      <ion-col size="12" size-md="8" size-lg="6">
-
-        <!-- Header condensado -->
-        <ion-header collapse="condense">
-          <ion-toolbar>
-            <ion-title size="large">Chat Realtime AI</ion-title>
-          </ion-toolbar>
-        </ion-header>
-
-        <!-- Estado de conexión usando ion-chip -->
+    <!-- Estado de conexión usando ion-chip -->
         <div class="ion-text-center ion-margin-bottom">
           <ion-chip [color]="isConnected ? 'success' : isConnecting ? 'warning' : 'danger'">
             <ion-icon [name]="isConnected ? 'wifi' : isConnecting ? 'refresh' : 'cloud-offline'"></ion-icon>
@@ -177,8 +167,6 @@
             <ion-badge slot="end" color="light">{{ recordingDuration }}s</ion-badge>
           </ion-item>
         }
-
-      </ion-col>
-    </ion-row>
   </ion-grid>
+
 </ion-content>

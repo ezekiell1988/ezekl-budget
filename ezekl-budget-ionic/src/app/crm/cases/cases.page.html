@@ -1,47 +1,14 @@
-<app-header title="Casos CRM"></app-header>
-
-<!-- Barra de acciones específica de CRM -->
-<ion-toolbar>
-  <ion-buttons slot="end">
-    <ion-button fill="clear" (click)="clearFilters()" [disabled]="isLoading">
-      <ion-icon name="refresh-outline" slot="icon-only"></ion-icon>
-    </ion-button>
-    <ion-button fill="clear" (click)="openCreateModal()" [disabled]="isLoading">
-      <ion-icon name="add" slot="icon-only"></ion-icon>
-    </ion-button>
-  </ion-buttons>
-</ion-toolbar>
+<app-header
+  title="Casos"
+  [showMenu]="true"
+  [showActions]="true"
+  [showSearch]="true"
+  searchPlaceholder="Buscar casos por título..."
+  (searchChange)="onHeaderSearch($event)"
+  (searchToggle)="onHeaderSearchToggle($event)">
+</app-header>
 
 <ion-content>
-
-  <!-- Barra de búsqueda y filtros -->
-  <ion-grid>
-    <ion-row>
-      <ion-col size="12" size-md="8">
-        <ion-searchbar
-          [(ngModel)]="searchText"
-          (ionInput)="onSearch($event)"
-          placeholder="Buscar casos por título..."
-          [debounce]="500"
-          show-clear-button="focus">
-        </ion-searchbar>
-      </ion-col>
-      <ion-col size="12" size-md="4">
-        <ion-item>
-          <ion-label>Estado:</ion-label>
-          <ion-select
-            [(ngModel)]="selectedStatus"
-            (ionChange)="onStatusFilter($event)"
-            placeholder="Todos los estados">
-            <ion-select-option [value]="null">Todos</ion-select-option>
-            <ion-select-option [value]="CaseStatus.Active">Activo</ion-select-option>
-            <ion-select-option [value]="CaseStatus.Resolved">Resuelto</ion-select-option>
-            <ion-select-option [value]="CaseStatus.Canceled">Cancelado</ion-select-option>
-          </ion-select>
-        </ion-item>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
 
   <!-- Pull to refresh -->
   <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
@@ -51,6 +18,22 @@
     </ion-refresher-content>
   </ion-refresher>
 
+  <ion-grid fixed>
+    <!-- Filtro de estado -->
+    <ion-item lines="none" class="ion-margin-bottom">
+      <ion-label>Estado:</ion-label>
+      <ion-select
+        [(ngModel)]="selectedStatus"
+        (ionChange)="onStatusFilter($event)"
+        placeholder="Todos los estados"
+        interface="popover">
+        <ion-select-option [value]="null">Todos los estados</ion-select-option>
+        <ion-select-option [value]="CaseStatus.Active">Activo</ion-select-option>
+        <ion-select-option [value]="CaseStatus.Resolved">Resuelto</ion-select-option>
+        <ion-select-option [value]="CaseStatus.Canceled">Cancelado</ion-select-option>
+      </ion-select>
+    </ion-item>
+
   <!-- Lista de casos -->
   @if (!isLoading || cases.length > 0) {
   <div>
@@ -58,42 +41,39 @@
     <!-- Casos encontrados -->
     @if (cases.length > 0) {
     <ion-list>
-      <ion-card *ngFor="let case of cases" class="case-card">
+      @for (case of cases; track case.incidentid) {
+      <ion-card>
         <ion-card-header>
-          <div class="case-header">
-            <ion-card-title>{{ case.title }}</ion-card-title>
-            <div class="case-badges">
-              <ion-chip [color]="getStatusColor(case.statuscode)">
-                <ion-label>{{ getStatusText(case.statuscode) }}</ion-label>
-              </ion-chip>
-              <ion-chip [color]="getPriorityColor(case.prioritycode)">
-                <ion-label>{{ getPriorityText(case.prioritycode) }}</ion-label>
-              </ion-chip>
-            </div>
+          <ion-card-title>{{ case.title }}</ion-card-title>
+          <div class="case-badges">
+            <ion-chip [color]="getStatusColor(case.statuscode)">
+              <ion-label>{{ getStatusText(case.statuscode) }}</ion-label>
+            </ion-chip>
+            <ion-chip [color]="getPriorityColor(case.prioritycode)">
+              <ion-label>{{ getPriorityText(case.prioritycode) }}</ion-label>
+            </ion-chip>
           </div>
         </ion-card-header>
 
         <ion-card-content>
           @if (case.description) {
-          <p class="case-description">
+          <p class="ion-text-wrap ion-margin-bottom" color="medium">
             {{ case.description | slice:0:120 }}{{ case.description && case.description.length > 120 ? '...' : '' }}
           </p>
           }
 
-          <div class="case-metadata">
-            <ion-item lines="none">
-              <ion-label>
-                <p><strong>Cliente:</strong> {{ case.customer_name || 'No asignado' }}</p>
-                <p><strong>Creado:</strong> {{ formatDate(case.createdon) }}</p>
-                @if (case.modifiedon) {
-                <p><strong>Modificado:</strong> {{ formatDate(case.modifiedon) }}</p>
-                }
-              </ion-label>
-            </ion-item>
-          </div>
+          <ion-item lines="none" class="ion-no-padding">
+            <ion-label>
+              <p><strong>Cliente:</strong> {{ case.customer_name || 'No asignado' }}</p>
+              <p><strong>Creado:</strong> {{ formatDate(case.createdon) }}</p>
+              @if (case.modifiedon) {
+              <p><strong>Modificado:</strong> {{ formatDate(case.modifiedon) }}</p>
+              }
+            </ion-label>
+          </ion-item>
 
           <!-- Botones de acción -->
-          <div class="case-actions">
+          <ion-buttons class="ion-margin-top">
             <ion-button fill="clear" size="small" (click)="openViewModal(case)">
               <ion-icon name="eye-outline" slot="start"></ion-icon>
               Ver
@@ -106,9 +86,10 @@
               <ion-icon name="trash-outline" slot="start"></ion-icon>
               Eliminar
             </ion-button>
-          </div>
+          </ion-buttons>
         </ion-card-content>
       </ion-card>
+      }
     </ion-list>
 
     <!-- Infinite scroll -->
@@ -121,26 +102,64 @@
   </div>
   }
 
-  <!-- Estado de carga inicial -->
+  <!-- Estado de carga inicial - Skeleton -->
   @if (isLoading && cases.length === 0) {
-  <div class="loading-container">
-    <ion-spinner name="crescent"></ion-spinner>
-    <p>Cargando casos...</p>
-  </div>
+  <ion-list class="ion-padding">
+    @for (item of [1,2,3,4,5]; track item) {
+    <ion-card>
+      <ion-card-header>
+        <ion-skeleton-text animated style="width: 70%; height: 24px; margin-bottom: 8px;"></ion-skeleton-text>
+        <div class="skeleton-badges">
+          <ion-skeleton-text animated style="width: 60px; height: 20px; border-radius: 12px; margin-right: 8px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 50px; height: 20px; border-radius: 12px;"></ion-skeleton-text>
+        </div>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="ion-margin-bottom">
+          <ion-skeleton-text animated style="width: 100%; margin-bottom: 4px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 85%; margin-bottom: 4px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 60%; margin-bottom: 16px;"></ion-skeleton-text>
+        </div>
+
+        <div class="ion-margin-bottom">
+          <ion-skeleton-text animated style="width: 40%; height: 16px; margin-bottom: 4px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 35%; height: 16px; margin-bottom: 4px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 45%; height: 16px; margin-bottom: 16px;"></ion-skeleton-text>
+        </div>
+
+        <div class="ion-margin-top" style="display: flex; gap: 8px;">
+          <ion-skeleton-text animated style="width: 50px; height: 32px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 60px; height: 32px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 70px; height: 32px;"></ion-skeleton-text>
+        </div>
+      </ion-card-content>
+    </ion-card>
+    }
+  </ion-list>
   }
 
   <!-- Estado vacío -->
   @if (!isLoading && cases.length === 0) {
-  <div class="empty-container">
-    <ion-icon name="document-text-outline"></ion-icon>
-    <h3>No hay casos</h3>
-    <p>No se encontraron casos que coincidan con los filtros aplicados.</p>
+  <div class="ion-padding ion-text-center" style="margin-top: 64px;">
+    <ion-icon name="document-text-outline" size="large" color="medium"></ion-icon>
+    <h3 class="ion-margin-top" style="color: var(--ion-color-medium);">No hay casos</h3>
+    <p class="ion-margin-bottom" style="color: var(--ion-color-medium);">
+      No se encontraron casos que coincidan con los filtros aplicados.
+    </p>
     <ion-button fill="outline" (click)="clearFilters()">
-      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      <ion-icon name="filter-outline" slot="start"></ion-icon>
       Limpiar Filtros
     </ion-button>
   </div>
   }
+  </ion-grid>
+
+  <!-- Botón flotante para agregar caso -->
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button (click)="openCreateModal()" [disabled]="isLoading">
+      <ion-icon name="add"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
 
 </ion-content>
 
@@ -158,7 +177,7 @@
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="modal-content">
+    <ion-content >
       <form [formGroup]="createForm" (ngSubmit)="createCase()">
         <ion-grid>
 
@@ -174,14 +193,16 @@
                 </ion-input>
               </ion-item>
               @if (createForm.get('title')?.invalid && createForm.get('title')?.touched) {
-              <div class="error-text">
-                @if (createForm.get('title')?.errors?.['required']) {
-                <small>El título es obligatorio</small>
-                }
-                @if (createForm.get('title')?.errors?.['minlength']) {
-                <small>Mínimo 5 caracteres</small>
-                }
-              </div>
+              <ion-text color="danger">
+                <div class="ion-padding-start ion-padding-top" style="font-size: 0.875rem;">
+                  @if (createForm.get('title')?.errors?.['required']) {
+                  <small>El título es obligatorio</small>
+                  }
+                  @if (createForm.get('title')?.errors?.['minlength']) {
+                  <small>Mínimo 5 caracteres</small>
+                  }
+                </div>
+              </ion-text>
               }
             </ion-col>
           </ion-row>
@@ -227,31 +248,66 @@
 
           <ion-row>
             <ion-col size="12" size-md="6">
-              <ion-item>
-                <ion-label position="stacked">ID Cuenta Cliente (GUID)</ion-label>
-                <ion-input
-                  type="text"
-                  formControlName="customer_account_id"
-                  placeholder="629ca2a0-024a-ea11-a815-000d3a591218">
-                </ion-input>
+              <ion-item button (click)="openAccountSearch()" detail="true">
+                <ion-icon name="business-outline" slot="start" color="primary"></ion-icon>
+                <ion-label>
+                  <p>Cuenta Cliente</p>
+                  @if (selectedAccount) {
+                  <h3>{{ selectedAccount.name }}</h3>
+                  } @else {
+                  <h3 class="placeholder-text">Seleccionar cuenta...</h3>
+                  }
+                </ion-label>
+                @if (selectedAccount) {
+                <ion-button
+                  fill="clear"
+                  slot="end"
+                  (click)="clearAccount($event)">
+                  <ion-icon name="close-circle" slot="icon-only"></ion-icon>
+                </ion-button>
+                }
               </ion-item>
             </ion-col>
             <ion-col size="12" size-md="6">
-              <ion-item>
-                <ion-label position="stacked">ID Contacto Cliente (GUID)</ion-label>
-                <ion-input
-                  type="text"
-                  formControlName="customer_contact_id"
-                  placeholder="729ca2a0-024a-ea11-a815-000d3a591220">
-                </ion-input>
+              <ion-item button (click)="openContactSearch()" detail="true">
+                <ion-icon name="person-outline" slot="start" color="secondary"></ion-icon>
+                <ion-label>
+                  <p>Contacto Cliente</p>
+                  @if (selectedContact) {
+                  <h3>{{ selectedContact.name }}</h3>
+                  } @else {
+                  <h3 class="placeholder-text">Seleccionar contacto...</h3>
+                  }
+                </ion-label>
+                @if (selectedContact) {
+                <ion-button
+                  fill="clear"
+                  slot="end"
+                  (click)="clearContact($event)">
+                  <ion-icon name="close-circle" slot="icon-only"></ion-icon>
+                </ion-button>
+                }
               </ion-item>
             </ion-col>
           </ion-row>
 
+          @if (selectedAccount || selectedContact) {
+          <ion-row>
+            <ion-col size="12">
+              <ion-note color="medium" class="ion-padding-start">
+                <small>
+                  <ion-icon name="information-circle-outline"></ion-icon>
+                  Solo se puede asociar una cuenta O un contacto, no ambos.
+                </small>
+              </ion-note>
+            </ion-col>
+          </ion-row>
+          }
+
         </ion-grid>
 
         <!-- Botones del modal -->
-        <div class="modal-buttons">
+        <div class="ion-padding" style="display: flex; justify-content: flex-end; gap: 8px;">
           <ion-button type="button" fill="outline" (click)="closeCreateModal()">
             Cancelar
           </ion-button>
@@ -282,7 +338,7 @@
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="modal-content">
+    <ion-content >
       <form [formGroup]="editForm" (ngSubmit)="updateCase()">
         <ion-grid>
 
@@ -350,7 +406,7 @@
         </ion-grid>
 
         <!-- Botones del modal -->
-        <div class="modal-buttons">
+        <div class="ion-padding" style="display: flex; justify-content: flex-end; gap: 8px;">
           <ion-button type="button" fill="outline" (click)="closeEditModal()">
             Cancelar
           </ion-button>
@@ -382,7 +438,7 @@
     </ion-header>
 
     @if (selectedCase) {
-    <ion-content class="modal-content">
+    <ion-content >
       <ion-card>
         <ion-card-header>
           <ion-card-title>{{ selectedCase.title }}</ion-card-title>
@@ -475,3 +531,18 @@
     }
   </ng-template>
 </ion-modal>
+
+<!-- COMPONENTES DE BÚSQUEDA -->
+<app-crm-search
+  entityType="account"
+  [isOpen]="isAccountSearchOpen"
+  (itemSelected)="onAccountSelected($event)"
+  (modalClosed)="closeAccountSearch()">
+</app-crm-search>
+
+<app-crm-search
+  entityType="contact"
+  [isOpen]="isContactSearchOpen"
+  (itemSelected)="onContactSelected($event)"
+  (modalClosed)="closeContactSearch()">
+</app-crm-search>

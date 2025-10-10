@@ -97,8 +97,14 @@ PATCH /api/crm/cases/4bb40b00-024b-ea11-a815-000d3a591219
 ### Cuentas (Accounts)
 
 ```bash
+# Listar primera página de cuentas (25 items)
+GET /api/crm/accounts?top=25&order_by=accountid
+
 # Buscar cuentas por nombre
 GET /api/crm/accounts?filter_query=contains(name,'Tecnología')
+
+# Obtener siguiente página usando nextLink de D365
+GET /api/crm/accounts/by-nextlink?next_link={encoded_next_link}
 
 # Crear nueva cuenta
 POST /api/crm/accounts
@@ -148,6 +154,58 @@ filter_query=contains(name,'Tecnología') and revenue gt 1000000
 # Contactos gerentes con email corporativo
 filter_query=contains(jobtitle,'Gerente') and contains(emailaddress1,'@empresa.com')
 ```
+
+## 📄 Paginación con Dynamics 365
+
+### ⚠️ Limitación Importante
+
+**Dynamics 365 NO soporta el parámetro `$skip` estándar de OData**. En su lugar, usa **server-driven paging** con `$skiptoken`.
+
+### Flujo de Paginación
+
+#### 1. Primera Página
+```bash
+GET /api/crm/accounts?top=25&order_by=accountid
+```
+
+**Respuesta:**
+```json
+{
+  "count": 5000,
+  "accounts": [...],  // 25 items
+  "next_link": "https://org.crm.dynamics.com/api/data/v9.0/accounts?$skiptoken=<cookie>..."
+}
+```
+
+#### 2. Páginas Siguientes
+```bash
+GET /api/crm/accounts/by-nextlink?next_link={url_encoded_next_link}
+```
+
+### Headers Requeridos
+
+Para activar server-driven paging, el backend usa:
+```http
+Prefer: odata.maxpagesize=25
+```
+
+### Mejores Prácticas
+
+✅ **DO:**
+- Usar `order_by` con primary key (`accountid`) para resultados determinísticos
+- Usar el `next_link` completo sin modificaciones
+- Mantener el mismo `maxpagesize` en todas las requests
+
+❌ **DON'T:**
+- No usar `$skip` (D365 retorna error 400)
+- No modificar el `$skiptoken` en el nextLink
+- No agregar parámetros adicionales al nextLink
+
+### Documentación Completa
+
+Para detalles técnicos completos, ver:
+- `ezekl-budget-ionic/src/app/crm/accounts/D365_PAGINATION_GUIDE.md`
+- [Microsoft Learn - Page Results](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/query/page-results)
 
 ## 🏥 Diagnósticos y Health Check
 

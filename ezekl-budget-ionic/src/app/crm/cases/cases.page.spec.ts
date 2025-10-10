@@ -165,9 +165,9 @@ describe('CasesPage', () => {
   });
 
   it('should filter cases by search text', async () => {
-    component.searchText = 'test';
-    await component.onSearch({ target: { value: 'test' } });
+    await component.onHeaderSearch('test');
 
+    expect(component.searchText).toBe('test');
     expect(crmService.getCases).toHaveBeenCalledWith(
       jasmine.objectContaining({
         filter_query: jasmine.stringContaining("contains(title,'test')")

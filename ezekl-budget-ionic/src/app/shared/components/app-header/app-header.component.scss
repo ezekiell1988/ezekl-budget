@@ -1,2 +1,30 @@
 /* Estilos compartidos del header */
-/* Agrega estilos aquí cuando sea necesario */
+
+ion-toolbar {
+  display: flex;
+  align-items: center;
+}
+
+ion-toolbar ion-buttons {
+  margin: 0;
+  align-self: center;
+}
+
+ion-toolbar ion-buttons ion-button {
+  margin: 0;
+  --padding-start: 8px;
+  --padding-end: 8px;
+}
+
+ion-toolbar ion-searchbar {
+  --background: rgba(255, 255, 255, 0.15);
+  --color: var(--ion-color-light);
+  --placeholder-color: rgba(255, 255, 255, 0.6);
+  --icon-color: var(--ion-color-light);
+  --clear-button-color: var(--ion-color-light);
+
+  padding-top: 0;
+  padding-bottom: 0;
+  flex: 1;
+  width: 100%;
+}

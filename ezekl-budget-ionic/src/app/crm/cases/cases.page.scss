@@ -1,1 +1,23 @@
-/* Casos CRM - usar componentes nativos de Ionic sin CSS personalizado */
+/* Casos CRM - Estilos mínimos usando componentes nativos de Ionic */
+
+/* Skeleton badges alineados a la derecha */
+.skeleton-badges {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* Case badges alineados a la derecha */
+.case-badges {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* Placeholder para campos vacíos */
+.placeholder-text {
+  color: var(--ion-color-medium);
+  font-style: italic;
+}

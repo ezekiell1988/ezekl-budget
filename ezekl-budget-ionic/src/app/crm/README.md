@@ -35,9 +35,18 @@ La página utiliza **`ion-tabs`** de Ionic para organizar las diferentes seccion
 /crm/system             → Tab de Sistema y Diagnósticos
 ```
 
-**Acceso al CRM**: Disponible desde el menú lateral con el ícono `business-outline` y badge "NEW"
+### Cómo Acceder
+- **Desde el menú lateral**: Busca el ícono `business-outline` con badge "NEW"
+- **URL directa**: Navega a `/crm` desde el navegador
+- **Programáticamente**: `this.router.navigate(['/crm/cases'])`
 
 ## 📋 Tab de Casos - Funcionalidades Implementadas
+
+> 📖 **Documentación completa**: Ver [README de Casos](./cases/README.md) para detalles técnicos y de implementación.
+
+## 🏢 Tab de Cuentas - Funcionalidades Implementadas
+
+> 📖 **Documentación completa**: Ver [README de Cuentas](./accounts/README.md) para detalles técnicos y de implementación.
 
 ### ✅ **Gestión Completa CRUD**
 - **📋 Lista paginada** con infinite scroll
@@ -68,6 +77,25 @@ La página utiliza **`ion-tabs`** de Ionic para organizar las diferentes seccion
 - **🔒 Manejo de permisos** y autenticación
 - **♿ Accesibilidad mejorada** con manejo de foco y aria-labels
 - **🆕 Angular Control Flow** moderno con sintaxis @if/@for
+
+### ✅ **Gestión Completa CRUD de Cuentas**
+- **📋 Lista paginada** con infinite scroll automático
+- **➕ Crear cuentas** con formulario reactivo y validaciones
+- **👁️ Ver detalles** completos en modal de solo lectura  
+- **✏️ Editar cuentas** con actualización parcial de campos
+- **🗑️ Eliminar cuentas** con confirmación de seguridad
+
+### ✅ **Búsqueda y Filtros de Cuentas**
+- **🔍 Búsqueda por nombre** integrada en el header
+- **🧹 Limpiar filtros** para ver todas las cuentas
+- **📊 Paginación inteligente** de 25 resultados por página
+
+### ✅ **Información de Cuentas**
+- **📞 Datos de contacto** - Teléfono, email, sitio web
+- **🏢 Información empresarial** - Nombre, número de cuenta
+- **📍 Dirección completa** - Calle, ciudad, código postal, país
+- **📅 Fechas del sistema** - Creación y última modificación
+- **✨ Validación de email** en formularios
 
 ## 🎨 Componentes Ionic Utilizados
 
@@ -183,11 +211,12 @@ CasesListResponse, CRMOperationResponse
 
 ## 🚀 Próximas Funcionalidades
 
-### 🏢 **Tab de Cuentas** (En desarrollo)
-- CRUD completo para empresas
+### 🏢 **Tab de Cuentas** (Mejoras futuras)
 - Filtros por industria y tamaño
+- Filtros por ciudad y país
 - Vinculación con casos
-- Gestión de direcciones
+- Vista de relaciones con contactos
+- Ordenamiento personalizado
 
 ### 👤 **Tab de Contactos** (En desarrollo)  
 - CRUD completo para personas
@@ -220,7 +249,7 @@ CasesListResponse, CRMOperationResponse
 | Funcionalidad | Estado | Progreso |
 |--------------|--------|----------|
 | **Tab de Casos** | ✅ Completo | 100% |
-| Tab de Cuentas | 🟡 En desarrollo | 20% |  
+| **Tab de Cuentas** | ✅ Completo | 100% |  
 | Tab de Contactos | 🟡 En desarrollo | 20% |
 | Tab de Sistema | 🟡 En desarrollo | 30% |
 | Componentes reutilizables | 🔴 Pendiente | 0% |
@@ -242,6 +271,13 @@ CasesListResponse, CRMOperationResponse
 
 ## 🔗 Enlaces Relacionados
 
+### Documentación por Página
+- [📋 Casos (Cases)](./cases/README.md) - Documentación completa del tab de casos
+- [🏢 Cuentas (Accounts)](./accounts/README.md) - Documentación completa del tab de cuentas
+- 👤 Contactos (Contacts) - En desarrollo
+- 🔧 Sistema (System) - En desarrollo
+
+### Backend y Servicios
 - [Documentación Backend CRM](../../../app/api/crm/README.md)
 - [Modelos TypeScript](../shared/models/crm.models.ts)
 - [Servicio CRM](../shared/services/crm.service.ts)

@@ -174,6 +174,9 @@ export class SideMenuComponent implements OnInit {
       event.preventDefault();
     }
 
+    // Cerrar el menú antes de ejecutar la acción
+    await this.menuController.close('main-menu');
+
     // Usar siempre el servicio para manejar las acciones
     await this.meService.executeAction(item);
   }

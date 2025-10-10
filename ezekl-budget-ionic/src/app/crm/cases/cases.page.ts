@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AppHeaderComponent } from '../../shared/components/app-header/app-header.component';
+import { CrmSearchComponent, CRMSearchResult } from '../../shared/components/crm-search/crm-search.component';
 import {
   IonContent,
   IonHeader,
@@ -19,7 +20,6 @@ import {
   IonButton,
   IonIcon,
   IonList,
-  IonSearchbar,
   IonSelect,
   IonSelectOption,
   IonInput,
@@ -35,6 +35,11 @@ import {
   IonBackButton,
   IonBadge,
   IonChip,
+  IonSkeletonText,
+  IonFab,
+  IonFabButton,
+  IonNote,
+  IonText,
   AlertController,
   ToastController,
   ModalController,
@@ -47,11 +52,14 @@ import {
   createOutline,
   trashOutline,
   eyeOutline,
-  refreshOutline,
   searchOutline,
   filterOutline,
   closeOutline,
-  saveOutline
+  saveOutline,
+  businessOutline,
+  personOutline,
+  closeCircle,
+  informationCircleOutline
 } from 'ionicons/icons';
 
 import { Subject } from 'rxjs';
@@ -78,6 +86,7 @@ import {
     FormsModule,
     ReactiveFormsModule,
     AppHeaderComponent,
+    CrmSearchComponent,
     IonContent,
     IonHeader,
     IonTitle,
@@ -94,19 +103,22 @@ import {
     IonButton,
     IonIcon,
     IonList,
-    IonSearchbar,
     IonSelect,
     IonSelectOption,
     IonInput,
     IonTextarea,
-    IonSpinner,
+    IonSkeletonText,
     IonRefresher,
     IonRefresherContent,
     IonInfiniteScroll,
     IonInfiniteScrollContent,
     IonModal,
     IonButtons,
-    IonChip
+    IonChip,
+    IonFab,
+    IonFabButton,
+    IonNote,
+    IonText
   ]
 })
 export class CasesPage implements OnInit, OnDestroy {
@@ -136,6 +148,12 @@ export class CasesPage implements OnInit, OnDestroy {
   isViewModalOpen = false;
   selectedCase: CaseResponse | null = null;
 
+  // Modales de búsqueda
+  isAccountSearchOpen = false;
+  isContactSearchOpen = false;
+  selectedAccount: CRMSearchResult | null = null;
+  selectedContact: CRMSearchResult | null = null;
+
   // Formularios
   createForm: FormGroup;
   editForm: FormGroup;
@@ -152,11 +170,14 @@ export class CasesPage implements OnInit, OnDestroy {
       createOutline,
       trashOutline,
       eyeOutline,
-      refreshOutline,
       searchOutline,
       filterOutline,
       closeOutline,
-      saveOutline
+      saveOutline,
+      businessOutline,
+      personOutline,
+      closeCircle,
+      informationCircleOutline
     });
 
     // Inicializar formularios
@@ -260,12 +281,30 @@ export class CasesPage implements OnInit, OnDestroy {
   // FILTROS Y BÚSQUEDA
   // ===============================================
 
-  async onSearch(event: any) {
-    this.searchText = event.target.value;
+  /**
+   * Búsqueda desde el header (única fuente de búsqueda)
+   */
+  async onHeaderSearch(searchText: string) {
+    this.searchText = searchText;
     this.currentPage = 1;
     await this.loadCases(true);
   }
 
+  /**
+   * Toggle de búsqueda del header
+   */
+  onHeaderSearchToggle(isActive: boolean) {
+    // Si se cierra la búsqueda del header, limpiar el texto
+    if (!isActive && this.searchText) {
+      this.searchText = '';
+      this.currentPage = 1;
+      this.loadCases(true);
+    }
+  }
+
+  /**
+   * Filtro de estado
+   */
   async onStatusFilter(event: any) {
     this.selectedStatus = event.target.value;
     this.currentPage = 1;
@@ -295,6 +334,8 @@ export class CasesPage implements OnInit, OnDestroy {
   closeCreateModal() {
     this.isCreateModalOpen = false;
     this.createForm.reset();
+    this.selectedAccount = null;
+    this.selectedContact = null;
   }
 
   async createCase() {
@@ -491,7 +532,7 @@ export class CasesPage implements OnInit, OnDestroy {
     const toast = await this.toastController.create({
       message,
       duration: 3000,
-      position: 'top',
+      position: 'bottom',
       color: 'success',
       icon: 'checkmark-circle-outline'
     });
@@ -502,10 +543,72 @@ export class CasesPage implements OnInit, OnDestroy {
     const toast = await this.toastController.create({
       message,
       duration: 5000,
-      position: 'top',
+      position: 'bottom',
       color: 'danger',
       icon: 'alert-circle-outline'
     });
     await toast.present();
+  }
+
+  // ===============================================
+  // BÚSQUEDA DE CUENTAS Y CONTACTOS
+  // ===============================================
+
+  openAccountSearch() {
+    // Si ya hay un contacto seleccionado, no permitir seleccionar cuenta
+    if (this.selectedContact) {
+      this.showErrorToast('Ya has seleccionado un contacto. Solo puedes asociar una cuenta O un contacto.');
+      return;
+    }
+    this.isAccountSearchOpen = true;
+  }
+
+  closeAccountSearch() {
+    this.isAccountSearchOpen = false;
+  }
+
+  onAccountSelected(result: CRMSearchResult) {
+    this.selectedAccount = result;
+    this.createForm.patchValue({
+      customer_account_id: result.id
+    });
+    this.closeAccountSearch();
+  }
+
+  clearAccount(event: Event) {
+    event.stopPropagation();
+    this.selectedAccount = null;
+    this.createForm.patchValue({
+      customer_account_id: ''
+    });
+  }
+
+  openContactSearch() {
+    // Si ya hay una cuenta seleccionada, no permitir seleccionar contacto
+    if (this.selectedAccount) {
+      this.showErrorToast('Ya has seleccionado una cuenta. Solo puedes asociar una cuenta O un contacto.');
+      return;
+    }
+    this.isContactSearchOpen = true;
+  }
+
+  closeContactSearch() {
+    this.isContactSearchOpen = false;
+  }
+
+  onContactSelected(result: CRMSearchResult) {
+    this.selectedContact = result;
+    this.createForm.patchValue({
+      customer_contact_id: result.id
+    });
+    this.closeContactSearch();
+  }
+
+  clearContact(event: Event) {
+    event.stopPropagation();
+    this.selectedContact = null;
+    this.createForm.patchValue({
+      customer_contact_id: ''
+    });
   }
 }

@@ -147,7 +147,7 @@ class CRMService:
     ) -> CasesListResponse:
         """Obtiene una lista paginada de casos de Dynamics 365."""
         
-        params = {}
+        params = {"$count": "true"}  # Solicitar el conteo total
         if top:
             params["$top"] = top
         if skip:
@@ -163,8 +163,11 @@ class CRMService:
         
         cases = [CaseResponse(**case) for case in response.get("value", [])]
         
+        # Usar @odata.count si está disponible, de lo contrario usar len(cases)
+        total_count = response.get("@odata.count", len(cases))
+        
         return CasesListResponse(
-            count=len(cases),
+            count=total_count,
             cases=cases,
             next_link=response.get("@odata.nextLink")
         )
@@ -239,11 +242,14 @@ class CRMService:
     ) -> AccountsListResponse:
         """Obtiene una lista paginada de cuentas de Dynamics 365."""
         
-        params = {}
-        if top:
-            params["$top"] = top
-        if skip:
-            params["$skip"] = skip
+        # CRÍTICO: NO enviar $skip porque D365 no lo soporta
+        # En su lugar, usamos Prefer: odata.maxpagesize header
+        params = {"$count": "true"}  # Solicitar el conteo total
+        
+        # NO incluir $skip - D365 no lo soporta
+        # if skip:
+        #     params["$skip"] = skip
+        
         if filter_query:
             params["$filter"] = filter_query
         if select_fields:
@@ -251,15 +257,157 @@ class CRMService:
         if order_by:
             params["$orderby"] = order_by
         
-        response = await self._make_request("GET", "accounts", params=params)
+        # Preparar headers con Prefer para paginación
+        token = await crm_auth_service.get_access_token()
+        url = f"{self.api_base_url}/accounts"
         
-        accounts = [AccountResponse(**account) for account in response.get("value", [])]
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "OData-MaxVersion": "4.0",
+            "OData-Version": "4.0",
+            "Prefer": f"odata.maxpagesize={top}"  # ✅ Esto hace que D365 retorne nextLink
+        }
         
-        return AccountsListResponse(
-            count=len(accounts),
-            accounts=accounts,
-            next_link=response.get("@odata.nextLink")
-        )
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    url=url,
+                    headers=headers,
+                    params=params
+                ) as resp:
+                    
+                    if resp.status >= 400:
+                        response_text = await resp.text()
+                        logger.error(f"❌ Error en petición CRM: GET {url} - HTTP {resp.status}")
+                        logger.error(f"Response: {response_text}")
+                        
+                        try:
+                            error_data = await resp.json() if response_text else {}
+                            error_msg = error_data.get("error", {}).get("message", response_text)
+                        except:
+                            error_msg = response_text
+                            
+                        raise HTTPException(
+                            status_code=resp.status,
+                            detail=f"Error en CRM: {error_msg}"
+                        )
+                    
+                    response = await resp.json()
+                    
+                    accounts = [AccountResponse(**account) for account in response.get("value", [])]
+                    total_count = response.get("@odata.count", len(accounts))
+                    next_link = response.get("@odata.nextLink")
+                    
+                    return AccountsListResponse(
+                        count=total_count,
+                        accounts=accounts,
+                        next_link=next_link
+                    )
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"❌ Error de conexión CRM: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error de conexión con Dynamics 365: {str(e)}"
+            )
+    
+    async def get_accounts_by_nextlink(self, next_link: str) -> AccountsListResponse:
+        """
+        Obtiene la siguiente página de cuentas usando nextLink de Dynamics 365.
+        
+        Dynamics 365 usa server-driven paging con @odata.nextLink que incluye
+        un $skiptoken (cookie de paginación). Este método usa el nextLink completo
+        para obtener la siguiente página sin calcular offset manualmente.
+        
+        Args:
+            next_link: URL completa del @odata.nextLink retornado por D365.
+                      Ejemplo: "/api/data/v9.2/accounts?$select=...&$skiptoken=<cookie>"
+        
+        Returns:
+            AccountsListResponse con la siguiente página de cuentas y el nextLink
+            para la página siguiente (si existe).
+            
+        Note:
+            - NO modificar el nextLink, usarlo tal como viene
+            - NO agregar parámetros adicionales
+            - El $skiptoken es interno de D365, no intentar decodificarlo
+        """
+        self._check_configuration()
+        
+        # El nextLink viene como path relativo con query params
+        # Ejemplo: "/api/data/v9.2/accounts?$select=accountid,name&$skiptoken=%3Ccookie..."
+        
+        # Extraer solo la parte después de /api/data/v9.2/
+        if "/api/data/" in next_link:
+            # next_link viene como: "/api/data/v9.2/accounts?$select=..."
+            # Necesitamos solo: "accounts?$select=..."
+            parts = next_link.split(f"/api/data/{self.api_version}/")
+            if len(parts) > 1:
+                endpoint_with_params = parts[1]
+            else:
+                endpoint_with_params = next_link
+        else:
+            endpoint_with_params = next_link
+        
+        # Separar endpoint y query params
+        if "?" in endpoint_with_params:
+            endpoint, query_string = endpoint_with_params.split("?", 1)
+        else:
+            endpoint = endpoint_with_params
+            query_string = ""
+        
+        # Construir URL manualmente para preservar el query string exacto
+        token = await crm_auth_service.get_access_token()
+        url = f"{self.api_base_url}/{endpoint_with_params}"
+        
+        # CRÍTICO: Agregar Prefer header también en nextLink para mantener paginación
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "OData-MaxVersion": "4.0",
+            "OData-Version": "4.0",
+            "Prefer": "odata.maxpagesize=25"  # ✅ Mantener el mismo tamaño de página
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url=url, headers=headers) as resp:
+                    
+                    if resp.status >= 400:
+                        response_text = await resp.text()
+                        logger.error(f"❌ Error en nextLink: GET {url} - HTTP {resp.status}")
+                        logger.error(f"Response: {response_text}")
+                        
+                        try:
+                            error_data = await resp.json() if response_text else {}
+                            error_msg = error_data.get("error", {}).get("message", response_text)
+                        except:
+                            error_msg = response_text
+                            
+                        raise HTTPException(
+                            status_code=resp.status,
+                            detail=f"Error en CRM nextLink: {error_msg}"
+                        )
+                    
+                    response = await resp.json()
+                    
+                    accounts = [AccountResponse(**account) for account in response.get("value", [])]
+                    total_count = response.get("@odata.count", len(accounts))
+                    next_link_result = response.get("@odata.nextLink")
+                    
+                    return AccountsListResponse(
+                        count=total_count,
+                        accounts=accounts,
+                        next_link=next_link_result
+                    )
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"❌ Error de conexión CRM nextLink: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error de conexión con Dynamics 365: {str(e)}"
+            )
     
     async def get_account_by_id(self, account_id: str) -> AccountResponse:
         """Obtiene una cuenta específica por su ID."""
@@ -345,7 +493,7 @@ class CRMService:
     ) -> ContactsListResponse:
         """Obtiene una lista paginada de contactos de Dynamics 365."""
         
-        params = {}
+        params = {"$count": "true"}  # Solicitar el conteo total
         if top:
             params["$top"] = top
         if skip:
@@ -361,8 +509,11 @@ class CRMService:
         
         contacts = [ContactResponse(**contact) for contact in response.get("value", [])]
         
+        # Usar @odata.count si está disponible, de lo contrario usar len(contacts)
+        total_count = response.get("@odata.count", len(contacts))
+        
         return ContactsListResponse(
-            count=len(contacts),
+            count=total_count,
             contacts=contacts,
             next_link=response.get("@odata.nextLink")
         )

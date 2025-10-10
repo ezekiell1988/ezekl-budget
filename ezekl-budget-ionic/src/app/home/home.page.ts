@@ -8,12 +8,17 @@ import {
   IonGrid,
   IonRow,
   IonCol,
-  IonButton,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
   IonIcon,
   ViewWillLeave,
   ViewDidLeave
 } from '@ionic/angular/standalone';
 import { RouterModule } from '@angular/router';
+import { addIcons } from 'ionicons';
+import { homeOutline } from 'ionicons/icons';
 
 import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
 
@@ -31,14 +36,22 @@ import { AppHeaderComponent } from '../shared/components/app-header/app-header.c
     IonGrid,
     IonRow,
     IonCol,
-    IonButton,
+    IonCard,
+    IonCardHeader,
+    IonCardTitle,
+    IonCardContent,
     IonIcon,
     AppHeaderComponent,
   ],
 })
 export class HomePage implements OnInit, ViewWillLeave, ViewDidLeave {
 
-  constructor() { }
+  constructor() {
+    // Registrar iconos necesarios
+    addIcons({
+      homeOutline,
+    });
+  }
 
   ngOnInit() {
   }

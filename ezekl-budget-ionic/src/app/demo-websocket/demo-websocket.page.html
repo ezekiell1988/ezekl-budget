@@ -1,17 +1,8 @@
-<app-header title="Demo WebSocket"></app-header>
+<app-header title="Demo WebSocket" [showMenu]="true"></app-header>
 
 <ion-content [fullscreen]="true">
-<ion-grid fixed>
-  <ion-row class="ion-justify-content-center">
-    <ion-col size="12" size-md="6" size-lg="4">
-
-        <!-- Header condensado dentro del grid -->
-        <ion-header collapse="condense">
-          <ion-toolbar>
-            <ion-title size="large">Demo WebSocket</ion-title>
-          </ion-toolbar>
-        </ion-header>
-        <!-- Estado de conexión WebSocket -->
+  <ion-grid fixed>
+    <!-- Estado de conexión WebSocket -->
         <ion-card>
           <ion-card-header>
             <ion-card-title>🔌 Estado WebSocket</ion-card-title>
@@ -100,7 +91,5 @@
             </ion-list>
           </ion-card-content>
         </ion-card>
-      </ion-col>
-    </ion-row>
   </ion-grid>
 </ion-content>

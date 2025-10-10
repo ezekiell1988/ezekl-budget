@@ -1,54 +1,11 @@
-/* Estilos para la página home básica */
+/* Home - Estilos mínimos usando componentes nativos de Ionic */
 
-.welcome-content {
-  text-align: center;
-  padding: 2rem 1rem;
+// Todas las utilidades de Ionic están siendo usadas:
+// - ion-padding: padding del contenedor
+// - ion-text-center: centrado de texto
+// - ion-no-margin: sin márgenes
+// - ion-margin-bottom: margen inferior
+// - ion-text-wrap: ajuste de texto
+// - Variables CSS: --ion-color-*
 
-  h1 {
-    color: var(--ion-color-primary);
-    margin-bottom: 1rem;
-  }
-
-  p {
-    color: var(--ion-color-medium);
-    line-height: 1.6;
-    margin-bottom: 0.8rem;
-  }
-
-  .navigation-buttons {
-    margin-top: 2rem;
-    max-width: 300px;
-    margin-left: auto;
-    margin-right: auto;
-
-    .navigation-button {
-      margin-bottom: 1rem;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-      ion-icon {
-        margin-right: 0.5rem;
-      }
-
-      // Accesibilidad: Indicador visual de foco
-      &:focus {
-        outline: 2px solid var(--ion-color-primary-contrast);
-        outline-offset: 2px;
-        box-shadow: 0 4px 12px rgba(var(--ion-color-primary-rgb), 0.3);
-      }
-
-      // Efectos de hover para dispositivos que lo soportan
-      @media (hover: hover) {
-        &:hover:not([disabled]) {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(var(--ion-color-primary-rgb), 0.2);
-        }
-      }
-
-      // Estados de activación táctil
-      &.ion-activated {
-        transform: translateY(1px);
-        transition-duration: 0.1s;
-      }
-    }
-  }
-}
+// No se requiere CSS personalizado adicional

@@ -1,0 +1,82 @@
+/* Componente de búsqueda CRM */
+
+.search-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  min-height: 300px;
+
+  ion-icon {
+    font-size: 64px;
+    color: var(--ion-color-medium);
+    margin-bottom: 16px;
+  }
+
+  ion-spinner {
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    color: var(--ion-color-dark);
+    margin-bottom: 8px;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  p {
+    color: var(--ion-color-medium);
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  &.empty {
+    ion-icon {
+      color: var(--ion-color-light);
+    }
+  }
+}
+
+ion-list {
+  ion-item {
+    --padding-start: 16px;
+    --inner-padding-end: 8px;
+
+    ion-icon[slot="start"] {
+      font-size: 28px;
+      margin-right: 12px;
+    }
+
+    ion-label {
+      h2 {
+        font-weight: 600;
+        color: var(--ion-color-dark);
+        margin-bottom: 4px;
+      }
+
+      p {
+        font-size: 0.875rem;
+        color: var(--ion-color-medium);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    &:hover {
+      --background: var(--ion-color-light);
+    }
+  }
+}
+
+/* Sticky search toolbar */
+ion-header {
+  ion-toolbar {
+    &:last-child {
+      --padding-top: 0;
+      --padding-bottom: 8px;
+    }
+  }
+}

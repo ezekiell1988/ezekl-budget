@@ -1,1 +1,14 @@
-/* Estilos para accounts */
+/* Accounts CRM - Estilos mínimos usando componentes nativos de Ionic */
+
+/* Skeleton placeholders */
+.skeleton-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Placeholder para campos vacíos */
+.placeholder-text {
+  color: var(--ion-color-medium);
+  font-style: italic;
+}

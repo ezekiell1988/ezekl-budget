@@ -45,6 +45,10 @@ class CasesListResponse(BaseModel):
     count: int = Field(..., description="Número de casos en la respuesta")
     cases: List[CaseResponse] = Field(..., description="Lista de casos")
     next_link: Optional[str] = Field(None, description="Enlace para la siguiente página")
+    
+    model_config = {
+        "populate_by_name": True  # Permitir poblar por alias o por nombre de campo
+    }
 
 
 class AccountResponse(BaseModel):
@@ -87,6 +91,10 @@ class AccountsListResponse(BaseModel):
     count: int = Field(..., description="Número de cuentas en la respuesta")
     accounts: List[AccountResponse] = Field(..., description="Lista de cuentas")
     next_link: Optional[str] = Field(None, description="Enlace para la siguiente página")
+    
+    model_config = {
+        "populate_by_name": True  # Permitir poblar por alias o por nombre de campo
+    }
 
 
 class ContactResponse(BaseModel):
@@ -123,7 +131,10 @@ class ContactsListResponse(BaseModel):
     """Modelo de respuesta para lista de contactos"""
     count: int = Field(..., description="Número de contactos en la respuesta")
     contacts: List[ContactResponse] = Field(..., description="Lista de contactos")
-    next_link: Optional[str] = Field(None, description="Enlace para la siguiente página")
+    next_link: Optional[str] = Field(None, description="Enlace para la siguiente página", serialization_alias="next_link")
+    
+    class Config:
+        populate_by_name = True  # Permitir poblar por alias o por nombre de campo
 
 
 class CaseTypeCodeResponse(BaseModel):

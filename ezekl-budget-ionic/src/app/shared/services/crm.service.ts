@@ -183,6 +183,37 @@ export class CrmService {
   }
 
   /**
+   * Obtiene la siguiente página de cuentas usando nextLink de Dynamics 365
+   *
+   * Este método implementa server-driven paging correctamente según la
+   * especificación OData v4.0 y las limitaciones de Dynamics 365 Web API.
+   *
+   * @param nextLink URL completa del @odata.nextLink retornado por el backend
+   *                 Ejemplo: "/api/data/v9.2/accounts?$select=...&$skiptoken=..."
+   * @returns Observable con la siguiente página de cuentas y el nextLink para más páginas
+   *
+   * **⚠️ Importante:**
+   * - Dynamics 365 NO soporta $skip, usa $skiptoken
+   * - NO modificar el nextLink
+   * - Usar exactamente como viene en la respuesta
+   *
+   * @see D365_PAGINATION_GUIDE.md para más detalles
+   */
+  getAccountsByNextLink(nextLink: string): Observable<AccountsListResponse> {
+    // URL encode del nextLink para enviarlo como query parameter
+    const encodedNextLink = encodeURIComponent(nextLink);
+
+    return this.http.get<AccountsListResponse>(
+      `${this.baseUrl}/accounts/by-nextlink?next_link=${encodedNextLink}`,
+      {
+        headers: this.getHeaders()
+      }
+    ).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
    * Obtiene una cuenta específica por ID
    */
   getAccount(accountId: string): Observable<AccountResponse> {
