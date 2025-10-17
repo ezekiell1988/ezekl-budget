@@ -11,6 +11,7 @@ from app.models.responses import CredentialsResponse, RealtimeCredentialsRespons
 from .email import router as email_router
 from .auth import router as auth_router, get_current_user
 from .accounting_account import router as accounting_account_router
+from .whatsapp import router as whatsapp_router
 
 # Importar routers CRM
 from app.api.crm import cases_router, accounts_router, contacts_router, system_router
@@ -22,6 +23,7 @@ router = APIRouter()
 router.include_router(email_router, prefix="/email", tags=["email"])
 router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 router.include_router(accounting_account_router, prefix="/accounting-accounts", tags=["accounting-accounts"])
+router.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
 
 # Incluir routers CRM con prefijo /crm
 router.include_router(cases_router, prefix="/crm", tags=["CRM"])
