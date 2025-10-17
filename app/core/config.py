@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     db_driver: str = "ODBC Driver 18 for SQL Server"
     db_trust_cert: str = "yes"
     
+    # Configuración de WhatsApp Business API
+    whatsapp_access_token: Optional[str] = None
+    whatsapp_phone_number_id: Optional[str] = None
+    whatsapp_verify_token: str = "mi_token_secreto_whatsapp_2024"
+    
     @property
     def is_production(self) -> bool:
         """Detecta si la aplicación está corriendo en producción basado en ENVIRONMENT."""

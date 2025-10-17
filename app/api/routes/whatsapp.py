@@ -3,12 +3,19 @@ Endpoints para integración con WhatsApp Business API.
 Proporciona webhook para recibir mensajes y notificaciones de WhatsApp.
 """
 
-from fastapi import APIRouter, HTTPException, Request, Query, Header
+from fastapi import APIRouter, HTTPException, Request, Query, Header, Depends
 from fastapi.responses import PlainTextResponse
-from typing import Optional
+from typing import Optional, Dict
 import logging
 import json
-from app.models.whatsapp import WhatsAppWebhookPayload
+from app.models.whatsapp import (
+    WhatsAppWebhookPayload,
+    WhatsAppMessageSendRequest,
+    WhatsAppMessageSendResponse
+)
+from app.services.whatsapp_service import whatsapp_service
+from app.core.config import settings
+from app.api.routes.auth import get_current_user
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -16,9 +23,8 @@ logger = logging.getLogger(__name__)
 # Router para endpoints de WhatsApp
 router = APIRouter()
 
-# Token de verificación del webhook (debe coincidir con el configurado en Meta)
-# En producción, esto debe estar en variables de entorno
-WEBHOOK_VERIFY_TOKEN = "mi_token_secreto_whatsapp_2025"
+# Token de verificación del webhook desde settings
+WEBHOOK_VERIFY_TOKEN = settings.whatsapp_verify_token
 
 
 @router.get(
@@ -199,11 +205,24 @@ async def receive_webhook(
                             logger.info(f"        - Contenido: '{message.text.body}'")
                         
                         # Log del contacto
+                        contact_name = "Desconocido"
                         if change.value.contacts:
                             for contact in change.value.contacts:
                                 if contact.wa_id == message.from_:
-                                    logger.info(f"        - Nombre del contacto: {contact.profile.name}")
+                                    contact_name = contact.profile.name
+                                    logger.info(f"        - Nombre del contacto: {contact_name}")
                                     logger.info(f"        - WhatsApp ID: {contact.wa_id}")
+                        
+                        # 🤖 RESPUESTA AUTOMÁTICA: Enviar "Hola" cuando se recibe un mensaje
+                        try:
+                            logger.info(f"\n      🤖 Enviando respuesta automática a {message.from_}...")
+                            response_msg = await whatsapp_service.send_text_message(
+                                to=message.from_,
+                                body=f"Hola {contact_name}! 👋 Gracias por tu mensaje. Este es un mensaje automático de prueba."
+                            )
+                            logger.info(f"      ✅ Respuesta enviada: {response_msg.messages[0]['id']}")
+                        except Exception as reply_error:
+                            logger.error(f"      ❌ Error enviando respuesta automática: {str(reply_error)}")
                 
                 # Procesar cambios de estado
                 if change.value.statuses:
@@ -249,14 +268,322 @@ async def whatsapp_status():
     Returns:
         dict: Estado del servicio
     """
+    service_status = await whatsapp_service.get_service_status()
+    
     return {
-        "status": "active",
-        "service": "WhatsApp Business API",
+        **service_status,
         "webhook_configured": True,
         "verify_token_set": bool(WEBHOOK_VERIFY_TOKEN),
         "features": {
             "receive_messages": True,
-            "send_messages": False,  # Pendiente implementar
+            "send_messages": service_status["configured"],
             "validate_signature": False  # Pendiente implementar
         }
     }
+
+
+# ============== ENDPOINTS PARA ENVÍO DE MENSAJES ==============
+
+@router.post(
+    "/send",
+    response_model=WhatsAppMessageSendResponse,
+    summary="Enviar mensaje de WhatsApp",
+    description="""Envía un mensaje de WhatsApp de cualquier tipo.
+    
+    🔒 **Requiere autenticación.**
+    
+    **Tipos de mensajes soportados:**
+    - `text`: Mensajes de texto simple
+    - `image`: Imágenes (con caption opcional)
+    - `video`: Videos (con caption opcional)
+    - `document`: Documentos PDF, Word, Excel, etc.
+    - `audio`: Archivos de audio
+    - `location`: Ubicaciones con coordenadas
+    - `contacts`: Compartir contactos
+    - `template`: Plantillas aprobadas
+    - `interactive`: Mensajes con botones (máximo 3)
+    
+    **Formato del número de teléfono:**
+    - Debe incluir código de país sin '+'
+    - Ejemplo: "5491112345678" para Argentina
+    - Ejemplo: "521234567890" para México
+    
+    **Notas importantes:**
+    - Para imágenes/videos/documentos puedes usar URL pública o ID de media previamente subido
+    - Las plantillas deben estar aprobadas previamente en Meta Business
+    - Los mensajes interactivos permiten máximo 3 botones
+    """,
+    responses={
+        200: {
+            "description": "Mensaje enviado exitosamente",
+            "model": WhatsAppMessageSendResponse
+        },
+        401: {
+            "description": "No autorizado - Token inválido o ausente"
+        },
+        400: {
+            "description": "Request inválido - Parámetros incorrectos"
+        },
+        500: {
+            "description": "Error del servidor o de WhatsApp API"
+        }
+    }
+)
+async def send_whatsapp_message(
+    message_request: WhatsAppMessageSendRequest,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Envía un mensaje de WhatsApp.
+    
+    Args:
+        message_request: Datos del mensaje a enviar
+        current_user: Usuario autenticado (dependency)
+        
+    Returns:
+        WhatsAppMessageSendResponse: Información del mensaje enviado
+        
+    Raises:
+        HTTPException: Si hay error al enviar el mensaje
+    """
+    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando mensaje WhatsApp")
+    
+    try:
+        response = await whatsapp_service.send_message(message_request)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error inesperado enviando mensaje: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error inesperado al enviar mensaje: {str(e)}"
+        )
+
+
+@router.post(
+    "/send/text",
+    response_model=WhatsAppMessageSendResponse,
+    summary="Enviar mensaje de texto simple",
+    description="""Envía un mensaje de texto simple a un número de WhatsApp.
+    
+    🔒 **Requiere autenticación.**
+    
+    Este es un endpoint simplificado para enviar mensajes de texto.
+    Para otros tipos de mensajes usa el endpoint `/send`.
+    
+    **Parámetros:**
+    - `to`: Número de teléfono con código de país (ej: "5491112345678")
+    - `message`: Contenido del mensaje (máximo 4096 caracteres)
+    - `preview_url`: Si es true, muestra preview de URLs (default: false)
+    """,
+    responses={
+        200: {
+            "description": "Mensaje enviado exitosamente"
+        },
+        401: {
+            "description": "No autorizado"
+        },
+        500: {
+            "description": "Error al enviar mensaje"
+        }
+    }
+)
+async def send_text_message(
+    to: str = Query(description="Número de teléfono del destinatario", example="5491112345678"),
+    message: str = Query(description="Contenido del mensaje", example="Hola, ¿cómo estás?"),
+    preview_url: bool = Query(default=False, description="Mostrar preview de URLs"),
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Envía un mensaje de texto simple.
+    
+    Args:
+        to: Número de teléfono del destinatario
+        message: Contenido del mensaje
+        preview_url: Si es True, muestra preview de URLs
+        current_user: Usuario autenticado
+        
+    Returns:
+        WhatsAppMessageSendResponse
+    """
+    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando texto a {to}")
+    
+    try:
+        response = await whatsapp_service.send_text_message(to, message, preview_url)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error enviando texto: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al enviar mensaje de texto: {str(e)}"
+        )
+
+
+@router.post(
+    "/send/image",
+    response_model=WhatsAppMessageSendResponse,
+    summary="Enviar imagen",
+    description="""Envía una imagen a un número de WhatsApp.
+    
+    🔒 **Requiere autenticación.**
+    
+    Puedes enviar la imagen de dos formas:
+    1. URL pública (la imagen debe ser accesible por WhatsApp)
+    2. ID de media previamente subido a WhatsApp
+    
+    **Formatos soportados:** JPG, PNG
+    **Tamaño máximo:** 5MB
+    """,
+    responses={
+        200: {"description": "Imagen enviada exitosamente"},
+        401: {"description": "No autorizado"},
+        400: {"description": "Parámetros inválidos"},
+        500: {"description": "Error al enviar imagen"}
+    }
+)
+async def send_image_message(
+    to: str = Query(description="Número de teléfono del destinatario"),
+    image_url: Optional[str] = Query(default=None, description="URL pública de la imagen"),
+    image_id: Optional[str] = Query(default=None, description="ID de imagen subida"),
+    caption: Optional[str] = Query(default=None, description="Caption de la imagen"),
+    current_user: Dict = Depends(get_current_user)
+):
+    """Envía una imagen."""
+    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando imagen a {to}")
+    
+    try:
+        response = await whatsapp_service.send_image(to, image_url, image_id, caption)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error enviando imagen: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al enviar imagen: {str(e)}"
+        )
+
+
+@router.post(
+    "/send/document",
+    response_model=WhatsAppMessageSendResponse,
+    summary="Enviar documento",
+    description="""Envía un documento (PDF, Word, Excel, etc.) a un número de WhatsApp.
+    
+    🔒 **Requiere autenticación.**
+    
+    **Formatos soportados:** PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, etc.
+    **Tamaño máximo:** 100MB
+    """,
+    responses={
+        200: {"description": "Documento enviado exitosamente"},
+        401: {"description": "No autorizado"},
+        500: {"description": "Error al enviar documento"}
+    }
+)
+async def send_document_message(
+    to: str = Query(description="Número de teléfono del destinatario"),
+    document_url: Optional[str] = Query(default=None, description="URL pública del documento"),
+    document_id: Optional[str] = Query(default=None, description="ID de documento subido"),
+    filename: Optional[str] = Query(default=None, description="Nombre del archivo"),
+    caption: Optional[str] = Query(default=None, description="Caption del documento"),
+    current_user: Dict = Depends(get_current_user)
+):
+    """Envía un documento."""
+    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando documento a {to}")
+    
+    try:
+        response = await whatsapp_service.send_document(to, document_url, document_id, filename, caption)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error enviando documento: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al enviar documento: {str(e)}"
+        )
+
+
+@router.post(
+    "/send/location",
+    response_model=WhatsAppMessageSendResponse,
+    summary="Enviar ubicación",
+    description="""Envía una ubicación geográfica a un número de WhatsApp.
+    
+    🔒 **Requiere autenticación.**
+    
+    Envía coordenadas de latitud y longitud, opcionalmente con nombre y dirección.
+    """,
+    responses={
+        200: {"description": "Ubicación enviada exitosamente"},
+        401: {"description": "No autorizado"},
+        500: {"description": "Error al enviar ubicación"}
+    }
+)
+async def send_location_message(
+    to: str = Query(description="Número de teléfono del destinatario"),
+    latitude: float = Query(description="Latitud"),
+    longitude: float = Query(description="Longitud"),
+    name: Optional[str] = Query(default=None, description="Nombre del lugar"),
+    address: Optional[str] = Query(default=None, description="Dirección"),
+    current_user: Dict = Depends(get_current_user)
+):
+    """Envía una ubicación."""
+    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando ubicación a {to}")
+    
+    try:
+        response = await whatsapp_service.send_location(to, latitude, longitude, name, address)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error enviando ubicación: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al enviar ubicación: {str(e)}"
+        )
+
+
+@router.post(
+    "/send/template",
+    response_model=WhatsAppMessageSendResponse,
+    summary="Enviar plantilla aprobada",
+    description="""Envía un mensaje usando una plantilla previamente aprobada en Meta Business.
+    
+    🔒 **Requiere autenticación.**
+    
+    Las plantillas deben ser aprobadas por Meta antes de poder usarse.
+    Este es el único tipo de mensaje que puedes enviar a usuarios que no han
+    iniciado la conversación contigo en las últimas 24 horas.
+    """,
+    responses={
+        200: {"description": "Plantilla enviada exitosamente"},
+        401: {"description": "No autorizado"},
+        400: {"description": "Plantilla no encontrada o no aprobada"},
+        500: {"description": "Error al enviar plantilla"}
+    }
+)
+async def send_template_message(
+    to: str = Query(description="Número de teléfono del destinatario"),
+    template_name: str = Query(description="Nombre de la plantilla aprobada"),
+    language_code: str = Query(default="es", description="Código de idioma"),
+    current_user: Dict = Depends(get_current_user)
+):
+    """Envía una plantilla aprobada."""
+    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando plantilla '{template_name}' a {to}")
+    
+    try:
+        response = await whatsapp_service.send_template(to, template_name, language_code)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error enviando plantilla: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al enviar plantilla: {str(e)}"
+        )
