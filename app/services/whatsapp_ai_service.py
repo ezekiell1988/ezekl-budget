@@ -7,9 +7,10 @@ Soporta procesamiento multimodal: texto, imágenes y audios.
 import logging
 import base64
 import io
+import subprocess
+import tempfile
 from typing import Optional, Dict, List, Tuple
 from openai import AsyncAzureOpenAI
-from pydub import AudioSegment
 
 from app.core.config import settings
 from app.services.whatsapp_service import whatsapp_service
@@ -79,7 +80,7 @@ Información importante:
     
     def _convert_audio_to_wav(self, audio_bytes: bytes, source_format: str = "ogg") -> bytes:
         """
-        Convierte audio a formato WAV (requerido por GPT-5).
+        Convierte audio a formato WAV (requerido por GPT-5) usando ffmpeg.
         
         Args:
             audio_bytes: Bytes del audio original
@@ -89,21 +90,56 @@ Información importante:
             bytes: Audio convertido a WAV
         """
         try:
-            logger.info(f"🔄 Convirtiendo audio de {source_format} a WAV...")
+            logger.info(f"🔄 Convirtiendo audio de {source_format} a WAV usando ffmpeg...")
             
-            # Cargar audio desde bytes
-            audio_io = io.BytesIO(audio_bytes)
-            audio = AudioSegment.from_file(audio_io, format=source_format)
+            # Crear archivos temporales
+            with tempfile.NamedTemporaryFile(suffix=f".{source_format}", delete=False) as input_file:
+                input_file.write(audio_bytes)
+                input_path = input_file.name
             
-            # Convertir a WAV en memoria
-            wav_io = io.BytesIO()
-            audio.export(wav_io, format="wav")
-            wav_bytes = wav_io.getvalue()
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as output_file:
+                output_path = output_file.name
             
-            logger.info(f"✅ Audio convertido: {len(audio_bytes)} bytes ({source_format}) → {len(wav_bytes)} bytes (WAV)")
+            try:
+                # Usar ffmpeg para convertir
+                # -i: input file
+                # -acodec pcm_s16le: audio codec WAV estándar
+                # -ar 16000: sample rate 16kHz (suficiente para voz)
+                # -ac 1: mono channel (reduce tamaño)
+                # -y: overwrite output
+                subprocess.run([
+                    'ffmpeg',
+                    '-i', input_path,
+                    '-acodec', 'pcm_s16le',
+                    '-ar', '16000',
+                    '-ac', '1',
+                    '-y',
+                    output_path
+                ], check=True, capture_output=True, text=True)
+                
+                # Leer el archivo WAV convertido
+                with open(output_path, 'rb') as f:
+                    wav_bytes = f.read()
+                
+                logger.info(f"✅ Audio convertido: {len(audio_bytes)} bytes ({source_format}) → {len(wav_bytes)} bytes (WAV)")
+                
+                return wav_bytes
+                
+            finally:
+                # Limpiar archivos temporales
+                import os
+                try:
+                    os.unlink(input_path)
+                    os.unlink(output_path)
+                except:
+                    pass
             
-            return wav_bytes
-            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"❌ Error ejecutando ffmpeg: {e.stderr}")
+            raise Exception(f"Error convirtiendo audio con ffmpeg: {e.stderr}")
+        except FileNotFoundError:
+            logger.error(f"❌ ffmpeg no encontrado. Instalar: apt-get install ffmpeg")
+            raise Exception("ffmpeg no está instalado en el sistema")
         except Exception as e:
             logger.error(f"❌ Error convirtiendo audio: {str(e)}")
             raise
