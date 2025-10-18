@@ -14,6 +14,7 @@ from app.models.whatsapp import (
     WhatsAppMessageSendResponse
 )
 from app.services.whatsapp_service import whatsapp_service
+from app.services.whatsapp_ai_service import whatsapp_ai_service
 from app.core.config import settings
 from app.api.routes.auth import get_current_user
 
@@ -213,16 +214,27 @@ async def receive_webhook(
                                     logger.info(f"        - Nombre del contacto: {contact_name}")
                                     logger.info(f"        - WhatsApp ID: {contact.wa_id}")
                         
-                        # 🤖 RESPUESTA AUTOMÁTICA: Enviar "Hola" cuando se recibe un mensaje
-                        try:
-                            logger.info(f"\n      🤖 Enviando respuesta automática a {message.from_}...")
-                            response_msg = await whatsapp_service.send_text_message(
-                                to=message.from_,
-                                body=f"Hola {contact_name}! 👋 Gracias por tu mensaje. Este es un mensaje automático de prueba."
-                            )
-                            logger.info(f"      ✅ Respuesta enviada: {response_msg.messages[0]['id']}")
-                        except Exception as reply_error:
-                            logger.error(f"      ❌ Error enviando respuesta automática: {str(reply_error)}")
+                        # 🤖 RESPUESTA AUTOMÁTICA CON IA
+                        # Solo responder a mensajes de texto
+                        if message.type == "text" and message.text and message.text.body:
+                            try:
+                                logger.info(f"\n      🤖 Procesando mensaje con IA para {message.from_}...")
+                                
+                                # Generar y enviar respuesta usando IA
+                                ai_result = await whatsapp_ai_service.process_and_reply(
+                                    user_message=message.text.body,
+                                    phone_number=message.from_,
+                                    contact_name=contact_name
+                                )
+                                
+                                if ai_result["success"]:
+                                    logger.info(f"      ✅ Respuesta de IA enviada: {ai_result['whatsapp_message_id']}")
+                                    logger.info(f"      💬 Respuesta: {ai_result['ai_response'][:100]}...")
+                                else:
+                                    logger.error(f"      ❌ Error procesando con IA: {ai_result.get('error')}")
+                                    
+                            except Exception as reply_error:
+                                logger.error(f"      ❌ Error en respuesta automática con IA: {str(reply_error)}", exc_info=True)
                 
                 # Procesar cambios de estado
                 if change.value.statuses:
@@ -483,6 +495,181 @@ async def send_image_message(
         401: {"description": "No autorizado"},
         500: {"description": "Error al enviar documento"}
     }
+)
+async def send_document(
+    to: str = Query(..., description="Número de teléfono con código de país (ej: 5491112345678)"),
+    link: str = Query(..., description="URL del documento"),
+    caption: Optional[str] = Query(None, description="Texto descriptivo opcional"),
+    filename: Optional[str] = Query(None, description="Nombre del archivo"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Envía un documento a un número de WhatsApp."""
+    try:
+        result = await whatsapp_service.send_document(
+            to=to,
+            link=link,
+            caption=caption,
+            filename=filename
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error enviando documento: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============== ENDPOINTS DE IA PARA WHATSAPP ==============
+
+@router.post(
+    "/ai/chat",
+    summary="Chat con IA (sin enviar por WhatsApp)",
+    description="""Genera una respuesta de IA sin enviarla por WhatsApp.
+    
+    🔒 **Requiere autenticación.**
+    
+    Útil para:
+    - Probar respuestas de IA antes de enviarlas
+    - Integrar la IA en otros flujos
+    - Depuración y testing
+    """,
+    responses={
+        200: {
+            "description": "Respuesta generada exitosamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "response": "¡Hola! 👋 Soy el asistente de Ezekl Budget...",
+                        "phone_number": "5491112345678",
+                        "contact_name": "Juan Pérez"
+                    }
+                }
+            }
+        },
+        401: {"description": "No autorizado"},
+        500: {"description": "Error generando respuesta"}
+    }
+)
+async def ai_chat(
+    message: str = Query(..., description="Mensaje del usuario"),
+    phone_number: str = Query(..., description="Número de teléfono (para contexto/historial)"),
+    contact_name: Optional[str] = Query(None, description="Nombre del contacto"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Genera una respuesta de IA sin enviarla por WhatsApp."""
+    try:
+        response = await whatsapp_ai_service.generate_response(
+            user_message=message,
+            phone_number=phone_number,
+            contact_name=contact_name
+        )
+        
+        return {
+            "response": response,
+            "phone_number": phone_number,
+            "contact_name": contact_name
+        }
+    except Exception as e:
+        logger.error(f"Error generando respuesta de IA: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/ai/reply",
+    summary="Enviar respuesta de IA por WhatsApp",
+    description="""Genera una respuesta de IA y la envía automáticamente por WhatsApp.
+    
+    🔒 **Requiere autenticación.**
+    
+    Este endpoint:
+    1. Genera una respuesta usando IA basada en el mensaje del usuario
+    2. Envía la respuesta automáticamente por WhatsApp
+    3. Mantiene el historial de conversación
+    """,
+    responses={
+        200: {
+            "description": "Respuesta generada y enviada exitosamente"
+        },
+        401: {"description": "No autorizado"},
+        500: {"description": "Error procesando mensaje"}
+    }
+)
+async def ai_reply(
+    message: str = Query(..., description="Mensaje del usuario"),
+    phone_number: str = Query(..., description="Número de teléfono destino"),
+    contact_name: Optional[str] = Query(None, description="Nombre del contacto"),
+    current_user: dict = Depends(get_current_user)
+):
+    """Genera y envía una respuesta de IA por WhatsApp."""
+    try:
+        result = await whatsapp_ai_service.process_and_reply(
+            user_message=message,
+            phone_number=phone_number,
+            contact_name=contact_name
+        )
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error en respuesta automática de IA: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete(
+    "/ai/history/{phone_number}",
+    summary="Limpiar historial de conversación",
+    description="""Limpia el historial de conversación de un usuario.
+    
+    🔒 **Requiere autenticación.**
+    
+    Útil para:
+    - Reiniciar una conversación
+    - Liberar memoria
+    - Resolver problemas de contexto
+    """,
+    responses={
+        200: {"description": "Historial limpiado exitosamente"},
+        401: {"description": "No autorizado"}
+    }
+)
+async def clear_ai_history(
+    phone_number: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Limpia el historial de conversación de un usuario."""
+    whatsapp_ai_service.clear_history(phone_number)
+    return {
+        "success": True,
+        "message": f"Historial limpiado para {phone_number}"
+    }
+
+
+@router.get(
+    "/ai/statistics",
+    summary="Estadísticas del servicio de IA",
+    description="""Obtiene estadísticas del servicio de IA para WhatsApp.
+    
+    🔒 **Requiere autenticación.**
+    
+    Muestra:
+    - Conversaciones activas
+    - Total de mensajes procesados
+    - Configuración del servicio
+    """,
+    responses={
+        200: {"description": "Estadísticas obtenidas exitosamente"},
+        401: {"description": "No autorizado"}
+    }
+)
+async def get_ai_statistics(
+    current_user: dict = Depends(get_current_user)
+):
+    """Obtiene estadísticas del servicio de IA."""
+    return whatsapp_ai_service.get_statistics()
+
+
+@router.post(
+    "/send/document-message",
+    response_model=WhatsAppMessageSendResponse,
+    summary="Enviar documento (alternativo)",
+    description="Endpoint alternativo para envío de documentos"
 )
 async def send_document_message(
     to: str = Query(description="Número de teléfono del destinatario"),
