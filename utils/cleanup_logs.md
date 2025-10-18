@@ -1,10 +1,10 @@
 # 🧹 cleanup_logs.py
 
-Script para limpiar logs excesivos en archivos Python.
+Script para limpiar logs excesivos y prints en archivos Python.
 
 ## 🎯 Funcionalidad
 
-- **Elimina** todos los `logger.info()` y `logger.debug()`
+- **Elimina** todos los `logger.info()`, `logger.debug()` y `print()`
 - **Mantiene** `logger.warning()`, `logger.error()`, `logger.critical()`
 - **Valida sintaxis** automáticamente y revierte cambios si hay errores
 - **Preserva integridad** del código (agrega `pass` donde sea necesario)
@@ -15,6 +15,7 @@ Script para limpiar logs excesivos en archivos Python.
 ```python
 if x_hub_signature_256:
     logger.info(f"🔐 Firma: {x_hub_signature_256}")
+    print("Procesando firma...")
 else:
     logger.warning("⚠️ Sin firma")
 ```
@@ -22,7 +23,7 @@ else:
 **Después:**
 ```python
 if x_hub_signature_256:
-    pass  # Logger eliminado
+    pass  # Logger/print eliminado
 else:
     logger.warning("⚠️ Sin firma")
 ```
@@ -83,7 +84,7 @@ else:
    Diferencia: -47 líneas
 
 ✨ Optimizaciones realizadas:
-   • Eliminadas 64 líneas con logger.
+   • Eliminadas 64 líneas con logger/print
    • Agregados 17 'pass' para mantener integridad
 
 ✅ Archivo actualizado: app/api/routes/whatsapp.py

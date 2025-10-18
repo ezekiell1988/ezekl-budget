@@ -65,12 +65,12 @@ class LogCleaner:
     
     def _is_logger_line(self, line: str) -> tuple:
         """
-        Determina si una línea contiene logger.info o logger.debug (a eliminar).
+        Determina si una línea contiene logger.info, logger.debug o print() (a eliminar).
         Returns: (is_logger, level, content_after_logger)
         """
         stripped = line.strip()
-        # Solo considerar logger.info y logger.debug
-        if stripped.startswith('logger.info(') or stripped.startswith('logger.debug('):
+        # Solo considerar logger.info, logger.debug y print()
+        if stripped.startswith('logger.info(') or stripped.startswith('logger.debug(') or stripped.startswith('print('):
             return (True, 'TO_REMOVE', stripped)
         
         return (False, None, None)
@@ -267,7 +267,7 @@ class LogCleaner:
         
         # Registrar cambios
         if removed_count > 0:
-            self.changes.append((0, f"Eliminadas {removed_count} líneas con logger.", ""))
+            self.changes.append((0, f"Eliminadas {removed_count} líneas con logger/print", ""))
         if added_pass > 0:
             self.changes.append((0, f"Agregados {added_pass} 'pass' para mantener integridad", ""))
         
@@ -287,7 +287,7 @@ class LogCleaner:
     def clean(self) -> str:
         """Ejecuta el proceso de limpieza completo con validaciones."""
         print(f"\n🧹 Procesando: {self.filepath}")
-        print(f"   Eliminando TODAS las líneas con logger.")
+        print(f"   Eliminando logger.info(), logger.debug() y print()")
         
         content = self.read_file()
         original_lines = len(content.split('\n'))
@@ -327,7 +327,7 @@ class LogCleaner:
             
             # Escribir nuevo contenido
             self.filepath.write_text(content, encoding='utf-8')
-            print(f"\n✅ Archivo actualizado: {self.filepath}")
+            print(f"✅ Archivo actualizado: {self.filepath}")
             
             # Validar sintaxis de Python
             print(f"🔍 Validando sintaxis...")
