@@ -26,9 +26,9 @@ Este script permite ejecutar archivos SQL de forma estructurada, organizando aut
 
 ### Configuración de Base de Datos (.env.local)
 ```env
-DB_HOST=20.246.83.239
-DB_USER=sa
-DB_PASSWORD=198zklA8
+DB_HOST=tu_servidor_db
+DB_USER=tu_usuario_db
+DB_PASSWORD=tu_password_seguro
 DB_DATABASE=budgetdb
 DB_PORT=1433
 ```

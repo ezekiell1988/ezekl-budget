@@ -6,10 +6,10 @@
 
 ```env
 # WhatsApp Business API Configuration
-WHATSAPP_ACCESS_TOKEN=EAAc0xiYYjhYBPepmTJe6xeM75xlrsd4kABRD4ZCnCVn4SHyVn7oMZAKMA6HNLsxWurZBPipHWptsDmjhsBzdvZBq3TImrWUhcZAlvJFxTnNiya9MIIejQLDuMJZAaeokn1Y27QO0axc8lZAL6Jw4D96H2HkWC8aiJHiIoyD9H3TjxifjhJoPtn5m9ZBOwbZBL
-WHATSAPP_PHONE_NUMBER_ID=tu-phone-number-id
-WHATSAPP_BUSINESS_ACCOUNT_ID=tu-business-account-id
-WHATSAPP_VERIFY_TOKEN=mi_token_secreto_whatsapp_2024
+WHATSAPP_ACCESS_TOKEN=tu_access_token_de_whatsapp
+WHATSAPP_PHONE_NUMBER_ID=tu_phone_number_id
+WHATSAPP_BUSINESS_ACCOUNT_ID=tu_business_account_id
+WHATSAPP_VERIFY_TOKEN=tu_verify_token_secreto
 WHATSAPP_API_VERSION=v21.0
 ```
 
@@ -37,7 +37,7 @@ Meta llama a este endpoint para verificar tu webhook.
 1. Ve a tu app en Meta for Developers
 2. WhatsApp > Configuración
 3. Callback URL: `https://tu-dominio.com/api/whatsapp/webhook`
-4. Verify Token: `mi_token_secreto_whatsapp_2024`
+4. Verify Token: `tu_verify_token_secreto` (el mismo que configuraste en .env)
 5. Suscríbete a los eventos: `messages`
 
 ### 2. Recibir Webhooks (POST)
@@ -48,7 +48,13 @@ Meta envía notificaciones aquí cuando ocurren eventos.
 
 **Sin autenticación requerida** (Meta envía directamente)
 
-Actualmente solo imprime los mensajes recibidos en los logs.
+**Funcionalidad implementada:**
+- ✅ Marca mensajes como leídos automáticamente (doble check azul)
+- ✅ Procesa mensajes de texto con IA
+- ✅ Procesa imágenes con análisis visual
+- ✅ Transcribe y procesa mensajes de audio
+- ✅ Responde automáticamente con GPT-5
+- ✅ Mantiene historial de conversación por usuario
 
 ### 3. Estado del Servicio (GET)
 
@@ -221,6 +227,30 @@ POST /api/whatsapp/send/text?to=5491112345678&message=Hola%20mundo
 - `template_name`: Nombre de la plantilla aprobada
 - `language_code`: Código de idioma (default: "es")
 
+### 10. Marcar Mensaje como Leído (POST)
+
+**Endpoint:** Usado internamente por el webhook
+
+**Método del servicio:**
+```python
+await whatsapp_service.mark_message_as_read(message_id)
+```
+
+**Funcionalidad:**
+- Marca un mensaje recibido como leído
+- Muestra doble check azul (✓✓) al usuario
+- Se ejecuta automáticamente al recibir mensajes
+- Mejora la experiencia de usuario con feedback visual
+
+**Ejemplo programático:**
+```python
+# Marcar mensaje como leído
+success = await whatsapp_service.mark_message_as_read("wamid.XXX...")
+
+if success:
+    print("✅ Mensaje marcado como leído")
+```
+
 ## Tipos de Mensajes Soportados
 
 ### 1. Texto (text)
@@ -315,10 +345,12 @@ def validate_signature(payload: str, signature: str, app_secret: str) -> bool:
 ### 1. Probar Webhook Verification
 
 ```bash
-curl "http://localhost:8001/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=mi_token_secreto_whatsapp_2024&hub.challenge=CHALLENGE_ACCEPTED"
+curl "http://localhost:8001/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=TU_VERIFY_TOKEN&hub.challenge=CHALLENGE_ACCEPTED"
 ```
 
 Debe retornar: `CHALLENGE_ACCEPTED`
+
+**Nota**: Reemplaza `TU_VERIFY_TOKEN` con el valor de tu variable `WHATSAPP_VERIFY_TOKEN` del archivo `.env`
 
 ### 2. Probar Estado del Servicio
 
@@ -339,6 +371,7 @@ curl -X POST "http://localhost:8001/api/whatsapp/send/text" \
 
 El sistema genera logs detallados:
 
+### Logs de Mensaje de Texto
 ```
 📱 WEBHOOK DE WHATSAPP RECIBIDO
 📦 Tipo de objeto: whatsapp_business_account
@@ -353,6 +386,63 @@ El sistema genera logs detallados:
         - Tipo: text
         - Contenido: 'Hola'
         - Nombre del contacto: Juan Pérez
+      
+      🤖 Procesando mensaje text con IA para 5491112345678...
+      ✅ Marcando mensaje como leído: wamid.XXX
+      ✅ Mensaje marcado como leído exitosamente
+      🤖 Generando respuesta de IA para Juan Pérez
+      ✅ Respuesta generada exitosamente
+      📤 Enviando respuesta de IA a Juan Pérez
+      ✅ Respuesta de IA enviada: wamid.YYY
+```
+
+### Logs de Mensaje de Audio
+```
+📱 WEBHOOK DE WHATSAPP RECIBIDO
+📨 MENSAJES ENTRANTES: 1
+  💬 MENSAJE #1
+    - ID: wamid.XXX
+    - De: 50622703332
+    - Tipo: audio
+    - Audio ID: 1301795761634718
+    - MIME Type: audio/ogg; codecs=opus
+    - Es mensaje de voz: Sí
+    - Nombre del contacto: Familia Baltodano
+  
+  🤖 Procesando mensaje audio con IA para 50622703332...
+  ✅ Marcando mensaje como leído: wamid.XXX
+  📥 Descargando audio...
+  ✅ Audio descargado: 8383 bytes
+  🎤 Procesando audio (8383 bytes)
+  🎙️ Transcribiendo audio con Azure OpenAI (8383 bytes, formato: ogg)...
+  📥 Respuesta de transcripción: 200
+  ✅ Audio transcrito: 'Hola, ¿qué día es mañana?'
+  🤖 Generando respuesta de IA para Familia Baltodano con audio
+  ✅ Respuesta generada exitosamente
+  💬 Respuesta: ¡Hola! Mañana es sábado 18 de octubre...
+  📤 Enviando respuesta de IA a Familia Baltodano (audio)
+  ✅ Respuesta de IA enviada: wamid.YYY
+  🎤 Audio procesado con IA
+```
+
+### Logs de Imagen
+```
+📱 WEBHOOK DE WHATSAPP RECIBIDO
+📨 MENSAJES ENTRANTES: 1
+  💬 MENSAJE #1
+    - Tipo: image
+    - Imagen ID: 123456789
+    - MIME Type: image/jpeg
+    - Caption: 'Mira esta foto'
+  
+  🤖 Procesando mensaje image con IA para 5491112345678...
+  ✅ Marcando mensaje como leído: wamid.XXX
+  📥 Descargando imagen...
+  ✅ Imagen descargada: 45231 bytes
+  🖼️ Procesando imagen (45231 bytes)
+  🤖 Generando respuesta de IA para Juan Pérez con imagen
+  ✅ Respuesta generada exitosamente
+  🖼️ Imagen procesada con IA
 ```
 
 ## Recursos Adicionales

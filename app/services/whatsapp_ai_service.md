@@ -2,25 +2,41 @@
 
 ## 📋 Descripción
 
-Servicio de inteligencia artificial para WhatsApp que proporciona respuestas automáticas usando Azure OpenAI. Integra GPT-4o para generar respuestas contextuales e inteligentes a los mensajes recibidos por WhatsApp Business API.
+Servicio de inteligencia artificial para WhatsApp que proporciona respuestas automáticas usando Azure OpenAI. Integra **GPT-5** (o1 reasoning model) para generar respuestas contextuales e inteligentes, con soporte multimodal para **texto, imágenes y audios**.
+
+**Características principales:**
+- 🤖 Respuestas inteligentes con GPT-5
+- 🎤 Transcripción de audio a texto con gpt-4o-transcribe
+- 🖼️ Procesamiento de imágenes
+- ✓✓ Marcado automático de mensajes como leídos
+- 💬 Historial de conversación por usuario
+- 🔄 Respuestas automáticas contextuales
 
 ---
 
 ## 🏗️ Arquitectura
 
 ```
-Usuario WhatsApp → Meta Webhook → FastAPI → WhatsApp AI Service → Azure OpenAI GPT-4o
-                                     ↓                                      ↓
-                                WhatsApp API ← Respuesta Automática ← Respuesta IA
+Usuario WhatsApp → Meta Webhook → FastAPI → WhatsApp AI Service
+                        ↓                           ↓
+                   ✓✓ Leído                  Procesamiento:
+                                              - Texto → GPT-5
+                                              - Audio → Transcripción → GPT-5
+                                              - Imagen → GPT-5
+                        ↓                           ↓
+                  WhatsApp API ← Respuesta Automática ← Azure OpenAI
 ```
 
-### Flujo de Conversación
+### Flujo de Conversación Completo
 
-1. **Recepción**: Usuario envía mensaje por WhatsApp
+1. **Recepción**: Usuario envía mensaje (texto/audio/imagen) por WhatsApp
 2. **Webhook**: Meta envía notificación al endpoint `/api/whatsapp/webhook`
-3. **Procesamiento**: El servicio extrae el mensaje y contexto del usuario
-4. **IA**: Se consulta Azure OpenAI con el mensaje y historial de conversación
-5. **Respuesta**: La IA genera una respuesta contextual
+3. **✓✓ Marcado como leído**: Se marca el mensaje con doble check azul inmediatamente
+4. **Procesamiento multimodal**:
+   - **Audio**: Transcripción automática con Azure OpenAI (gpt-4o-transcribe)
+   - **Imagen**: Análisis visual con GPT-5
+   - **Texto**: Procesamiento directo
+5. **IA**: GPT-5 genera respuesta contextual basada en el historial
 6. **Envío**: La respuesta se envía automáticamente al usuario por WhatsApp
 
 ---
@@ -28,24 +44,46 @@ Usuario WhatsApp → Meta Webhook → FastAPI → WhatsApp AI Service → Azure 
 ## 🚀 Características Principales
 
 ### ✅ Respuestas Automáticas con IA
-- Respuestas generadas por GPT-4o de Azure OpenAI
+- Respuestas generadas por **GPT-5** (o1 reasoning model) de Azure OpenAI
 - Contextualizadas según el negocio (Ezekl Budget)
 - Tono profesional pero amigable
+- Reasoning avanzado para respuestas más inteligentes
+
+### 🎤 Procesamiento de Audio
+- Transcripción automática con **gpt-4o-transcribe** de Azure OpenAI
+- Soporta múltiples formatos: OGG, MP3, WAV, M4A
+- Transcripción directa sin conversión de formato
+- La transcripción se procesa naturalmente como texto por GPT-5
+- Sin prefijos artificiales - respuesta natural al contenido del audio
+
+### 🖼️ Procesamiento de Imágenes
+- Análisis visual con GPT-5 (visión multimodal)
+- Soporta JPG, PNG, WebP
+- Caption opcional con la imagen
+- Respuestas contextuales sobre el contenido visual
+
+### ✓✓ Confirmación de Lectura
+- Marca mensajes como leídos automáticamente
+- Doble check azul aparece inmediatamente
+- Mejor experiencia de usuario con feedback visual
 
 ### 💬 Gestión de Historial
 - Mantiene historial de conversación por usuario
 - Máximo configurable de mensajes por conversación (default: 10)
 - Posibilidad de limpiar historial manualmente
+- Contexto completo en cada interacción
 
 ### 🎯 Personalización
 - Respuestas adaptadas al nombre del usuario
 - Sistema de instrucciones personalizable
-- Límite de tokens para respuestas cortas (WhatsApp-friendly)
+- Límite de tokens configurable para WhatsApp
+- Max 8000 tokens de completition para reasoning (GPT-5)
 
 ### 🛡️ Manejo de Errores
 - Respuesta de fallback automática en caso de error
 - Logging detallado de todas las operaciones
 - Manejo graceful de excepciones
+- Recuperación automática de errores de transcripción
 
 ---
 
@@ -66,8 +104,11 @@ Servicio principal que maneja:
 POST /api/whatsapp/webhook
 ```
 - Recibe mensajes de WhatsApp automáticamente
+- Marca mensajes como leídos (✓✓ azul) inmediatamente
 - Procesa con IA y responde automáticamente
-- Solo responde a mensajes de tipo "text"
+- Soporta: **texto, imágenes y audios**
+- Audio: transcribe automáticamente antes de procesar
+- Imagen: analiza contenido visual con GPT-5
 
 #### Chat con IA (Manual)
 ```http
@@ -130,15 +171,20 @@ GET /api/whatsapp/ai/statistics
 ### Variables de Entorno (.env)
 
 ```bash
-# Azure OpenAI (requerido)
+# Azure OpenAI - Chat (GPT-5) (requerido)
 AZURE_OPENAI_ENDPOINT=https://tu-recurso.cognitiveservices.azure.com
 AZURE_OPENAI_API_KEY=tu_api_key
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o  # Nombre del deployment
+AZURE_OPENAI_CHAT_DEPLOYMENT_NAME=gpt-5  # Deployment de GPT-5 para chat
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+
+# Azure OpenAI - Audio Transcription (requerido para audios)
+AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME=gpt-4o-transcribe  # Deployment de transcripción
+AZURE_OPENAI_AUDIO_API_VERSION=2025-03-01-preview
 
 # WhatsApp Business API (requerido)
 WHATSAPP_ACCESS_TOKEN=tu_token
 WHATSAPP_PHONE_NUMBER_ID=tu_phone_id
-WHATSAPP_API_VERSION=v24.0
+WHATSAPP_API_VERSION=v21.0
 ```
 
 ### Personalización del Servicio
@@ -176,15 +222,36 @@ presence_penalty=0.5       # Penalización temas
 
 ### 1. Respuesta Automática (Recomendado)
 
-El servicio está configurado para responder automáticamente a todos los mensajes de texto que llegan al webhook:
+El servicio está configurado para responder automáticamente a mensajes de **texto, audio e imágenes**:
 
 ```python
 # Ya configurado en whatsapp.py
-if message.type == "text" and message.text and message.text.body:
+if message.type in ["text", "image", "audio"]:
+    # ✓✓ Marcar como leído inmediatamente
+    await whatsapp_service.mark_message_as_read(message.id)
+    
+    # Procesar según tipo
+    if message.type == "text":
+        user_text = message.text.body
+        
+    elif message.type == "image":
+        # Descargar y procesar imagen
+        image_data = await whatsapp_service.get_media_content(message.image.id)
+        user_text = message.image.caption or "¿Qué ves en esta imagen?"
+        
+    elif message.type == "audio":
+        # Descargar audio - la transcripción es automática
+        audio_data = await whatsapp_service.get_media_content(message.audio.id)
+        user_text = None  # La transcripción reemplazará esto
+    
+    # Generar y enviar respuesta
     ai_result = await whatsapp_ai_service.process_and_reply(
-        user_message=message.text.body,
+        user_message=user_text,
         phone_number=message.from_,
-        contact_name=contact_name
+        contact_name=contact_name,
+        image_data=image_data,
+        audio_data=audio_data,
+        media_type=media_type
     )
 ```
 
@@ -218,15 +285,48 @@ stats = whatsapp_ai_service.get_statistics()
 
 ## 📊 Logging
 
-El servicio registra información detallada:
+El servicio registra información detallada para cada operación:
 
+### Logs de Texto
 ```
+✅ Marcando mensaje como leído: wamid.XXX
 🤖 Generando respuesta de IA para Juan Pérez
 📝 Mensaje del usuario: ¿Cómo creo un presupuesto?
+🔧 Usando deployment: gpt-5
+📊 Token usage - Prompt: 192, Completion: 714, Total: 906
+🧠 Reasoning tokens: 640
+📝 Visible tokens: 74
 ✅ Respuesta generada exitosamente
 💬 Respuesta: Para crear un presupuesto en Ezekl Budget...
 📤 Enviando respuesta de IA a Juan Pérez
 ✅ Respuesta de IA enviada exitosamente
+```
+
+### Logs de Audio
+```
+✅ Marcando mensaje como leído: wamid.XXX
+📥 Descargando audio...
+✅ Audio descargado: 8383 bytes
+🎤 Procesando audio (8383 bytes)
+🎙️ Transcribiendo audio con Azure OpenAI (8383 bytes, formato: ogg)...
+📡 URL: .../gpt-4o-transcribe/audio/transcriptions?api-version=2025-03-01-preview
+📥 Respuesta de transcripción: 200
+✅ Audio transcrito: 'Hola, ¿qué día es mañana?'
+🤖 Generando respuesta de IA para Juan Pérez con audio
+📝 Mensaje del usuario: Hola, ¿qué día es mañana?
+✅ Respuesta generada exitosamente
+💬 Respuesta: ¡Hola! Mañana es sábado 18 de octubre...
+```
+
+### Logs de Imagen
+```
+✅ Marcando mensaje como leído: wamid.XXX
+📥 Descargando imagen...
+✅ Imagen descargada: 45231 bytes
+🖼️ Procesando imagen (45231 bytes)
+🤖 Generando respuesta de IA para Juan Pérez con imagen
+✅ Respuesta generada exitosamente
+💬 Respuesta: Veo en la imagen...
 ```
 
 ---
@@ -320,10 +420,21 @@ stats = whatsapp_ai_service.get_statistics()
 
 ---
 
+## ✅ Funcionalidades Completadas
+
+- [x] ✅ **Soporte multimodal**: texto, imágenes y audios
+- [x] ✅ **Transcripción de audio**: gpt-4o-transcribe integrado
+- [x] ✅ **Procesamiento de imágenes**: GPT-5 visión multimodal
+- [x] ✅ **Marcado de mensajes como leídos**: doble check azul automático
+- [x] ✅ **Respuestas automáticas con GPT-5**: o1 reasoning model
+- [x] ✅ **Historial de conversación**: contexto por usuario
+- [x] ✅ **HTTPClient optimizado**: multipart/form-data para audios
+- [x] ✅ **Sin dependencias externas**: eliminado ffmpeg
+
 ## 🚀 Próximas Mejoras
 
 - [ ] Implementar validación de firma `x-hub-signature-256`
-- [ ] Soporte para otros tipos de mensajes (imágenes, audio)
+- [ ] Soporte para videos con transcripción
 - [ ] Persistencia de historial en base de datos
 - [ ] Analytics y métricas avanzadas
 - [ ] Rate limiting por usuario
@@ -331,18 +442,24 @@ stats = whatsapp_ai_service.get_statistics()
 - [ ] Integración con CRM para contexto de usuarios
 - [ ] Respuestas con botones interactivos
 - [ ] Multi-idioma automático
+- [ ] Streaming de respuestas para mensajes largos
+- [ ] Cache de transcripciones de audio
 
 ---
 
-## 📝 Ejemplo Completo
+## 📝 Ejemplos Completos
 
-### Conversación Real
+### Ejemplo 1: Conversación de Texto
 
 **Usuario**: "Hola, ¿qué es Ezekl Budget?"
+
+**Sistema**: ✓✓ (marca como leído)
 
 **IA**: "¡Hola! 👋 Ezekl Budget es una aplicación completa de gestión financiera y presupuestos que te ayuda a organizar tus finanzas personales. ¿Te gustaría saber más sobre alguna funcionalidad específica?"
 
 **Usuario**: "¿Cómo creo mi primer presupuesto?"
+
+**Sistema**: ✓✓ (marca como leído)
 
 **IA**: "Para crear tu primer presupuesto en Ezekl Budget:
 
@@ -352,6 +469,40 @@ stats = whatsapp_ai_service.get_statistics()
 4. Define nombre, monto y categorías
 
 ¿Necesitas ayuda con algo más específico?"
+
+---
+
+### Ejemplo 2: Mensaje de Audio
+
+**Usuario**: 🎤 *[Envía audio de voz: "Hola, ¿qué día es mañana?"]*
+
+**Sistema**: 
+1. ✓✓ Marca como leído
+2. 🎙️ Transcribe: "Hola, ¿qué día es mañana?"
+3. 🤖 GPT-5 procesa la transcripción
+
+**IA**: "¡Hola! Mañana es sábado 18 de octubre de 2025. ¿Necesitas ayuda con algo relacionado a tus finanzas o presupuestos? 😊"
+
+---
+
+### Ejemplo 3: Imagen con Caption
+
+**Usuario**: 🖼️ *[Envía imagen de un recibo]* + Caption: "¿Puedo agregar esto a mi presupuesto?"
+
+**Sistema**:
+1. ✓✓ Marca como leído
+2. 📥 Descarga imagen
+3. 🖼️ GPT-5 analiza imagen + caption
+
+**IA**: "Claro que sí! Veo que es un recibo de compra. Para agregarlo a tu presupuesto en Ezekl Budget:
+
+1. Abre la app
+2. Ve a 'Gastos'
+3. Toca '+' para nuevo gasto
+4. Ingresa el monto y categoría
+5. Opcional: Adjunta la foto del recibo
+
+¿Necesitas ayuda con algo más?"
 
 ---
 
