@@ -277,12 +277,24 @@ Información importante:
                 # temperature, top_p, frequency_penalty, presence_penalty no soportados en GPT-5
             )
             
+            # Log de la respuesta completa para debugging
+            logger.debug(f"🔍 Respuesta completa de API: {response}")
+            logger.debug(f"🔍 Choices: {response.choices}")
+            logger.debug(f"🔍 Primer choice: {response.choices[0] if response.choices else 'Sin choices'}")
+            
             # Extraer la respuesta
-            ai_response = response.choices[0].message.content.strip()
+            if not response.choices or len(response.choices) == 0:
+                logger.warning(f"⚠️ No hay choices en la respuesta de IA")
+                ai_response = ""
+            else:
+                message_content = response.choices[0].message.content
+                logger.debug(f"🔍 Content crudo: '{message_content}' (tipo: {type(message_content)})")
+                ai_response = message_content.strip() if message_content else ""
             
             # Validar que la respuesta no esté vacía
             if not ai_response:
                 logger.warning(f"⚠️ Respuesta de IA vacía, usando mensaje por defecto")
+                logger.warning(f"🔍 Finish reason: {response.choices[0].finish_reason if response.choices else 'N/A'}")
                 ai_response = "¡Hola! 👋 Gracias por contactarnos. ¿En qué puedo ayudarte con Ezekl Budget?"
             
             # Agregar respuesta al historial

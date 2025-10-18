@@ -12,8 +12,23 @@ from app.core.config import settings
 from app.api import api_router, websockets_router_with_prefix
 from app.services.email_queue import email_queue
 import logging
+import sys
 
-# Configurar logging
+# Configurar logging con nivel DEBUG para ver todos los logs
+logging.basicConfig(
+    level=logging.DEBUG,  # Cambiar a DEBUG para ver todos los logs
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # Enviar logs a stdout para Docker
+    ]
+)
+
+# Configurar nivel de logs para bibliotecas externas (reducir ruido)
+logging.getLogger("uvicorn").setLevel(logging.INFO)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 
