@@ -83,7 +83,6 @@ async def get_contacts(
     """Obtiene una lista paginada de contactos de Dynamics 365."""
     
     try:
-        logger.info(f"👥 Obteniendo contactos - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.get_contacts(
             top=top,
@@ -93,7 +92,6 @@ async def get_contacts(
             order_by=order_by
         )
         
-        logger.info(f"✅ {result.count} contactos obtenidos exitosamente")
         return result
         
     except HTTPException:
@@ -151,12 +149,9 @@ async def get_contacts_by_nextlink(
     """Obtiene la siguiente página de contactos usando el nextLink de D365."""
     
     try:
-        logger.info(f"📄 Obteniendo siguiente página de contactos - Usuario: {current_user.get('email', 'Unknown')}")
-        logger.debug(f"nextLink recibido: {next_link[:100]}...")  # Log truncado
         
         result = await crm_service.get_contacts_by_nextlink(next_link)
         
-        logger.info(f"✅ {result.count} contactos obtenidos en siguiente página")
         return result
         
     except HTTPException:
@@ -200,11 +195,9 @@ async def get_contact_by_id(
     """Obtiene un contacto específico por su ID."""
     
     try:
-        logger.info(f"🔍 Obteniendo contacto {contact_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.get_contact_by_id(contact_id)
         
-        logger.info(f"✅ Contacto {contact_id} obtenido exitosamente")
         return result
         
     except HTTPException:
@@ -251,11 +244,9 @@ async def create_contact(
     
     try:
         full_name = f"{contact_data.firstname} {contact_data.lastname}"
-        logger.info(f"➕ Creando contacto '{full_name}' - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.create_contact(contact_data)
         
-        logger.info(f"✅ Contacto '{full_name}' creado exitosamente")
         return result
         
     except HTTPException:
@@ -304,11 +295,9 @@ async def update_contact(
     """Actualiza un contacto existente en Dynamics 365."""
     
     try:
-        logger.info(f"📝 Actualizando contacto {contact_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.update_contact(contact_id, contact_data)
         
-        logger.info(f"✅ Contacto {contact_id} actualizado exitosamente")
         return result
         
     except HTTPException:
@@ -352,11 +341,9 @@ async def delete_contact(
     """Elimina un contacto de Dynamics 365."""
     
     try:
-        logger.info(f"🗑️ Eliminando contacto {contact_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.delete_contact(contact_id)
         
-        logger.info(f"✅ Contacto {contact_id} eliminado exitosamente")
         return result
         
     except HTTPException:

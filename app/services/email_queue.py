@@ -54,7 +54,6 @@ class EmailQueue:
             
         self.is_running = True
         self.worker_task = asyncio.create_task(self._worker())
-        logger.info("🚀 Email queue worker iniciado exitosamente")
         
     async def stop(self):
         """Detiene el worker de la cola"""
@@ -70,7 +69,6 @@ class EmailQueue:
             except asyncio.CancelledError:
                 pass
                 
-        logger.info(f"⏹️ Email queue worker detenido. Procesados: {self.processed_count}, Fallos: {self.failed_count}")
         
     async def add_email(self, email_task: EmailTask) -> bool:
         """
@@ -85,7 +83,6 @@ class EmailQueue:
         try:
             # Usar put_nowait para no bloquear si la cola está llena
             self.queue.put_nowait(email_task)
-            logger.info(f"📧 Email agregado a la cola: {email_task.id} -> {email_task.to[0]} - {email_task.subject}")
             return True
         except asyncio.QueueFull:
             logger.error(f"❌ Cola de emails llena, no se puede agregar: {email_task.id}")
@@ -103,7 +100,6 @@ class EmailQueue:
         
     async def _worker(self):
         """Worker que procesa emails en background"""
-        logger.info("📨 Email queue worker iniciando procesamiento...")
         
         while self.is_running:
             try:
@@ -133,7 +129,6 @@ class EmailQueue:
         start_time = datetime.now()
         
         try:
-            logger.info(f"📧 Procesando email {email_task.id}: {email_task.subject}")
             
             # Enviar email usando el servicio existente
             result = await send_notification_email(
@@ -149,7 +144,6 @@ class EmailQueue:
             
             if result.success:
                 self.processed_count += 1
-                logger.info(f"✅ Email {email_task.id} enviado exitosamente en {duration:.2f}s")
             else:
                 self.failed_count += 1
                 logger.error(f"❌ Error enviando email {email_task.id}: {result.message} ({duration:.2f}s)")

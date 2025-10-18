@@ -286,15 +286,11 @@ Equipo Ezekl Budget"""
                 is_html=False,
             )
 
-            logger.info(
-                f"Email agregado a cola para envío en background: {email_task_id} -> {user_email}"
-            )
         else:
             logger.warning(
                 f"Usuario {code_login} no tiene email configurado, no se puede enviar token"
             )
 
-        logger.info(f"Token generado exitosamente para {code_login}")
 
         return RequestTokenResponse(
             success=True,
@@ -367,7 +363,6 @@ async def login(data: LoginRequest):
         # Generar token JWE
         access_token, expires_at = create_jwe_token(auth_data)
 
-        logger.info(f"Login exitoso para usuario {code_login}")
 
         return LoginResponse(
             success=True,
@@ -482,7 +477,6 @@ async def refresh_token(current_user: Dict = Depends(get_current_user)):
         # Generar nuevo token JWE con tiempo extendido
         new_access_token, new_expires_at = create_jwe_token(user_data)
 
-        logger.info(f"Token renovado para usuario {user_data.get('codeLogin', 'unknown')}")
 
         return LoginResponse(
             success=True,
@@ -519,7 +513,6 @@ async def logout():
         # Con JWE no podemos invalidar tokens del lado servidor
         # El cliente debe eliminar el token almacenado localmente
 
-        logger.info("Logout procesado")
 
         return LogoutResponse(
             success=True,
@@ -564,7 +557,6 @@ async def microsoft_login():
         from urllib.parse import urlencode
         auth_url = f"{base_url}?{urlencode(params)}"
         
-        logger.info(f"Redirigiendo a Microsoft para autenticación")
         
         # Redirigir al usuario a Microsoft
         return RedirectResponse(url=auth_url)
@@ -798,7 +790,6 @@ async def associate_microsoft_account(data: dict):
         # Crear token JWE para el usuario
         jwe_token, expiry_date = create_jwe_token(user_data)
 
-        logger.info(f"Asociación exitosa: {code_login} <-> {code_login_microsoft}")
         
         return LoginResponse(
             success=True,

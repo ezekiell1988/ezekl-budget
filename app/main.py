@@ -16,7 +16,7 @@ import sys
 
 # Configurar logging con nivel DEBUG para ver todos los logs
 logging.basicConfig(
-    level=logging.DEBUG,  # Cambiar a DEBUG para ver todos los logs
+    level=logging.INFO,  # Cambiar a DEBUG para ver todos los logs
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)  # Enviar logs a stdout para Docker
@@ -39,16 +39,12 @@ async def lifespan(app: FastAPI):
     Reemplaza los deprecated on_event("startup") y on_event("shutdown").
     """
     # Startup
-    logger.info("🚀 Iniciando servicios de la aplicación...")
     await email_queue.start()
-    logger.info("✅ Servicios iniciados exitosamente")
     
     yield  # Aquí la aplicación está ejecutándose
     
     # Shutdown  
-    logger.info("⏹️ Cerrando servicios de la aplicación...")
     await email_queue.stop()
-    logger.info("✅ Servicios cerrados exitosamente")
 
 
 # Configurar rutas para archivos estáticos del frontend Ionic
@@ -152,8 +148,5 @@ if __name__ == "__main__":
         if hasattr(asyncio, 'WindowsSelectorEventLoopPolicy'):
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     
-    logger.info(f"🚀 Iniciando servidor en {config_kwargs['host']}:{config_kwargs['port']}")
-    logger.info(f"🖥️  Sistema operativo: {platform.system()}")
-    logger.info(f"🔌 WebSocket endpoint: ws://{config_kwargs['host']}:{config_kwargs['port']}/ws/")
     
     uvicorn.run(app, **config_kwargs)

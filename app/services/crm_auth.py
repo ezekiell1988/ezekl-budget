@@ -74,7 +74,6 @@ class CRMAuthService:
             return self._token_cache["access_token"]
 
         # Solicitar nuevo token
-        logger.info("🔄 Solicitando nuevo token de acceso para Dynamics 365...")
         
         form_data = {
             "client_id": self.client_id,
@@ -109,7 +108,6 @@ class CRMAuthService:
             self._token_cache["access_token"] = access_token
             self._token_cache["expires_at"] = int(time.time()) + expires_in
             
-            logger.info(f"✅ Token de acceso obtenido exitosamente. Expira en {expires_in} segundos.")
             return access_token
             
         except aiohttp.ClientError as e:
@@ -145,7 +143,6 @@ class CRMAuthService:
     
     def clear_token_cache(self):
         """Limpia el caché de token (útil para testing o troubleshooting)."""
-        logger.info("🗑️ Limpiando caché de token CRM...")
         self._token_cache["access_token"] = None
         self._token_cache["expires_at"] = 0
 

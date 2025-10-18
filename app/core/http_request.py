@@ -103,8 +103,6 @@ class HTTPClient:
         full_url = self._build_url(url)
         merged_headers = self._merge_headers(headers)
         
-        logger.info(f"Realizando petición {method} a {full_url}")
-        logger.debug(f"Headers: {merged_headers}")
         
         async with aiohttp.ClientSession(
             timeout=self.timeout,
@@ -118,7 +116,6 @@ class HTTPClient:
                 json=json_data,
                 **kwargs
             ) as response:
-                logger.info(f"Respuesta {response.status} de {method} {full_url}")
                 return response
                 
     async def get(
@@ -198,8 +195,6 @@ class HTTPClient:
         full_url = self._build_url(url)
         merged_headers = self._merge_headers(headers)
         
-        logger.info(f"Realizando petición POST multipart a {full_url}")
-        logger.debug(f"Headers: {merged_headers}")
         
         # Crear FormData
         form = aiohttp.FormData()
@@ -232,7 +227,6 @@ class HTTPClient:
                 data=form,
                 **kwargs
             ) as response:
-                logger.info(f"Respuesta {response.status} de POST multipart {full_url}")
                 
                 # Leer el contenido antes de cerrar la conexión
                 response_status = response.status

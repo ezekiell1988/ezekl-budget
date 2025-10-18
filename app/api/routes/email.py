@@ -127,14 +127,11 @@ async def email_webhook(events: List[Dict[str, Any]], req: Request) -> WebhookEv
         aeg_type = req.headers.get("aeg-event-type")
         processed_at = datetime.utcnow().isoformat() + "Z"
 
-        logger.info(f"Recibido evento de tipo: {aeg_type}")
-        logger.info(f"Número de eventos: {len(events)}")
 
         # 2) Validación de suscripción de Azure Event Grid
         if aeg_type == "SubscriptionValidation":
             if events and "data" in events[0] and "validationCode" in events[0]["data"]:
                 validation_code = events[0]["data"]["validationCode"]
-                logger.info("Validando suscripción de Azure Event Grid")
                 return WebhookEventResponse(validationResponse=validation_code)
             else:
                 logger.error("Evento de validación sin código")
@@ -201,8 +198,6 @@ async def _process_inbound_email(data: Dict[str, Any]) -> None:
     from_address = data.get("from")
     subject = data.get("subject")
 
-    logger.info(f"Procesando email de {from_address} a {to_addresses}")
-    logger.info(f"Asunto: {subject}")
 
     # Descargar contenido MIME si está disponible
     if mime_url:
@@ -223,16 +218,13 @@ async def _process_inbound_email(data: Dict[str, Any]) -> None:
             # - Etc.
 
             # Log básico del contenido (limitado por seguridad)
-            logger.info(f"FROM: {from_address}")
-            logger.info(f"TO: {to_addresses}")
-            logger.info(f"SUBJECT: {subject}")
             if text_body:
-                logger.info(f"TEXT PREVIEW: {text_body[:500]}...")
+                pass  # Logger eliminado
 
             # Procesar adjuntos si existen
             attachments = list(msg.iter_attachments())
             if attachments:
-                logger.info(f"Email contiene {len(attachments)} adjunto(s)")
+                pass  # Logger eliminado
                 # TODO: Implementar procesamiento de adjuntos
 
         except Exception as e:
@@ -248,8 +240,6 @@ async def _process_delivery_report(data: Dict[str, Any]) -> None:
     Args:
         data: Datos del reporte de entrega
     """
-    logger.info("Procesando reporte de entrega:")
-    logger.info(json.dumps(data, indent=2))
 
     # TODO: Implementar lógica para manejar reportes de entrega
     # - Actualizar estado de emails enviados

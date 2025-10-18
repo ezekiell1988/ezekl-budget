@@ -120,8 +120,6 @@ async def get_accounting_accounts(
         HTTPException: Error 500 si hay problemas con la base de datos
     """
     try:
-        logger.info(f"Usuario {current_user['user'].get('codeLogin', 'unknown')} consultando cuentas contables")
-        logger.info(f"Parámetros: search='{search}', sort='{sort}', page={page}, itemPerPage={itemPerPage}")
         
         # Crear el request object para el stored procedure
         request_data = AccountingAccountRequest(
@@ -135,7 +133,6 @@ async def get_accounting_accounts(
         # Convertir a diccionario para el stored procedure
         sp_params = request_data.model_dump(exclude_none=True)
         
-        logger.debug(f"Ejecutando spAccountingAccountGet con parámetros: {sp_params}")
         
         # Ejecutar el stored procedure
         result = await execute_sp("spAccountingAccountGet", sp_params)
@@ -180,7 +177,6 @@ async def get_accounting_accounts(
         if not isinstance(accounts_data, list):
             accounts_data = []
         
-        logger.info(f"Consulta exitosa: {len(accounts_data)} registros de {total} totales")
         
         # Crear y retornar la respuesta
         response = AccountingAccountResponse(
@@ -253,12 +249,10 @@ async def get_accounting_account_by_id(
         HTTPException: Error 404 si no se encuentra, 500 si hay error de BD
     """
     try:
-        logger.info(f"Usuario {current_user['user'].get('codeLogin', 'unknown')} consultando cuenta ID: {account_id}")
         
         # Parámetros para el stored procedure
         sp_params = {"idAccountingAccount": account_id}
         
-        logger.debug(f"Ejecutando spAccountingAccountGetOne con parámetros: {sp_params}")
         
         # Ejecutar el stored procedure
         result = await execute_sp("spAccountingAccountGetOne", sp_params)
@@ -294,7 +288,6 @@ async def get_accounting_account_by_id(
                 detail=f"Cuenta contable con ID {account_id} no encontrada"
             )
         
-        logger.info(f"Cuenta contable ID {account_id} encontrada exitosamente")
         
         # Retornar los datos de la cuenta
         return data

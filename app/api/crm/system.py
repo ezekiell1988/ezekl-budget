@@ -51,11 +51,9 @@ async def health_check(
     """Health check básico del servicio CRM."""
     
     try:
-        logger.info("🔍 Ejecutando health check del CRM...")
         
         result = await crm_service.health_check()
         
-        logger.info(f"✅ Health check completado - Estado: {result.status}")
         return result
         
     except Exception as e:
@@ -96,7 +94,6 @@ async def get_token_info(
     """Obtiene información del token actual (para debugging)."""
     
     try:
-        logger.info(f"🔑 Obteniendo info del token - Usuario: {current_user.get('email', 'Unknown')}")
         
         # Obtener token actual
         token = await crm_auth_service.get_access_token()
@@ -110,7 +107,6 @@ async def get_token_info(
             expires_at=token_info["expires_at"]
         )
         
-        logger.info("✅ Información del token obtenida exitosamente")
         return result
         
     except HTTPException:
@@ -164,7 +160,6 @@ async def diagnose_crm(
     """Ejecuta un diagnóstico completo del servicio CRM."""
     
     try:
-        logger.info(f"🔧 Ejecutando diagnóstico del CRM - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.diagnose()
         
@@ -173,11 +168,6 @@ async def diagnose_crm(
         token_status = result.token_acquisition.get("status", "Unknown")
         d365_status = result.d365_connectivity.get("status", "Unknown")
         
-        logger.info(f"📊 Diagnóstico completado:")
-        logger.info(f"   - Variables entorno: {list(env_status.values())}")
-        logger.info(f"   - Token: {token_status}")
-        logger.info(f"   - Conectividad D365: {d365_status}")
-        logger.info(f"   - Recomendaciones: {len(result.recommendations)}")
         
         return result
         
@@ -219,11 +209,9 @@ async def clear_token_cache(
     """Limpia el caché del token CRM."""
     
     try:
-        logger.info(f"🧹 Limpiando caché del token - Usuario: {current_user.get('email', 'Unknown')}")
         
         crm_auth_service.clear_token_cache()
         
-        logger.info("✅ Caché del token limpiado exitosamente")
         return {"status": "success", "message": "Caché del token CRM limpiado exitosamente"}
         
     except Exception as e:

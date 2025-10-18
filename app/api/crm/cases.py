@@ -83,7 +83,6 @@ async def get_cases(
     """Obtiene una lista paginada de casos de Dynamics 365."""
     
     try:
-        logger.info(f"📋 Obteniendo casos - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.get_cases(
             top=top,
@@ -93,7 +92,6 @@ async def get_cases(
             order_by=order_by
         )
         
-        logger.info(f"✅ {result.count} casos obtenidos exitosamente")
         return result
         
     except HTTPException:
@@ -157,12 +155,9 @@ async def get_cases_by_nextlink(
     """
     
     try:
-        logger.info(f"📄 Obteniendo siguiente página de casos - Usuario: {current_user.get('email', 'Unknown')}")
-        logger.debug(f"nextLink: {next_link[:100]}...")  # Log primeros 100 chars
         
         result = await crm_service.get_cases_by_nextlink(next_link)
         
-        logger.info(f"✅ Página obtenida: {len(result.cases)} casos, hasMore: {result.next_link is not None}")
         return result
         
     except HTTPException:
@@ -206,11 +201,9 @@ async def get_case_by_id(
     """Obtiene un caso específico por su ID."""
     
     try:
-        logger.info(f"🔍 Obteniendo caso {case_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.get_case_by_id(case_id)
         
-        logger.info(f"✅ Caso {case_id} obtenido exitosamente")
         return result
         
     except HTTPException:
@@ -252,7 +245,7 @@ async def create_case(
     """Crea un nuevo caso en Dynamics 365."""
     
     try:
-        logger.info(f"➕ Creando caso '{case_data.title}' - Usuario: {current_user.get('email', 'Unknown')}")
+        pass  # Logger eliminado
         
         # Validación: no se puede especificar tanto account como contact
         if case_data.customer_account_id and case_data.customer_contact_id:
@@ -263,7 +256,6 @@ async def create_case(
         
         result = await crm_service.create_case(case_data)
         
-        logger.info(f"✅ Caso '{case_data.title}' creado exitosamente")
         return result
         
     except HTTPException:
@@ -310,11 +302,9 @@ async def update_case(
     """Actualiza un caso existente en Dynamics 365."""
     
     try:
-        logger.info(f"📝 Actualizando caso {case_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.update_case(case_id, case_data)
         
-        logger.info(f"✅ Caso {case_id} actualizado exitosamente")
         return result
         
     except HTTPException:
@@ -358,11 +348,9 @@ async def delete_case(
     """Elimina un caso de Dynamics 365."""
     
     try:
-        logger.info(f"🗑️ Eliminando caso {case_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.delete_case(case_id)
         
-        logger.info(f"✅ Caso {case_id} eliminado exitosamente")
         return result
         
     except HTTPException:

@@ -53,9 +53,7 @@ class WhatsAppService:
         )
         
         if self.access_token and self.phone_number_id:
-            logger.info(f"✅ Servicio de WhatsApp inicializado")
-            logger.info(f"📱 Phone Number ID: {self.phone_number_id}")
-            logger.info(f"🔗 API Version: {self.api_version}")
+            pass  # Logger eliminado
         else:
             logger.warning("⚠️ Servicio de WhatsApp no configurado completamente")
     
@@ -154,14 +152,12 @@ class WhatsAppService:
         Raises:
             HTTPException: Si hay error al enviar el mensaje
         """
-        logger.info(f"📤 Enviando mensaje de WhatsApp tipo '{message_request.type}' a {message_request.to}")
         
         # Convertir el request a dict para enviarlo a la API
         message_data = message_request.model_dump(exclude_none=True)
         
         response = await self._make_request("POST", "messages", data=message_data)
         
-        logger.info(f"✅ Mensaje enviado exitosamente: {response.get('messages', [{}])[0].get('id', 'N/A')}")
         
         return WhatsAppMessageSendResponse(**response)
     
@@ -541,7 +537,6 @@ class WhatsAppService:
                     detail="No se pudo obtener la URL del media"
                 )
             
-            logger.info(f"✅ URL de media obtenida: {media_url[:50]}...")
             return media_url
                     
         except HTTPException:
@@ -579,7 +574,6 @@ class WhatsAppService:
             # Usar get_bytes para obtener el contenido directamente
             content = await http_client.get_bytes(media_url)
             
-            logger.info(f"✅ Media descargado: {len(content)} bytes")
             return content
                     
         except HTTPException:
@@ -607,7 +601,6 @@ class WhatsAppService:
         Raises:
             HTTPException: Si ocurre un error obteniendo o descargando el media
         """
-        logger.info(f"📥 Descargando media: {media_id}")
         
         # Primero obtener la URL de descarga
         media_url = await self.get_media_url(media_id)
@@ -631,7 +624,6 @@ class WhatsAppService:
             await whatsapp_service.mark_message_as_read("wamid.XXX...")
         """
         try:
-            logger.info(f"✅ Marcando mensaje como leído: {message_id}")
             
             message_data = {
                 "messaging_product": "whatsapp",
@@ -642,7 +634,6 @@ class WhatsAppService:
             response = await self._make_request("POST", "messages", data=message_data)
             
             if response.get("success"):
-                logger.info(f"✅ Mensaje marcado como leído exitosamente")
                 return True
             else:
                 logger.warning(f"⚠️ No se pudo marcar mensaje como leído: {response}")

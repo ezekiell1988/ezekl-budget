@@ -19,7 +19,6 @@ class AsyncDatabaseManager:
     
     def __init__(self):
         self.connection_string = settings.db_connection_string
-        logger.info("AsyncDatabaseManager inicializado")
     
     async def get_connection(self) -> aioodbc.Connection:
         """
@@ -33,7 +32,6 @@ class AsyncDatabaseManager:
         """
         try:
             connection = await aioodbc.connect(dsn=self.connection_string, timeout=10)
-            logger.debug("Conexión asíncrona a base de datos establecida exitosamente")
             return connection
         except Exception as e:
             logger.error(f"Error al conectar con la base de datos: {str(e)}")
@@ -51,7 +49,6 @@ class AsyncDatabaseManager:
                 async with conn.cursor() as cursor:
                     await cursor.execute("SELECT 1")
                     await cursor.fetchone()
-                    logger.info("Test de conexión asíncrona exitoso")
                     return True
         except Exception as e:
             logger.error(f"Error en test de conexión asíncrona: {str(e)}")
@@ -81,7 +78,6 @@ class AsyncDatabaseManager:
                     
                     # Ejecutar el stored procedure
                     query = f"EXEC {procedure_name} ?"
-                    logger.debug(f"Ejecutando SP asíncrono: {procedure_name} con parámetros: {json_string}")
                     
                     await cursor.execute(query, json_string)
                     
@@ -101,7 +97,6 @@ class AsyncDatabaseManager:
                     
                     # Parsear el JSON de respuesta
                     result = json.loads(json_result)
-                    logger.debug(f"SP {procedure_name} ejecutado exitosamente de forma asíncrona")
                     
                     return result
                     

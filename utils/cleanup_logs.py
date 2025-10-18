@@ -75,6 +75,45 @@ class LogCleaner:
         
         return (False, None, None)
     
+    def _count_logger_lines(self, lines: list, start_index: int) -> int:
+        """
+        Cuenta cuántas líneas ocupa un statement de logger (incluyendo multilínea).
+        Cuenta paréntesis para determinar cuándo termina el statement.
+        
+        Returns:
+            Número de líneas adicionales (0 si es single-line, N si es multilínea)
+        """
+        first_line = lines[start_index]
+        
+        # Contar paréntesis en la primera línea
+        open_count = first_line.count('(')
+        close_count = first_line.count(')')
+        
+        # Si está balanceado en la primera línea, no hay continuación
+        if open_count == close_count:
+            return 0
+        
+        # Buscar líneas siguientes hasta balancear paréntesis
+        additional_lines = 0
+        current_balance = open_count - close_count
+        
+        for i in range(start_index + 1, len(lines)):
+            additional_lines += 1
+            line = lines[i]
+            open_count = line.count('(')
+            close_count = line.count(')')
+            current_balance += (open_count - close_count)
+            
+            # Cuando se balancea, terminó el statement
+            if current_balance == 0:
+                return additional_lines
+            
+            # Límite de seguridad (no más de 10 líneas de continuación)
+            if additional_lines >= 10:
+                return additional_lines
+        
+        return additional_lines
+    
     def _should_remove_log(self, line, level) -> bool:
         """
         Elimina logger.info y logger.debug solamente.
@@ -142,6 +181,13 @@ class LogCleaner:
                         return 'else'
                 return 'end'
             
+            # Si tiene mayor indentación, continuamos buscando al mismo nivel
+            # (esto puede ser código dentro de un bloque que viene después de loggers)
+            if len(next_indent) > len(current_indent):
+                continue
+            
+            # Ahora estamos al mismo nivel de indentación
+            
             # Es logger?
             if line.strip().startswith('logger.'):
                 return 'logger'
@@ -181,11 +227,14 @@ class LogCleaner:
             if is_logger:
                 indent = self._get_indentation(line)
                 
+                # Contar cuántas líneas ocupa este logger statement (multilínea)
+                continuation_lines = self._count_logger_lines(lines, i)
+                
                 # 1. Mirar ARRIBA
                 up = self._look_up(result_lines, len(result_lines))
                 
-                # 2. Mirar ABAJO
-                down = self._look_down(lines, i, indent)
+                # 2. Mirar ABAJO (después de las líneas de continuación)
+                down = self._look_down(lines, i + continuation_lines, indent)
                 
                 # Lógica de decisión:
                 # - Si ARRIBA es logger → simplemente eliminar (hay más logs seguidos)
@@ -194,9 +243,9 @@ class LogCleaner:
                 # - Caso contrario → eliminar
                 
                 if up == 'logger' or down == 'logger':
-                    # Hay otros loggers cerca, solo eliminar
+                    # Hay otros loggers cerca, solo eliminar (incluyendo líneas de continuación)
                     removed_count += 1
-                    i += 1
+                    i += continuation_lines + 1
                     continue
                 
                 if up == 'control' and (down in ['control', 'else', 'end']):
@@ -204,12 +253,12 @@ class LogCleaner:
                     result_lines.append(f"{indent}pass  # Logger eliminado")
                     added_pass += 1
                     removed_count += 1
-                    i += 1
+                    i += continuation_lines + 1
                     continue
                 
-                # Caso contrario, simplemente eliminar
+                # Caso contrario, simplemente eliminar (incluyendo líneas de continuación)
                 removed_count += 1
-                i += 1
+                i += continuation_lines + 1
                 continue
             
             # Línea normal, mantenerla

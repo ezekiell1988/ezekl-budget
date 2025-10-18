@@ -100,13 +100,11 @@ class EmailService:
             if html_content:
                 message["content"]["html"] = html_content
             
-            logger.info(f"Enviando email a {to} con asunto: {subject}")
             
             # Enviar el email
             poller = self.client.begin_send(message)
             result = poller.result()
             
-            logger.info(f"Email enviado exitosamente a: {', '.join(to)}")
             
             return EmailSendResponse(
                 success=True,

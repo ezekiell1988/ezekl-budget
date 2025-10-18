@@ -187,7 +187,6 @@ class CRMService:
         # Usar @odata.count si está disponible, de lo contrario usar len(cases)
         total_count = response.get("@odata.count", len(cases))
         
-        logger.info(f"✅ Casos obtenidos: {len(cases)}, Total: {total_count}, hasNextLink: {response.get('@odata.nextLink') is not None}")
         
         return CasesListResponse(
             count=total_count,
@@ -276,7 +275,6 @@ class CRMService:
         """
         self._check_configuration()
         
-        logger.debug(f"🔗 nextLink recibido: {next_link[:150]}...")
         
         # Manejar URLs absolutas (https://...) y relativas (/api/data/...)
         if next_link.startswith("http://") or next_link.startswith("https://"):
@@ -286,7 +284,6 @@ class CRMService:
             if parsed.query:
                 path_and_query += f"?{parsed.query}"
             next_link = path_and_query
-            logger.debug(f"🔗 URL convertida a relativa: {next_link[:150]}...")
         
         # Extraer solo la parte después de /api/data/v9.x/
         if "/api/data/" in next_link:
@@ -298,7 +295,6 @@ class CRMService:
         else:
             endpoint_with_params = next_link
         
-        logger.debug(f"🔗 Endpoint extraído: {endpoint_with_params[:100]}...")
         
         # Construir URL manualmente para preservar el query string exacto
         token = await crm_auth_service.get_access_token()
@@ -337,7 +333,6 @@ class CRMService:
                     cases = [CaseResponse(**case) for case in response.get("value", [])]
                     total_count = response.get("@odata.count", len(cases))
                     
-                    logger.info(f"✅ nextLink procesado: {len(cases)} casos obtenidos")
                     
                     return CasesListResponse(
                         count=total_count,
@@ -457,7 +452,6 @@ class CRMService:
         """
         self._check_configuration()
         
-        logger.debug(f"🔗 nextLink recibido: {next_link[:150]}...")
         
         # Manejar URLs absolutas (https://...) y relativas (/api/data/...)
         if next_link.startswith("http://") or next_link.startswith("https://"):
@@ -471,7 +465,6 @@ class CRMService:
             if parsed.query:
                 path_and_query += f"?{parsed.query}"
             next_link = path_and_query  # Ahora es relativo
-            logger.debug(f"🔗 URL convertida a relativa: {next_link[:150]}...")
         
         # Extraer solo la parte después de /api/data/v9.x/
         if "/api/data/" in next_link:
@@ -485,7 +478,6 @@ class CRMService:
         else:
             endpoint_with_params = next_link
         
-        logger.debug(f"🔗 Endpoint extraído: {endpoint_with_params[:100]}...")
         
         # Construir URL manualmente para preservar el query string exacto
         token = await crm_auth_service.get_access_token()
@@ -675,7 +667,6 @@ class CRMService:
                     contacts = [ContactResponse(**contact) for contact in response.get("value", [])]
                     total_count = response.get("@odata.count", len(contacts))
                     
-                    logger.info(f"✅ {len(contacts)} contactos obtenidos, hasNextLink: {response.get('@odata.nextLink') is not None}")
                     
                     return ContactsListResponse(
                         count=total_count,
@@ -711,7 +702,6 @@ class CRMService:
         """
         self._check_configuration()
         
-        logger.debug(f"🔗 nextLink recibido: {next_link[:150]}...")
         
         # Manejar URLs absolutas (https://...) y relativas (/api/data/...)
         if next_link.startswith("http://") or next_link.startswith("https://"):
@@ -725,7 +715,6 @@ class CRMService:
             if parsed.query:
                 path_and_query += f"?{parsed.query}"
             next_link = path_and_query  # Ahora es relativo
-            logger.debug(f"🔗 URL convertida a relativa: {next_link[:150]}...")
         
         # Extraer solo la parte después de /api/data/v9.x/
         if "/api/data/" in next_link:
@@ -739,7 +728,6 @@ class CRMService:
         else:
             endpoint_with_params = next_link
         
-        logger.debug(f"🔗 Endpoint extraído: {endpoint_with_params[:100]}...")
         
         # Construir URL manualmente para preservar el query string exacto
         token = await crm_auth_service.get_access_token()
@@ -769,7 +757,6 @@ class CRMService:
                     
                     contacts = [ContactResponse(**contact) for contact in response.get("value", [])]
                     
-                    logger.info(f"✅ {len(contacts)} contactos obtenidos, hasNextLink: {response.get('@odata.nextLink') is not None}")
                     
                     return ContactsListResponse(
                         count=len(contacts),  # Count de esta página

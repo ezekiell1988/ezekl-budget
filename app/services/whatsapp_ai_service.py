@@ -77,7 +77,6 @@ Información importante:
             Texto transcrito o None si falla
         """
         try:
-            logger.info(f"🎙️ Transcribiendo audio con Azure OpenAI ({len(audio_bytes)} bytes, formato: {source_format})...")
             
             # Construir la URL de la API de transcripción
             # Formato: {endpoint}/openai/deployments/{deployment}/audio/transcriptions?api-version={version}
@@ -92,9 +91,6 @@ Información importante:
                 "api-key": settings.azure_openai_api_key,
             }
             
-            logger.debug(f"📡 URL: {url}")
-            logger.debug(f"🔑 Deployment: {settings.azure_openai_audio_deployment_name}")
-            logger.debug(f"📝 API Version: {settings.azure_openai_audio_api_version}")
             
             # Preparar archivo y campos para multipart/form-data
             files = {
@@ -117,7 +113,6 @@ Información importante:
             )
             
             # Log del status
-            logger.info(f"📥 Respuesta de transcripción: {response.status}")
             
             if response.status == 200:
                 # La respuesta es texto plano con la transcripción
@@ -125,7 +120,6 @@ Información importante:
                 transcription = transcription.strip()
                 
                 if transcription:
-                    logger.info(f"✅ Audio transcrito exitosamente: '{transcription[:100]}...'")
                     return transcription
                 else:
                     logger.warning("⚠️ Transcripción vacía recibida")
@@ -160,10 +154,6 @@ Información importante:
                 azure_endpoint=settings.azure_openai_endpoint,
                 http_client=http_client  # Cliente HTTP custom con timeout aumentado
             )
-            logger.info("✅ Cliente de Azure OpenAI inicializado para WhatsApp")
-            logger.info(f"🔧 API Version: {settings.azure_openai_api_version}")
-            logger.info(f"⏱️  Timeout configurado: 60s (connect: 10s)")
-            logger.info(f"🚀 Deployment: {settings.azure_openai_chat_deployment_name}")
         return self._client
     
     def _get_conversation_history(self, phone_number: str) -> List[Dict[str, str]]:
@@ -211,7 +201,6 @@ Información importante:
         """
         if phone_number in self._conversation_history:
             del self._conversation_history[phone_number]
-            logger.info(f"🗑️ Historial limpiado para {phone_number}")
     
     async def generate_response(
         self,
@@ -246,7 +235,6 @@ Información importante:
             
             # Si hay imagen, agregarla al contenido
             if image_data:
-                logger.info(f"🖼️ Procesando imagen ({len(image_data)} bytes)")
                 image_base64 = self._encode_image_to_base64(image_data)
                 
                 # Determinar el formato de la imagen
@@ -270,7 +258,6 @@ Información importante:
             # La transcripción se trata como si fuera el mensaje original del usuario
             # (sin prefijos como "[Audio transcrito]:" para que GPT-5 lo procese naturalmente)
             if audio_data:
-                logger.info(f"🎤 Procesando audio ({len(audio_data)} bytes)")
                 
                 # Determinar el formato del audio original
                 source_format = "ogg"  # default para WhatsApp voice messages
@@ -293,11 +280,9 @@ Información importante:
                     if user_message:
                         # Si ya hay mensaje de texto (caption), combinarlo con la transcripción
                         user_message = f"{user_message}\n\n{transcription}"
-                        logger.info(f"✅ Audio transcrito y combinado con caption")
                     else:
                         # Si solo hay audio, usar la transcripción directamente
                         user_message = transcription
-                        logger.info(f"✅ Audio transcrito: '{transcription[:100]}...'")
                 else:
                     logger.warning("⚠️ No se pudo transcribir el audio")
                     if not user_message:
@@ -352,14 +337,11 @@ Información importante:
                 media_info.append("audio")
             media_str = f" con {' y '.join(media_info)}" if media_info else ""
             
-            logger.info(f"🤖 Generando respuesta de IA para {contact_name or phone_number}{media_str}")
-            logger.debug(f"📝 Mensaje del usuario: {user_message or '[multimedia]'}")
             
             # Obtener el deployment name de la configuración
             from app.core.config import settings
             deployment_name = settings.azure_openai_chat_deployment_name
             
-            logger.debug(f"🔧 Usando deployment: {deployment_name}")
             
             # Llamar a Azure OpenAI
             # Nota: GPT-5 (o1 reasoning model) requiere max_completion_tokens alto
@@ -374,23 +356,16 @@ Información importante:
             )
             
             # Log de la respuesta completa para debugging
-            logger.debug(f"🔍 Respuesta completa de API: {response}")
-            logger.debug(f"🔍 Choices: {response.choices}")
-            logger.debug(f"🔍 Primer choice: {response.choices[0] if response.choices else 'Sin choices'}")
             
             # Log de uso de tokens (importante para modelos o1/GPT-5 con reasoning)
             if hasattr(response, 'usage'):
                 usage = response.usage
-                logger.info(f"📊 Token usage - Prompt: {usage.prompt_tokens}, "
-                          f"Completion: {usage.completion_tokens}, "
-                          f"Total: {usage.total_tokens}")
                 
                 # Mostrar reasoning tokens si están disponibles (GPT-5/o1)
                 if hasattr(usage, 'completion_tokens_details'):
                     details = usage.completion_tokens_details
                     if hasattr(details, 'reasoning_tokens'):
-                        logger.info(f"🧠 Reasoning tokens: {details.reasoning_tokens}")
-                        logger.info(f"📝 Visible tokens: {usage.completion_tokens - details.reasoning_tokens}")
+                        pass  # Logger eliminado
 
             
             # Extraer la respuesta
@@ -399,7 +374,6 @@ Información importante:
                 ai_response = ""
             else:
                 message_content = response.choices[0].message.content
-                logger.debug(f"🔍 Content crudo: '{message_content}' (tipo: {type(message_content)})")
                 ai_response = message_content.strip() if message_content else ""
             
             # Validar que la respuesta no esté vacía
@@ -411,8 +385,6 @@ Información importante:
             # Agregar respuesta al historial
             self._add_to_history(phone_number, "assistant", ai_response)
             
-            logger.info(f"✅ Respuesta generada exitosamente")
-            logger.debug(f"💬 Respuesta: {ai_response}")
             
             return ai_response
             
@@ -476,14 +448,12 @@ Información importante:
                 media_info.append("audio")
             media_str = f" ({' y '.join(media_info)})" if media_info else ""
             
-            logger.info(f"📤 Enviando respuesta de IA a {contact_name or phone_number}{media_str}")
             
             whatsapp_response = await whatsapp_service.send_text_message(
                 to=phone_number,
                 body=ai_response
             )
             
-            logger.info(f"✅ Respuesta de IA enviada exitosamente")
             
             return {
                 "success": True,

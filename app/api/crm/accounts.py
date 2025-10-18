@@ -83,7 +83,6 @@ async def get_accounts(
     """Obtiene una lista paginada de cuentas de Dynamics 365."""
     
     try:
-        logger.info(f"🏢 Obteniendo cuentas - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.get_accounts(
             top=top,
@@ -93,7 +92,6 @@ async def get_accounts(
             order_by=order_by
         )
         
-        logger.info(f"✅ {result.count} cuentas obtenidas exitosamente")
         return result
         
     except HTTPException:
@@ -159,12 +157,9 @@ async def get_accounts_by_nextlink(
     """
     
     try:
-        logger.info(f"📄 Obteniendo siguiente página de cuentas - Usuario: {current_user.get('email', 'Unknown')}")
-        logger.debug(f"nextLink: {next_link[:100]}...")  # Log primeros 100 chars
         
         result = await crm_service.get_accounts_by_nextlink(next_link)
         
-        logger.info(f"✅ Página obtenida: {len(result.accounts)} cuentas, hasMore: {result.next_link is not None}")
         return result
         
     except HTTPException:
@@ -208,11 +203,9 @@ async def get_account_by_id(
     """Obtiene una cuenta específica por su ID."""
     
     try:
-        logger.info(f"🔍 Obteniendo cuenta {account_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.get_account_by_id(account_id)
         
-        logger.info(f"✅ Cuenta {account_id} obtenida exitosamente")
         return result
         
     except HTTPException:
@@ -258,11 +251,9 @@ async def create_account(
     """Crea una nueva cuenta en Dynamics 365."""
     
     try:
-        logger.info(f"➕ Creando cuenta '{account_data.name}' - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.create_account(account_data)
         
-        logger.info(f"✅ Cuenta '{account_data.name}' creada exitosamente")
         return result
         
     except HTTPException:
@@ -310,11 +301,9 @@ async def update_account(
     """Actualiza una cuenta existente en Dynamics 365."""
     
     try:
-        logger.info(f"📝 Actualizando cuenta {account_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.update_account(account_id, account_data)
         
-        logger.info(f"✅ Cuenta {account_id} actualizada exitosamente")
         return result
         
     except HTTPException:
@@ -358,11 +347,9 @@ async def delete_account(
     """Elimina una cuenta de Dynamics 365."""
     
     try:
-        logger.info(f"🗑️ Eliminando cuenta {account_id} - Usuario: {current_user.get('email', 'Unknown')}")
         
         result = await crm_service.delete_account(account_id)
         
-        logger.info(f"✅ Cuenta {account_id} eliminada exitosamente")
         return result
         
     except HTTPException:
