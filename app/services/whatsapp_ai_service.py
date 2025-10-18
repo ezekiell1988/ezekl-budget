@@ -77,16 +77,27 @@ Información importante:
         
     @property
     def client(self) -> AsyncAzureOpenAI:
-        """Cliente de Azure OpenAI con lazy loading."""
+        """Cliente de Azure OpenAI con lazy loading y timeout configurado."""
         if self._client is None:
             from app.core.config import settings
+            import httpx
+            
+            # AsyncAzureOpenAI requiere un httpx.AsyncClient específicamente
+            # No podemos usar nuestro HTTPClient (basado en aiohttp) directamente
+            # Pero configuramos timeout extendido (60 segundos para multimodal)
+            http_client = httpx.AsyncClient(
+                timeout=httpx.Timeout(60.0, connect=10.0)
+            )
+            
             self._client = AsyncAzureOpenAI(
                 api_key=settings.azure_openai_api_key,
                 api_version=settings.azure_openai_api_version,
-                azure_endpoint=settings.azure_openai_endpoint
+                azure_endpoint=settings.azure_openai_endpoint,
+                http_client=http_client  # Cliente HTTP custom con timeout aumentado
             )
             logger.info("✅ Cliente de Azure OpenAI inicializado para WhatsApp")
             logger.info(f"🔧 API Version: {settings.azure_openai_api_version}")
+            logger.info(f"⏱️  Timeout configurado: 60s (connect: 10s)")
             logger.info(f"🚀 Deployment: {settings.azure_openai_chat_deployment_name}")
         return self._client
     
