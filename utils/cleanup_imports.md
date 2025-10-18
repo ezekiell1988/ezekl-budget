@@ -22,15 +22,17 @@ Script para eliminar automáticamente los imports no utilizados de archivos Pyth
 ./.venv/bin/python utils/cleanup_imports.py app/services/email_service.py [--dry-run]
 ```
 
-### Procesar todos los archivos .py en un directorio (recursivo por defecto)
+### Procesar carpeta completa (recursivo por defecto)
 
 ```bash
+# Procesa la carpeta y todas sus subcarpetas
 ./.venv/bin/python utils/cleanup_imports.py app/services/ [--dry-run]
 ```
 
 ### Procesar solo nivel actual (sin subdirectorios)
 
 ```bash
+# Usa --no-recursive para NO incluir subcarpetas
 ./.venv/bin/python utils/cleanup_imports.py app/api/routes/ --no-recursive [--dry-run]
 ```
 
@@ -99,9 +101,10 @@ Validando cambios...
 |--------|-------------|
 | `--dry-run` | Previsualiza cambios sin aplicarlos |
 | `--all` | Procesa todos los archivos en `app/` recursivamente |
-| `--recursive`, `-r` | Procesa subcarpetas recursivamente (default para carpetas) |
-| `--no-recursive` | Solo procesa archivos en el nivel actual de la carpeta |
+| `--no-recursive` | Solo procesa archivos en el nivel actual de la carpeta (por defecto es recursivo) |
 | `--stop-on-error` | Detiene todo el procesamiento al primer error de sintaxis |
+
+**Nota:** Por defecto, cuando se procesa una carpeta, se hace **recursivamente** (incluye subcarpetas). Usa `--no-recursive` para procesar solo el nivel actual.
 
 ## Cómo funciona
 
@@ -137,8 +140,8 @@ El script es **seguro** de usar porque:
 ### Limpiar después de refactorización
 
 ```bash
-# Después de mover funciones entre archivos
-./.venv/bin/python utils/cleanup_imports.py app/services/ --recursive
+# Después de mover funciones entre archivos (recursivo por defecto)
+./.venv/bin/python utils/cleanup_imports.py app/services/
 ```
 
 ### Antes de hacer commit
@@ -151,8 +154,10 @@ El script es **seguro** de usar porque:
 ### Auditoría completa del proyecto
 
 ```bash
-# Revisar todo el proyecto
-./.venv/bin/python utils/cleanup_imports.py app/ --recursive
+# Revisar todo el proyecto (recursivo por defecto)
+./.venv/bin/python utils/cleanup_imports.py app/
+# O usar --all para toda la carpeta app/
+./.venv/bin/python utils/cleanup_imports.py --all
 ```
 
 ## 🔄 Comportamiento ante errores

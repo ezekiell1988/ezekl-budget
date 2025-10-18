@@ -350,10 +350,10 @@ Ejemplos:
   ./.venv/bin/python cleanup_imports.py app/services/
   ./.venv/bin/python cleanup_imports.py app/api/ --dry-run
   
-  # Carpeta solo nivel actual (sin subcarpetas)
+  # Carpeta solo nivel actual (sin subcarpetas, usa --no-recursive)
   ./.venv/bin/python cleanup_imports.py app/api/routes/ --no-recursive
   
-  # Todos los archivos en app/
+  # Todos los archivos en app/ (siempre recursivo)
   ./.venv/bin/python cleanup_imports.py --all
         """
     )
@@ -374,14 +374,9 @@ Ejemplos:
         help='Procesa todos los archivos Python en app/'
     )
     parser.add_argument(
-        '--recursive', '-r',
-        action='store_true',
-        help='Si se especifica una carpeta, procesa subcarpetas recursivamente'
-    )
-    parser.add_argument(
         '--no-recursive',
         action='store_true',
-        help='Si se especifica una carpeta, solo procesa archivos en ese nivel (no subcarpetas)'
+        help='Si se especifica una carpeta, solo procesa archivos en ese nivel (no subcarpetas). Por defecto es recursivo.'
     )
     parser.add_argument(
         '--stop-on-error',
@@ -398,10 +393,7 @@ Ejemplos:
     if args.all and args.filepath:
         parser.error("No puedes usar --all con un archivo/carpeta específico")
     
-    if args.recursive and args.no_recursive:
-        parser.error("No puedes usar --recursive y --no-recursive al mismo tiempo")
-    
-    # Determinar si es recursivo (por defecto True a menos que se especifique --no-recursive)
+    # Determinar si es recursivo (por defecto True, a menos que se especifique --no-recursive)
     recursive = not args.no_recursive
     
     # Procesar archivos
