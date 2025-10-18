@@ -1,13 +1,12 @@
 # Usar imagen base de Python 3.13 slim
 FROM python:3.13-slim
 
-# Instalar dependencias del sistema, ffmpeg y Microsoft ODBC Driver
+# Instalar dependencias del sistema y Microsoft ODBC Driver
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     gnupg2 \
     unixodbc-dev \
-    ffmpeg \
     && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.asc.gpg \
     && echo "deb [arch=amd64] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \

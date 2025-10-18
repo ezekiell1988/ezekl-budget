@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     azure_openai_api_key: str
     azure_openai_deployment_name: str
     azure_openai_chat_deployment_name: str = "gpt-5-pro"  # Deployment para chat (WhatsApp, etc.)
+    azure_openai_audio_deployment_name: str = "gpt-4o-transcribe"  # Deployment para transcripción de audio
     azure_openai_api_version: str = "2024-12-01-preview"
+    azure_openai_audio_api_version: str = "2025-03-01-preview"  # API version para audio transcription
     
     # Azure Communication Services Configuration
     azure_communication_endpoint: str

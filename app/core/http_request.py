@@ -158,7 +158,7 @@ class HTTPClient:
             url: URL de destino
             headers: Headers adicionales
             params: Parámetros de query string
-            data: Datos del cuerpo (raw)
+            data: Datos del cuerpo (raw, puede ser FormData para multipart/form-data)
             json_data: Datos JSON para el cuerpo
             **kwargs: Argumentos adicionales
             
@@ -166,6 +166,74 @@ class HTTPClient:
             Respuesta HTTP
         """
         return await self._make_request('POST', url, headers, params, data, json_data, **kwargs)
+    
+    async def post_multipart(
+        self,
+        url: str,
+        files: Dict[str, tuple],
+        fields: Optional[Dict[str, str]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ) -> aiohttp.ClientResponse:
+        """
+        Realiza una petición POST con multipart/form-data.
+        
+        Args:
+            url: URL de destino
+            files: Diccionario de archivos {nombre_campo: (nombre_archivo, bytes, content_type)}
+            fields: Campos adicionales del formulario
+            headers: Headers adicionales
+            params: Parámetros de query string
+            **kwargs: Argumentos adicionales
+            
+        Returns:
+            Respuesta HTTP
+            
+        Example:
+            files = {'file': ('audio.ogg', audio_bytes, 'audio/ogg')}
+            fields = {'model': 'gpt-4o-transcribe', 'response_format': 'text'}
+            response = await client.post_multipart(url, files, fields)
+        """
+        full_url = self._build_url(url)
+        merged_headers = self._merge_headers(headers)
+        
+        logger.info(f"Realizando petición POST multipart a {full_url}")
+        logger.debug(f"Headers: {merged_headers}")
+        
+        # Crear FormData
+        form = aiohttp.FormData()
+        
+        # Agregar archivos
+        for field_name, file_data in files.items():
+            if len(file_data) == 3:
+                filename, file_bytes, content_type = file_data
+                form.add_field(
+                    field_name,
+                    file_bytes,
+                    filename=filename,
+                    content_type=content_type
+                )
+            else:
+                logger.warning(f"Formato incorrecto para archivo {field_name}, esperado (filename, bytes, content_type)")
+        
+        # Agregar campos adicionales
+        if fields:
+            for field_name, field_value in fields.items():
+                form.add_field(field_name, field_value)
+        
+        async with aiohttp.ClientSession(
+            timeout=self.timeout,
+            headers=merged_headers
+        ) as session:
+            async with session.post(
+                full_url,
+                params=params,
+                data=form,
+                **kwargs
+            ) as response:
+                logger.info(f"Respuesta {response.status} de POST multipart {full_url}")
+                return response
         
     async def put(
         self,
@@ -372,6 +440,11 @@ async def get(url: str, **kwargs) -> aiohttp.ClientResponse:
 async def post(url: str, **kwargs) -> aiohttp.ClientResponse:
     """Función de conveniencia para POST usando el cliente global."""
     return await http_client.post(url, **kwargs)
+
+
+async def post_multipart(url: str, files: Dict[str, tuple], fields: Optional[Dict[str, str]] = None, **kwargs) -> aiohttp.ClientResponse:
+    """Función de conveniencia para POST multipart usando el cliente global."""
+    return await http_client.post_multipart(url, files, fields, **kwargs)
 
 
 async def put(url: str, **kwargs) -> aiohttp.ClientResponse:

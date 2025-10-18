@@ -6,13 +6,11 @@ Soporta procesamiento multimodal: texto, imágenes y audios.
 
 import logging
 import base64
-import io
-import subprocess
-import tempfile
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List
 from openai import AsyncAzureOpenAI
 
 from app.core.config import settings
+from app.core.http_request import HTTPClient
 from app.services.whatsapp_service import whatsapp_service
 
 logger = logging.getLogger(__name__)
@@ -66,87 +64,81 @@ Información importante:
         """
         return base64.b64encode(image_bytes).decode('utf-8')
     
-    def _encode_audio_to_base64(self, audio_bytes: bytes) -> str:
+    async def _transcribe_audio(self, audio_bytes: bytes, source_format: str = "ogg") -> Optional[str]:
         """
-        Codifica un audio en base64 para enviarla a OpenAI.
+        Transcribe audio a texto usando Azure OpenAI Audio Transcription API (gpt-4o-transcribe).
+        Usa HTTPClient.post_multipart para enviar audio en formato multipart/form-data.
         
         Args:
-            audio_bytes: Contenido del audio en bytes
+            audio_bytes: Audio en bytes (puede ser OGG, WAV, MP3, etc.)
+            source_format: Formato del audio (ogg, wav, mp3, etc.)
             
         Returns:
-            Audio codificado en base64
-        """
-        return base64.b64encode(audio_bytes).decode('utf-8')
-    
-    def _convert_audio_to_wav(self, audio_bytes: bytes, source_format: str = "ogg") -> bytes:
-        """
-        Convierte audio a formato WAV (requerido por GPT-5) usando ffmpeg.
-        
-        Args:
-            audio_bytes: Bytes del audio original
-            source_format: Formato de origen (ogg, mp3, m4a, etc.)
-            
-        Returns:
-            bytes: Audio convertido a WAV
+            Texto transcrito o None si falla
         """
         try:
-            logger.info(f"🔄 Convirtiendo audio de {source_format} a WAV usando ffmpeg...")
+            logger.info(f"🎙️ Transcribiendo audio con Azure OpenAI ({len(audio_bytes)} bytes, formato: {source_format})...")
             
-            # Crear archivos temporales
-            with tempfile.NamedTemporaryFile(suffix=f".{source_format}", delete=False) as input_file:
-                input_file.write(audio_bytes)
-                input_path = input_file.name
+            # Construir la URL de la API de transcripción
+            # Formato: {endpoint}/openai/deployments/{deployment}/audio/transcriptions?api-version={version}
+            url = (
+                f"{settings.azure_openai_endpoint.rstrip('/')}/openai/deployments/"
+                f"{settings.azure_openai_audio_deployment_name}/audio/transcriptions"
+                f"?api-version={settings.azure_openai_audio_api_version}"
+            )
             
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as output_file:
-                output_path = output_file.name
+            # Headers para la petición
+            headers = {
+                "api-key": settings.azure_openai_api_key,
+            }
             
-            try:
-                # Usar ffmpeg para convertir
-                # -i: input file
-                # -t 30: limitar a 30 segundos máximo
-                # -acodec pcm_s16le: audio codec WAV estándar
-                # -ar 8000: sample rate 8kHz (voz humana, reduce mucho el tamaño)
-                # -ac 1: mono channel (reduce tamaño)
-                # -b:a 32k: bitrate bajo pero suficiente para voz
-                # -y: overwrite output
-                subprocess.run([
-                    'ffmpeg',
-                    '-i', input_path,
-                    '-t', '30',  # Máximo 30 segundos
-                    '-acodec', 'pcm_s16le',
-                    '-ar', '8000',  # 8kHz en vez de 16kHz
-                    '-ac', '1',
-                    '-b:a', '32k',  # Bitrate bajo
-                    '-y',
-                    output_path
-                ], check=True, capture_output=True, text=True)
-                
-                # Leer el archivo WAV convertido
-                with open(output_path, 'rb') as f:
-                    wav_bytes = f.read()
-                
-                logger.info(f"✅ Audio convertido: {len(audio_bytes)} bytes ({source_format}) → {len(wav_bytes)} bytes (WAV)")
-                
-                return wav_bytes
-                
-            finally:
-                # Limpiar archivos temporales
-                import os
-                try:
-                    os.unlink(input_path)
-                    os.unlink(output_path)
-                except:
-                    pass
+            logger.debug(f"📡 URL: {url}")
+            logger.debug(f"🔑 Deployment: {settings.azure_openai_audio_deployment_name}")
+            logger.debug(f"📝 API Version: {settings.azure_openai_audio_api_version}")
             
-        except subprocess.CalledProcessError as e:
-            logger.error(f"❌ Error ejecutando ffmpeg: {e.stderr}")
-            raise Exception(f"Error convirtiendo audio con ffmpeg: {e.stderr}")
-        except FileNotFoundError:
-            logger.error(f"❌ ffmpeg no encontrado. Instalar: apt-get install ffmpeg")
-            raise Exception("ffmpeg no está instalado en el sistema")
+            # Preparar archivo y campos para multipart/form-data
+            files = {
+                'file': (f'audio.{source_format}', audio_bytes, f'audio/{source_format}')
+            }
+            fields = {
+                'model': settings.azure_openai_audio_deployment_name,
+                'response_format': 'text'
+            }
+            
+            # Crear cliente HTTP con timeout de 60 segundos
+            http_client = HTTPClient(timeout=60)
+            
+            # Hacer la petición POST multipart usando HTTPClient
+            response = await http_client.post_multipart(
+                url,
+                files=files,
+                fields=fields,
+                headers=headers
+            )
+            
+            # Log del status
+            logger.info(f"📥 Respuesta de transcripción: {response.status}")
+            
+            if response.status == 200:
+                # La respuesta es texto plano con la transcripción
+                transcription = await response.text()
+                transcription = transcription.strip()
+                
+                if transcription:
+                    logger.info(f"✅ Audio transcrito exitosamente: '{transcription[:100]}...'")
+                    return transcription
+                else:
+                    logger.warning("⚠️ Transcripción vacía recibida")
+                    return None
+            else:
+                # Log del error
+                error_text = await response.text()
+                logger.error(f"❌ Error en transcripción {response.status}: {error_text}")
+                return None
+                    
         except Exception as e:
-            logger.error(f"❌ Error convirtiendo audio: {str(e)}")
-            raise
+            logger.error(f"❌ Error transcribiendo audio: {str(e)}", exc_info=True)
+            return None
         
     @property
     def client(self) -> AsyncAzureOpenAI:
@@ -274,7 +266,7 @@ Información importante:
                     }
                 })
             
-            # Si hay audio, agregarla al contenido
+            # Si hay audio, transcribirlo con Whisper y agregarlo como texto
             if audio_data:
                 logger.info(f"🎤 Procesando audio ({len(audio_data)} bytes)")
                 
@@ -290,24 +282,26 @@ Información importante:
                     elif "ogg" in media_type.lower() or "opus" in media_type.lower():
                         source_format = "ogg"
                 
-                # GPT-5 solo soporta WAV y MP3
-                # Convertir a WAV si no es MP3 o WAV
-                if source_format not in ["wav", "mp3"]:
-                    audio_data = self._convert_audio_to_wav(audio_data, source_format)
-                    audio_format = "wav"
+                # Transcribir directamente con Azure OpenAI (acepta OGG y otros formatos)
+                # Ya no necesitamos convertir a WAV primero
+                transcription = await self._transcribe_audio(audio_data, source_format)
+                
+                if transcription:
+                    # Agregar transcripción al mensaje
+                    audio_message = f"[Audio transcrito]: {transcription}"
+                    
+                    if user_message:
+                        # Si ya hay mensaje de texto, combinarlo
+                        user_message = f"{user_message}\n\n{audio_message}"
+                    else:
+                        # Si solo hay audio, usar la transcripción
+                        user_message = audio_message
+                    
+                    logger.info(f"✅ Transcripción agregada al mensaje")
                 else:
-                    audio_format = source_format
-                
-                # Codificar a base64
-                audio_base64 = self._encode_audio_to_base64(audio_data)
-                
-                user_content.append({
-                    "type": "input_audio",
-                    "input_audio": {
-                        "data": audio_base64,
-                        "format": audio_format  # Ahora será "wav" o "mp3"
-                    }
-                })
+                    logger.warning("⚠️ No se pudo transcribir el audio, usando mensaje por defecto")
+                    if not user_message:
+                        user_message = "He recibido un audio pero no pude transcribirlo. ¿Podrías escribirme el mensaje?"
             
             # Siempre agregar el texto (puede ser el mensaje principal o un caption)
             if user_message:
