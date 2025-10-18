@@ -93,8 +93,31 @@ class ImportCleaner:
             print(f"⚠ Error de sintaxis al parsear: {e}")
         return imported
     
+    def extract_names_from_annotation(self, annotation) -> Set[str]:
+        """Extrae nombres de una anotación de tipo recursivamente."""
+        names = set()
+        if annotation is None:
+            return names
+            
+        if isinstance(annotation, ast.Name):
+            names.add(annotation.id)
+        elif isinstance(annotation, ast.Subscript):
+            # Para tipos como Optional[str], List[int], Dict[str, Any]
+            names.update(self.extract_names_from_annotation(annotation.value))
+            names.update(self.extract_names_from_annotation(annotation.slice))
+        elif isinstance(annotation, ast.Tuple):
+            # Para tuplas en subscripts como Dict[str, int]
+            for elt in annotation.elts:
+                names.update(self.extract_names_from_annotation(elt))
+        elif isinstance(annotation, ast.Attribute):
+            # Para tipos como module.Type
+            if isinstance(annotation.value, ast.Name):
+                names.add(annotation.value.id)
+        
+        return names
+    
     def get_used_names(self, content: str) -> Set[str]:
-        """Extrae todos los nombres usados en el código (excluyendo imports)."""
+        """Extrae todos los nombres usados en el código (excluyendo imports), incluyendo anotaciones de tipo."""
         used = set()
         try:
             tree = ast.parse(content)
@@ -115,12 +138,33 @@ class ImportCleaner:
                 ):
                     continue
                 
+                # Nombres en expresiones
                 if isinstance(node, ast.Name):
                     used.add(node.id)
                 elif isinstance(node, ast.Attribute):
                     # Para casos como 'module.function', capturar 'module'
                     if isinstance(node.value, ast.Name):
                         used.add(node.value.id)
+                
+                # Nombres en anotaciones de tipo
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    # Anotación de retorno
+                    if node.returns:
+                        used.update(self.extract_names_from_annotation(node.returns))
+                    # Argumentos
+                    for arg in node.args.args + node.args.posonlyargs + node.args.kwonlyargs:
+                        if arg.annotation:
+                            used.update(self.extract_names_from_annotation(arg.annotation))
+                    if node.args.vararg and node.args.vararg.annotation:
+                        used.update(self.extract_names_from_annotation(node.args.vararg.annotation))
+                    if node.args.kwarg and node.args.kwarg.annotation:
+                        used.update(self.extract_names_from_annotation(node.args.kwarg.annotation))
+                
+                elif isinstance(node, ast.AnnAssign):
+                    # Variables anotadas: var: Type = value
+                    if node.annotation:
+                        used.update(self.extract_names_from_annotation(node.annotation))
+                
         except SyntaxError as e:
             print(f"⚠ Error de sintaxis al analizar uso: {e}")
         return used
@@ -132,70 +176,129 @@ class ImportCleaner:
         unused = imported - used
         return unused
     
+    def get_import_info(self, content: str) -> dict:
+        """
+        Obtiene información detallada de imports usando AST.
+        Returns: dict con nombre_importado -> {'type': 'simple'|'multi', 'line': int, 'module': str, 'all_names': list}
+        """
+        import_info = {}
+        try:
+            tree = ast.parse(content)
+            for node in tree.body:
+                if isinstance(node, ast.Import):
+                    # import xxx [as yyy]
+                    for alias in node.names:
+                        name = alias.asname if alias.asname else alias.name
+                        import_info[name] = {
+                            'type': 'simple',
+                            'line_start': node.lineno,
+                            'line_end': node.end_lineno if hasattr(node, 'end_lineno') else node.lineno,
+                            'module': alias.name,
+                            'all_names': [name]
+                        }
+                elif isinstance(node, ast.ImportFrom):
+                    # from xxx import yyy, zzz
+                    all_names_in_import = [alias.asname if alias.asname else alias.name for alias in node.names]
+                    is_multi = len(node.names) > 1
+                    
+                    for alias in node.names:
+                        name = alias.asname if alias.asname else alias.name
+                        import_info[name] = {
+                            'type': 'multi' if is_multi else 'simple',
+                            'line_start': node.lineno,
+                            'line_end': node.end_lineno if hasattr(node, 'end_lineno') else node.lineno,
+                            'module': node.module,
+                            'all_names': all_names_in_import,
+                            'original_name': alias.name
+                        }
+        except SyntaxError as e:
+            print(f"⚠ Error al obtener información de imports: {e}")
+        return import_info
+    
     def remove_unused_imports(self, content: str, unused: Set[str]) -> str:
-        """Elimina las líneas de imports no utilizados."""
+        """Elimina imports no utilizados, manejando correctamente imports multilínea."""
         if not unused:
             return content
         
+        import_info = self.get_import_info(content)
         lines = content.split('\n')
-        new_lines = []
-        skip_line = False
         
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            
-            # Manejar imports multilínea con paréntesis
-            if '(' in stripped and 'import' in stripped and not ')' in stripped:
-                skip_line = True
-                temp_import = stripped
-                j = i + 1
-                while j < len(lines) and ')' not in lines[j]:
-                    temp_import += ' ' + lines[j].strip()
-                    j += 1
-                if j < len(lines):
-                    temp_import += ' ' + lines[j].strip()
+        # Agrupar imports a eliminar por línea
+        imports_to_remove_by_line = {}
+        lines_to_delete = set()
+        
+        for name in unused:
+            if name not in import_info:
+                continue
                 
-                # Verificar si algún import en el bloque está en unused
-                should_skip = any(name in temp_import for name in unused)
-                if not should_skip:
-                    new_lines.append(line)
+            info = import_info[name]
+            line_start = info['line_start']
+            
+            if info['type'] == 'simple':
+                # Import simple, eliminar toda la línea/bloque
+                for line_num in range(line_start, info['line_end'] + 1):
+                    lines_to_delete.add(line_num)
+                print(f"  Eliminando import completo '{name}' (líneas {line_start}-{info['line_end']})")
+            else:
+                # Import múltiple, verificar si hay que eliminar solo este nombre o todo el import
+                unused_in_this_import = [n for n in info['all_names'] if n in unused]
+                used_in_this_import = [n for n in info['all_names'] if n not in unused]
+                
+                if not used_in_this_import:
+                    # Todos los nombres están sin usar, eliminar todo el bloque
+                    for line_num in range(line_start, info['line_end'] + 1):
+                        lines_to_delete.add(line_num)
+                    print(f"  Eliminando import completo con múltiples nombres (líneas {line_start}-{info['line_end']})")
+                else:
+                    # Algunos nombres se usan, guardar para edición
+                    if line_start not in imports_to_remove_by_line:
+                        imports_to_remove_by_line[line_start] = {
+                            'unused': set(),
+                            'line_end': info['line_end']
+                        }
+                    imports_to_remove_by_line[line_start]['unused'].add(info.get('original_name', name))
+                    print(f"  Eliminando '{name}' de import múltiple (línea {line_start})")
+        
+        # Procesar líneas
+        new_lines = []
+        i = 0
+        while i < len(lines):
+            line_num = i + 1
+            
+            if line_num in lines_to_delete:
+                # Saltar esta línea completamente
+                i += 1
                 continue
             
-            if skip_line and ')' in stripped:
-                skip_line = False
-                continue
-            
-            if skip_line:
-                continue
-            
-            # Verificar imports simples
-            if stripped.startswith(('import ', 'from ')):
-                should_remove = any(name in unused for name in unused if name in stripped)
+            if line_num in imports_to_remove_by_line:
+                # Editar este import multilínea
+                info = imports_to_remove_by_line[line_num]
+                line_end = info['line_end']
+                unused_names = info['unused']
                 
-                # Verificar específicamente si es un import no usado
-                try:
-                    tree = ast.parse(stripped)
-                    for node in ast.walk(tree):
-                        if isinstance(node, ast.Import):
-                            for alias in node.names:
-                                name = alias.asname if alias.asname else alias.name
-                                if name in unused:
-                                    should_remove = True
-                                    break
-                        elif isinstance(node, ast.ImportFrom):
-                            for alias in node.names:
-                                name = alias.asname if alias.asname else alias.name
-                                if name in unused:
-                                    should_remove = True
-                                    break
-                except:
-                    pass
+                # Juntar todas las líneas del import
+                import_block = []
+                for j in range(i, min(i + (line_end - line_num + 1), len(lines))):
+                    import_block.append(lines[j])
                 
-                if should_remove:
-                    print(f"  Eliminando: {stripped}")
-                    continue
-            
-            new_lines.append(line)
+                # Editar el bloque eliminando nombres no usados
+                import_text = '\n'.join(import_block)
+                for unused_name in unused_names:
+                    # Eliminar el nombre y comas adyacentes
+                    import_text = import_text.replace(f', {unused_name}', '')
+                    import_text = import_text.replace(f'{unused_name}, ', '')
+                    import_text = import_text.replace(f'{unused_name}', '')
+                
+                # Limpiar comas múltiples o comas al final
+                import_text = import_text.replace(',,', ',')
+                import_text = import_text.replace('(,', '(')
+                import_text = import_text.replace(',)', ')')
+                
+                new_lines.extend(import_text.split('\n'))
+                i += (line_end - line_num + 1)
+            else:
+                new_lines.append(lines[i])
+                i += 1
         
         return '\n'.join(new_lines)
     
