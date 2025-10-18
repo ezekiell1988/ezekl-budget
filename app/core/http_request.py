@@ -297,9 +297,16 @@ class HTTPClient:
             aiohttp.ClientError: Si hay error en la petición
             json.JSONDecodeError: Si la respuesta no es JSON válido
         """
-        response = await self.get(url, **kwargs)
-        response.raise_for_status()
-        return await response.json()
+        full_url = self._build_url(url)
+        merged_headers = self._merge_headers(kwargs.pop('headers', None))
+        
+        async with aiohttp.ClientSession(
+            timeout=self.timeout,
+            headers=merged_headers
+        ) as session:
+            async with session.get(full_url, **kwargs) as response:
+                response.raise_for_status()
+                return await response.json()
         
     async def get_text(self, url: str, **kwargs) -> str:
         """
@@ -315,9 +322,16 @@ class HTTPClient:
         Raises:
             aiohttp.ClientError: Si hay error en la petición
         """
-        response = await self.get(url, **kwargs)
-        response.raise_for_status()
-        return await response.text()
+        full_url = self._build_url(url)
+        merged_headers = self._merge_headers(kwargs.pop('headers', None))
+        
+        async with aiohttp.ClientSession(
+            timeout=self.timeout,
+            headers=merged_headers
+        ) as session:
+            async with session.get(full_url, **kwargs) as response:
+                response.raise_for_status()
+                return await response.text()
         
     async def get_bytes(self, url: str, **kwargs) -> bytes:
         """
@@ -333,9 +347,16 @@ class HTTPClient:
         Raises:
             aiohttp.ClientError: Si hay error en la petición
         """
-        response = await self.get(url, **kwargs)
-        response.raise_for_status()
-        return await response.read()
+        full_url = self._build_url(url)
+        merged_headers = self._merge_headers(kwargs.pop('headers', None))
+        
+        async with aiohttp.ClientSession(
+            timeout=self.timeout,
+            headers=merged_headers
+        ) as session:
+            async with session.get(full_url, **kwargs) as response:
+                response.raise_for_status()
+                return await response.read()
 
 
 # Cliente global por defecto
