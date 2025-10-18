@@ -233,7 +233,30 @@ class HTTPClient:
                 **kwargs
             ) as response:
                 logger.info(f"Respuesta {response.status} de POST multipart {full_url}")
-                return response
+                
+                # Leer el contenido antes de cerrar la conexión
+                response_status = response.status
+                response_headers = response.headers
+                response_content = await response.read()
+                
+                # Crear un objeto simple para retornar con los datos
+                class ResponseWrapper:
+                    def __init__(self, status, headers, content):
+                        self.status = status
+                        self.headers = headers
+                        self._content = content
+                    
+                    async def text(self):
+                        return self._content.decode('utf-8')
+                    
+                    async def read(self):
+                        return self._content
+                    
+                    async def json(self):
+                        import json
+                        return json.loads(self._content.decode('utf-8'))
+                
+                return ResponseWrapper(response_status, response_headers, response_content)
         
     async def put(
         self,
