@@ -4,6 +4,7 @@ Proporciona métodos para enviar mensajes de texto, imágenes, videos, documento
 ubicaciones, contactos y mensajes interactivos.
 """
 
+import aiohttp
 import logging
 from typing import Optional, Dict, Any
 from fastapi import HTTPException
@@ -96,31 +97,40 @@ class WhatsAppService:
         self._check_configuration()
         
         try:
+            # Usar los métodos de conveniencia que manejan la sesión correctamente
             if method == "POST":
-                response = await self.http_client.post(endpoint, json_data=data, params=params)
+                # Para POST con JSON, necesitamos manejar la sesión directamente
+                full_url = f"{self.base_url}/{endpoint}"
+                headers = {
+                    "Authorization": f"Bearer {self.access_token}",
+                    "Content-Type": "application/json"
+                }
+                
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(full_url, json=data, headers=headers, params=params) as response:
+                        response_data = await response.json()
+                        
+                        # Verificar si hay errores
+                        if response.status >= 400:
+                            error_info = response_data.get("error", {})
+                            error_message = error_info.get("message", "Error desconocido")
+                            error_code = error_info.get("code", "UNKNOWN")
+                            
+                            logger.error(f"❌ Error de WhatsApp API: [{error_code}] {error_message}")
+                            logger.error(f"Response completo: {response_data}")
+                            
+                            raise HTTPException(
+                                status_code=response.status,
+                                detail=f"Error de WhatsApp API: {error_message}"
+                            )
+                        
+                        return response_data
+                        
             elif method == "GET":
-                response = await self.http_client.get(endpoint, params=params)
+                response_data = await self.http_client.get_json(f"{endpoint}", params=params)
+                return response_data
             else:
                 raise ValueError(f"Método HTTP no soportado: {method}")
-            
-            # Leer la respuesta
-            response_data = await response.json()
-            
-            # Verificar si hay errores
-            if response.status >= 400:
-                error_info = response_data.get("error", {})
-                error_message = error_info.get("message", "Error desconocido")
-                error_code = error_info.get("code", "UNKNOWN")
-                
-                logger.error(f"❌ Error de WhatsApp API: [{error_code}] {error_message}")
-                logger.error(f"Response completo: {response_data}")
-                
-                raise HTTPException(
-                    status_code=response.status,
-                    detail=f"Error de WhatsApp API: {error_message}"
-                )
-            
-            return response_data
                         
         except HTTPException:
             raise
