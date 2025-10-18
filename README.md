@@ -1,6 +1,6 @@
 # Ezekl Budget - Aplicación Híbrida FastAPI + Ionic Angular
 
-Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angular 8** (frontend) para gestión de presupuesto con autenticación Microsoft, integración de Azure OpenAI, y deployment automático.
+Este es un proyecto híbrido que combina **FastAPI** (backend) con **Ionic Angular 8**(frontend) para gestión de presupuesto con autenticación Microsoft, integración de Azure OpenAI, y deployment automático.
 
 ## 🚀 Características
 
