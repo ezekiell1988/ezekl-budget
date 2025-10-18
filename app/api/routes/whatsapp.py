@@ -205,6 +205,27 @@ async def receive_webhook(
                         if message.type == "text" and message.text:
                             logger.info(f"        - Contenido: '{message.text.body}'")
                         
+                        # Si es imagen, mostrar detalles
+                        if message.type == "image" and message.image:
+                            logger.info(f"        - Imagen ID: {message.image.id}")
+                            logger.info(f"        - MIME Type: {message.image.mime_type}")
+                            if message.image.caption:
+                                logger.info(f"        - Caption: '{message.image.caption}'")
+                        
+                        # Si es audio, mostrar detalles
+                        if message.type == "audio" and message.audio:
+                            logger.info(f"        - Audio ID: {message.audio.id}")
+                            logger.info(f"        - MIME Type: {message.audio.mime_type}")
+                            if message.audio.voice:
+                                logger.info(f"        - Es mensaje de voz: Sí")
+                        
+                        # Si es video, mostrar detalles
+                        if message.type == "video" and message.video:
+                            logger.info(f"        - Video ID: {message.video.id}")
+                            logger.info(f"        - MIME Type: {message.video.mime_type}")
+                            if message.video.caption:
+                                logger.info(f"        - Caption: '{message.video.caption}'")
+                        
                         # Log del contacto
                         contact_name = "Desconocido"
                         if change.value.contacts:
@@ -214,22 +235,56 @@ async def receive_webhook(
                                     logger.info(f"        - Nombre del contacto: {contact_name}")
                                     logger.info(f"        - WhatsApp ID: {contact.wa_id}")
                         
-                        # 🤖 RESPUESTA AUTOMÁTICA CON IA
-                        # Solo responder a mensajes de texto
-                        if message.type == "text" and message.text and message.text.body:
+                        # 🤖 RESPUESTA AUTOMÁTICA CON IA MULTIMODAL
+                        # Soporta: texto, imágenes y audios
+                        if message.type in ["text", "image", "audio"]:
                             try:
-                                logger.info(f"\n      🤖 Procesando mensaje con IA para {message.from_}...")
+                                logger.info(f"\n      🤖 Procesando mensaje {message.type} con IA para {message.from_}...")
+                                
+                                # Extraer texto (puede ser mensaje directo o caption)
+                                user_text = None
+                                image_data = None
+                                audio_data = None
+                                media_type = None
+                                
+                                if message.type == "text" and message.text:
+                                    user_text = message.text.body
+                                
+                                elif message.type == "image" and message.image:
+                                    # Descargar la imagen
+                                    logger.info(f"      📥 Descargando imagen...")
+                                    image_data = await whatsapp_service.get_media_content(message.image.id)
+                                    user_text = message.image.caption or "¿Qué ves en esta imagen?"
+                                    media_type = message.image.mime_type
+                                    logger.info(f"      ✅ Imagen descargada: {len(image_data)} bytes")
+                                
+                                elif message.type == "audio" and message.audio:
+                                    # Descargar el audio
+                                    logger.info(f"      📥 Descargando audio...")
+                                    audio_data = await whatsapp_service.get_media_content(message.audio.id)
+                                    user_text = "¿Qué dice este audio?" if message.audio.voice else "Analiza este audio"
+                                    media_type = message.audio.mime_type
+                                    logger.info(f"      ✅ Audio descargado: {len(audio_data)} bytes")
                                 
                                 # Generar y enviar respuesta usando IA
                                 ai_result = await whatsapp_ai_service.process_and_reply(
-                                    user_message=message.text.body,
+                                    user_message=user_text,
                                     phone_number=message.from_,
-                                    contact_name=contact_name
+                                    contact_name=contact_name,
+                                    image_data=image_data,
+                                    audio_data=audio_data,
+                                    media_type=media_type
                                 )
                                 
                                 if ai_result["success"]:
                                     logger.info(f"      ✅ Respuesta de IA enviada: {ai_result['whatsapp_message_id']}")
                                     logger.info(f"      💬 Respuesta: {ai_result['ai_response'][:100]}...")
+                                    if ai_result.get("processed_media"):
+                                        media_info = ai_result["processed_media"]
+                                        if media_info.get("has_image"):
+                                            logger.info(f"      🖼️ Imagen procesada con IA")
+                                        if media_info.get("has_audio"):
+                                            logger.info(f"      🎤 Audio procesado con IA")
                                 else:
                                     logger.error(f"      ❌ Error procesando con IA: {ai_result.get('error')}")
                                     
@@ -526,6 +581,12 @@ async def send_document(
     
     🔒 **Requiere autenticación.**
     
+    Soporta procesamiento multimodal:
+    - Texto simple
+    - Imagen (via media_id de WhatsApp)
+    - Audio (via media_id de WhatsApp)
+    - Combinaciones de texto + imagen o texto + audio
+    
     Útil para:
     - Probar respuestas de IA antes de enviarlas
     - Integrar la IA en otros flujos
@@ -539,7 +600,11 @@ async def send_document(
                     "example": {
                         "response": "¡Hola! 👋 Soy el asistente de Ezekl Budget...",
                         "phone_number": "5491112345678",
-                        "contact_name": "Juan Pérez"
+                        "contact_name": "Juan Pérez",
+                        "processed_media": {
+                            "has_image": False,
+                            "has_audio": False
+                        }
                     }
                 }
             }
@@ -549,23 +614,50 @@ async def send_document(
     }
 )
 async def ai_chat(
-    message: str = Query(..., description="Mensaje del usuario"),
+    message: str = Query(..., description="Mensaje del usuario (texto o caption)"),
     phone_number: str = Query(..., description="Número de teléfono (para contexto/historial)"),
     contact_name: Optional[str] = Query(None, description="Nombre del contacto"),
+    image_id: Optional[str] = Query(None, description="ID de imagen de WhatsApp para procesar"),
+    audio_id: Optional[str] = Query(None, description="ID de audio de WhatsApp para procesar"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Genera una respuesta de IA sin enviarla por WhatsApp."""
+    """Genera una respuesta de IA sin enviarla por WhatsApp. Soporta multimedia."""
     try:
+        image_data = None
+        audio_data = None
+        media_type = None
+        
+        # Descargar imagen si se proporcionó ID
+        if image_id:
+            logger.info(f"📥 Descargando imagen {image_id}...")
+            image_data = await whatsapp_service.get_media_content(image_id)
+            media_type = "image/jpeg"  # WhatsApp generalmente usa JPEG
+            logger.info(f"✅ Imagen descargada: {len(image_data)} bytes")
+        
+        # Descargar audio si se proporcionó ID
+        if audio_id:
+            logger.info(f"📥 Descargando audio {audio_id}...")
+            audio_data = await whatsapp_service.get_media_content(audio_id)
+            media_type = "audio/ogg"  # WhatsApp voice messages son OGG
+            logger.info(f"✅ Audio descargado: {len(audio_data)} bytes")
+        
         response = await whatsapp_ai_service.generate_response(
             user_message=message,
             phone_number=phone_number,
-            contact_name=contact_name
+            contact_name=contact_name,
+            image_data=image_data,
+            audio_data=audio_data,
+            media_type=media_type
         )
         
         return {
             "response": response,
             "phone_number": phone_number,
-            "contact_name": contact_name
+            "contact_name": contact_name,
+            "processed_media": {
+                "has_image": bool(image_data),
+                "has_audio": bool(audio_data)
+            }
         }
     except Exception as e:
         logger.error(f"Error generando respuesta de IA: {str(e)}")
@@ -579,10 +671,17 @@ async def ai_chat(
     
     🔒 **Requiere autenticación.**
     
+    Soporta procesamiento multimodal:
+    - Texto simple
+    - Imagen (via media_id de WhatsApp)
+    - Audio (via media_id de WhatsApp)
+    - Combinaciones de texto + imagen o texto + audio
+    
     Este endpoint:
     1. Genera una respuesta usando IA basada en el mensaje del usuario
-    2. Envía la respuesta automáticamente por WhatsApp
-    3. Mantiene el historial de conversación
+    2. Procesa imágenes o audios si se proporcionan
+    3. Envía la respuesta automáticamente por WhatsApp
+    4. Mantiene el historial de conversación
     """,
     responses={
         200: {
@@ -593,17 +692,40 @@ async def ai_chat(
     }
 )
 async def ai_reply(
-    message: str = Query(..., description="Mensaje del usuario"),
+    message: str = Query(..., description="Mensaje del usuario (texto o caption)"),
     phone_number: str = Query(..., description="Número de teléfono destino"),
     contact_name: Optional[str] = Query(None, description="Nombre del contacto"),
+    image_id: Optional[str] = Query(None, description="ID de imagen de WhatsApp para procesar"),
+    audio_id: Optional[str] = Query(None, description="ID de audio de WhatsApp para procesar"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Genera y envía una respuesta de IA por WhatsApp."""
+    """Genera y envía una respuesta de IA por WhatsApp. Soporta multimedia."""
     try:
+        image_data = None
+        audio_data = None
+        media_type = None
+        
+        # Descargar imagen si se proporcionó ID
+        if image_id:
+            logger.info(f"📥 Descargando imagen {image_id}...")
+            image_data = await whatsapp_service.get_media_content(image_id)
+            media_type = "image/jpeg"
+            logger.info(f"✅ Imagen descargada: {len(image_data)} bytes")
+        
+        # Descargar audio si se proporcionó ID
+        if audio_id:
+            logger.info(f"📥 Descargando audio {audio_id}...")
+            audio_data = await whatsapp_service.get_media_content(audio_id)
+            media_type = "audio/ogg"
+            logger.info(f"✅ Audio descargado: {len(audio_data)} bytes")
+        
         result = await whatsapp_ai_service.process_and_reply(
             user_message=message,
             phone_number=phone_number,
-            contact_name=contact_name
+            contact_name=contact_name,
+            image_data=image_data,
+            audio_data=audio_data,
+            media_type=media_type
         )
         
         return result

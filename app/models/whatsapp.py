@@ -24,13 +24,52 @@ class WhatsAppTextMessage(BaseModel):
     body: str = Field(description="Contenido del mensaje de texto")
 
 
+class WhatsAppImageMessage(BaseModel):
+    """Contenido de un mensaje de imagen."""
+    id: str = Field(description="ID del media en WhatsApp")
+    mime_type: str = Field(description="Tipo MIME de la imagen")
+    sha256: str = Field(description="Hash SHA256 del archivo")
+    caption: Optional[str] = Field(default=None, description="Caption de la imagen")
+
+
+class WhatsAppAudioMessage(BaseModel):
+    """Contenido de un mensaje de audio."""
+    id: str = Field(description="ID del media en WhatsApp")
+    mime_type: str = Field(description="Tipo MIME del audio")
+    sha256: str = Field(description="Hash SHA256 del archivo")
+    voice: Optional[bool] = Field(default=None, description="Si es mensaje de voz")
+
+
+class WhatsAppVideoMessage(BaseModel):
+    """Contenido de un mensaje de video."""
+    id: str = Field(description="ID del media en WhatsApp")
+    mime_type: str = Field(description="Tipo MIME del video")
+    sha256: str = Field(description="Hash SHA256 del archivo")
+    caption: Optional[str] = Field(default=None, description="Caption del video")
+
+
+class WhatsAppDocumentMessage(BaseModel):
+    """Contenido de un mensaje de documento."""
+    id: str = Field(description="ID del media en WhatsApp")
+    mime_type: str = Field(description="Tipo MIME del documento")
+    sha256: str = Field(description="Hash SHA256 del archivo")
+    filename: Optional[str] = Field(default=None, description="Nombre del archivo")
+    caption: Optional[str] = Field(default=None, description="Caption del documento")
+
+
 class WhatsAppMessage(BaseModel):
     """Mensaje individual de WhatsApp."""
     from_: str = Field(alias="from", description="Número de teléfono del remitente")
     id: str = Field(description="ID único del mensaje")
     timestamp: str = Field(description="Timestamp del mensaje")
-    type: str = Field(description="Tipo de mensaje (text, image, video, etc.)")
+    type: str = Field(description="Tipo de mensaje (text, image, video, audio, document, etc.)")
+    
+    # Diferentes tipos de contenido según el tipo de mensaje
     text: Optional[WhatsAppTextMessage] = Field(default=None, description="Contenido si es mensaje de texto")
+    image: Optional[WhatsAppImageMessage] = Field(default=None, description="Contenido si es imagen")
+    audio: Optional[WhatsAppAudioMessage] = Field(default=None, description="Contenido si es audio")
+    video: Optional[WhatsAppVideoMessage] = Field(default=None, description="Contenido si es video")
+    document: Optional[WhatsAppDocumentMessage] = Field(default=None, description="Contenido si es documento")
     
     class Config:
         populate_by_name = True

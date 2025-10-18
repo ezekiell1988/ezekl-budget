@@ -1,10 +1,12 @@
 """
 Servicio de IA para WhatsApp usando Azure OpenAI.
 Proporciona respuestas inteligentes automáticas a mensajes de WhatsApp.
+Soporta procesamiento multimodal: texto, imágenes y audios.
 """
 
 import logging
-from typing import Optional, Dict, List
+import base64
+from typing import Optional, Dict, List, Tuple
 from openai import AsyncAzureOpenAI
 
 from app.core.config import settings
@@ -48,6 +50,30 @@ Información importante:
 
         self.max_history_messages = 10  # Máximo de mensajes a recordar por conversación
         self.max_response_tokens = 500  # Tokens máximos para respuesta (GPT-5 necesita más margen)
+    
+    def _encode_image_to_base64(self, image_bytes: bytes) -> str:
+        """
+        Codifica una imagen en base64 para enviarla a OpenAI.
+        
+        Args:
+            image_bytes: Contenido de la imagen en bytes
+            
+        Returns:
+            Imagen codificada en base64
+        """
+        return base64.b64encode(image_bytes).decode('utf-8')
+    
+    def _encode_audio_to_base64(self, audio_bytes: bytes) -> str:
+        """
+        Codifica un audio en base64 para enviarla a OpenAI.
+        
+        Args:
+            audio_bytes: Contenido del audio en bytes
+            
+        Returns:
+            Audio codificado en base64
+        """
+        return base64.b64encode(audio_bytes).decode('utf-8')
         
     @property
     def client(self) -> AsyncAzureOpenAI:
@@ -115,15 +141,22 @@ Información importante:
         self,
         user_message: str,
         phone_number: str,
-        contact_name: Optional[str] = None
+        contact_name: Optional[str] = None,
+        image_data: Optional[bytes] = None,
+        audio_data: Optional[bytes] = None,
+        media_type: Optional[str] = None
     ) -> str:
         """
         Genera una respuesta inteligente usando Azure OpenAI.
+        Soporta procesamiento multimodal: texto, imágenes y audios.
         
         Args:
-            user_message: Mensaje del usuario
+            user_message: Mensaje de texto del usuario (puede ser caption o texto solo)
             phone_number: Número de teléfono del usuario
             contact_name: Nombre del contacto (opcional)
+            image_data: Datos de imagen en bytes (opcional)
+            audio_data: Datos de audio en bytes (opcional)
+            media_type: Tipo MIME del media (opcional, ej: 'image/jpeg', 'audio/ogg')
             
         Returns:
             Respuesta generada por la IA
@@ -132,19 +165,102 @@ Información importante:
             Exception: Si ocurre un error generando la respuesta
         """
         try:
+            # Construir el contenido del mensaje del usuario
+            user_content = []
+            
+            # Si hay imagen, agregarla al contenido
+            if image_data:
+                logger.info(f"🖼️ Procesando imagen ({len(image_data)} bytes)")
+                image_base64 = self._encode_image_to_base64(image_data)
+                
+                # Determinar el formato de la imagen
+                image_format = "jpeg"  # default
+                if media_type:
+                    if "png" in media_type.lower():
+                        image_format = "png"
+                    elif "webp" in media_type.lower():
+                        image_format = "webp"
+                
+                user_content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/{image_format};base64,{image_base64}"
+                    }
+                })
+            
+            # Si hay audio, agregarla al contenido
+            if audio_data:
+                logger.info(f"🎤 Procesando audio ({len(audio_data)} bytes)")
+                audio_base64 = self._encode_audio_to_base64(audio_data)
+                
+                # Determinar el formato del audio
+                audio_format = "ogg"  # default para WhatsApp voice messages
+                if media_type:
+                    if "mp3" in media_type.lower():
+                        audio_format = "mp3"
+                    elif "wav" in media_type.lower():
+                        audio_format = "wav"
+                    elif "m4a" in media_type.lower():
+                        audio_format = "m4a"
+                
+                user_content.append({
+                    "type": "input_audio",
+                    "input_audio": {
+                        "data": audio_base64,
+                        "format": audio_format
+                    }
+                })
+            
+            # Siempre agregar el texto (puede ser el mensaje principal o un caption)
+            if user_message:
+                user_content.append({
+                    "type": "text",
+                    "text": user_message
+                })
+            elif not image_data and not audio_data:
+                # Si no hay mensaje ni media, usar un texto por defecto
+                user_content.append({
+                    "type": "text",
+                    "text": "Hola"
+                })
+            
+            # Si user_content tiene un solo elemento de texto, simplificarlo
+            if len(user_content) == 1 and user_content[0]["type"] == "text":
+                user_message_content = user_content[0]["text"]
+            else:
+                user_message_content = user_content
+            
             # Agregar mensaje del usuario al historial
-            self._add_to_history(phone_number, "user", user_message)
+            self._add_to_history(phone_number, "user", user_message or "[Mensaje multimedia]")
             
             # Construir mensajes para la API
             messages = [
                 {"role": "system", "content": self.system_prompt}
             ]
             
-            # Agregar el historial de conversación
-            messages.extend(self._get_conversation_history(phone_number))
+            # Agregar el historial de conversación (solo texto)
+            history = self._get_conversation_history(phone_number)
+            for hist_msg in history[:-1]:  # Excluir el último que acabamos de agregar
+                messages.append({
+                    "role": hist_msg["role"],
+                    "content": hist_msg["content"]
+                })
             
-            logger.info(f"🤖 Generando respuesta de IA para {contact_name or phone_number}")
-            logger.debug(f"📝 Mensaje del usuario: {user_message}")
+            # Agregar el mensaje actual (puede ser multimodal)
+            messages.append({
+                "role": "user",
+                "content": user_message_content
+            })
+            
+            media_info = []
+            if image_data:
+                media_info.append("imagen")
+            if audio_data:
+                media_info.append("audio")
+            media_str = f" con {' y '.join(media_info)}" if media_info else ""
+            
+            logger.info(f"🤖 Generando respuesta de IA para {contact_name or phone_number}{media_str}")
+            logger.debug(f"📝 Mensaje del usuario: {user_message or '[multimedia]'}")
             
             # Obtener el deployment name de la configuración
             from app.core.config import settings
@@ -199,29 +315,45 @@ Información importante:
         self,
         user_message: str,
         phone_number: str,
-        contact_name: Optional[str] = None
+        contact_name: Optional[str] = None,
+        image_data: Optional[bytes] = None,
+        audio_data: Optional[bytes] = None,
+        media_type: Optional[str] = None
     ) -> Dict[str, any]:
         """
-        Procesa un mensaje y envía una respuesta automática por WhatsApp.
+        Procesa un mensaje (texto, imagen o audio) y envía una respuesta automática por WhatsApp.
         
         Args:
-            user_message: Mensaje del usuario
+            user_message: Mensaje de texto del usuario (puede ser caption)
             phone_number: Número de teléfono del usuario
             contact_name: Nombre del contacto (opcional)
+            image_data: Datos de imagen en bytes (opcional)
+            audio_data: Datos de audio en bytes (opcional)
+            media_type: Tipo MIME del media (opcional)
             
         Returns:
             Dict con el resultado del envío
         """
         try:
-            # Generar respuesta de IA
+            # Generar respuesta de IA (puede procesar texto, imagen o audio)
             ai_response = await self.generate_response(
                 user_message=user_message,
                 phone_number=phone_number,
-                contact_name=contact_name
+                contact_name=contact_name,
+                image_data=image_data,
+                audio_data=audio_data,
+                media_type=media_type
             )
             
             # Enviar respuesta por WhatsApp
-            logger.info(f"📤 Enviando respuesta de IA a {contact_name or phone_number}")
+            media_info = []
+            if image_data:
+                media_info.append("imagen")
+            if audio_data:
+                media_info.append("audio")
+            media_str = f" ({' y '.join(media_info)})" if media_info else ""
+            
+            logger.info(f"📤 Enviando respuesta de IA a {contact_name or phone_number}{media_str}")
             
             whatsapp_response = await whatsapp_service.send_text_message(
                 to=phone_number,
@@ -233,7 +365,11 @@ Información importante:
             return {
                 "success": True,
                 "ai_response": ai_response,
-                "whatsapp_message_id": whatsapp_response.messages[0]['id'] if whatsapp_response.messages else None
+                "whatsapp_message_id": whatsapp_response.messages[0]['id'] if whatsapp_response.messages else None,
+                "processed_media": {
+                    "has_image": bool(image_data),
+                    "has_audio": bool(audio_data)
+                }
             }
             
         except Exception as e:

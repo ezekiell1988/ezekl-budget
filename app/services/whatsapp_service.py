@@ -4,12 +4,12 @@ Proporciona métodos para enviar mensajes de texto, imágenes, videos, documento
 ubicaciones, contactos y mensajes interactivos.
 """
 
-import aiohttp
 import logging
 from typing import Optional, Dict, Any
 from fastapi import HTTPException
 
 from app.core.config import settings
+from app.core.http_request import HTTPClient
 from app.models.whatsapp import (
     WhatsAppMessageSendRequest,
     WhatsAppMessageSendResponse,
@@ -40,7 +40,16 @@ class WhatsAppService:
         self.access_token = settings.whatsapp_access_token
         self.phone_number_id = settings.whatsapp_phone_number_id
         self.api_version = settings.whatsapp_api_version
-        self.base_url = f"https://graph.facebook.com/{self.api_version}"
+        self.base_url = f"https://graph.facebook.com/{self.api_version}/{self.phone_number_id}"
+        
+        # Cliente HTTP con headers por defecto
+        self.http_client = HTTPClient(
+            base_url=self.base_url,
+            default_headers={
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json"
+            } if self.access_token else {}
+        )
         
         if self.access_token and self.phone_number_id:
             logger.info(f"✅ Servicio de WhatsApp inicializado")
@@ -86,52 +95,36 @@ class WhatsAppService:
         """
         self._check_configuration()
         
-        url = f"{self.base_url}/{self.phone_number_id}/{endpoint}"
-        
-        headers = {
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json"
-        }
-        
         try:
-            async with aiohttp.ClientSession() as session:
-                if method == "POST":
-                    async with session.post(url, json=data, headers=headers, params=params) as response:
-                        response_data = await response.json()
+            if method == "POST":
+                response = await self.http_client.post(endpoint, json_data=data, params=params)
+            elif method == "GET":
+                response = await self.http_client.get(endpoint, params=params)
+            else:
+                raise ValueError(f"Método HTTP no soportado: {method}")
+            
+            # Leer la respuesta
+            response_data = await response.json()
+            
+            # Verificar si hay errores
+            if response.status >= 400:
+                error_info = response_data.get("error", {})
+                error_message = error_info.get("message", "Error desconocido")
+                error_code = error_info.get("code", "UNKNOWN")
+                
+                logger.error(f"❌ Error de WhatsApp API: [{error_code}] {error_message}")
+                logger.error(f"Response completo: {response_data}")
+                
+                raise HTTPException(
+                    status_code=response.status,
+                    detail=f"Error de WhatsApp API: {error_message}"
+                )
+            
+            return response_data
                         
-                        if response.status >= 400:
-                            error_info = response_data.get("error", {})
-                            error_message = error_info.get("message", "Error desconocido")
-                            error_code = error_info.get("code", "UNKNOWN")
-                            
-                            logger.error(f"❌ Error de WhatsApp API: [{error_code}] {error_message}")
-                            logger.error(f"Response completo: {response_data}")
-                            
-                            raise HTTPException(
-                                status_code=response.status,
-                                detail=f"Error de WhatsApp API: {error_message}"
-                            )
-                        
-                        return response_data
-                        
-                elif method == "GET":
-                    async with session.get(url, headers=headers, params=params) as response:
-                        response_data = await response.json()
-                        
-                        if response.status >= 400:
-                            error_info = response_data.get("error", {})
-                            error_message = error_info.get("message", "Error desconocido")
-                            
-                            logger.error(f"❌ Error de WhatsApp API: {error_message}")
-                            
-                            raise HTTPException(
-                                status_code=response.status,
-                                detail=f"Error de WhatsApp API: {error_message}"
-                            )
-                        
-                        return response_data
-                        
-        except aiohttp.ClientError as e:
+        except HTTPException:
+            raise
+        except Exception as e:
             logger.error(f"❌ Error de conexión con WhatsApp API: {str(e)}")
             raise HTTPException(
                 status_code=503,
@@ -501,6 +494,133 @@ class WhatsAppService:
         )
         
         return await self.send_message(message_request)
+    
+    async def get_media_url(self, media_id: str) -> str:
+        """
+        Obtiene la URL de descarga de un archivo de media.
+        
+        Args:
+            media_id: ID del media en WhatsApp
+            
+        Returns:
+            URL de descarga del media
+            
+        Raises:
+            HTTPException: Si ocurre un error obteniendo la URL
+        """
+        self._check_configuration()
+        
+        url = f"https://graph.facebook.com/{self.api_version}/{media_id}"
+        
+        try:
+            # Usar HTTPClient con headers de autorización
+            http_client = HTTPClient(
+                default_headers={
+                    "Authorization": f"Bearer {self.access_token}"
+                }
+            )
+            
+            response = await http_client.get(url)
+            
+            if response.status != 200:
+                error_data = await response.json()
+                logger.error(f"❌ Error obteniendo URL de media: {error_data}")
+                raise HTTPException(
+                    status_code=response.status,
+                    detail=f"Error obteniendo URL de media: {error_data}"
+                )
+            
+            data = await response.json()
+            media_url = data.get("url")
+            
+            if not media_url:
+                raise HTTPException(
+                    status_code=500,
+                    detail="No se pudo obtener la URL del media"
+                )
+            
+            logger.info(f"✅ URL de media obtenida: {media_url[:50]}...")
+            return media_url
+                    
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Error de red obteniendo URL de media: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error de red obteniendo URL de media: {str(e)}"
+            )
+    
+    async def download_media(self, media_url: str) -> bytes:
+        """
+        Descarga el contenido de un archivo de media.
+        
+        Args:
+            media_url: URL de descarga del media
+            
+        Returns:
+            Contenido del archivo en bytes
+            
+        Raises:
+            HTTPException: Si ocurre un error descargando el archivo
+        """
+        self._check_configuration()
+        
+        try:
+            # Usar HTTPClient con headers de autorización
+            http_client = HTTPClient(
+                default_headers={
+                    "Authorization": f"Bearer {self.access_token}"
+                }
+            )
+            
+            response = await http_client.get(media_url)
+            
+            if response.status != 200:
+                logger.error(f"❌ Error descargando media: Status {response.status}")
+                raise HTTPException(
+                    status_code=response.status,
+                    detail=f"Error descargando media: Status {response.status}"
+                )
+            
+            content = await response.read()
+            logger.info(f"✅ Media descargado: {len(content)} bytes")
+            return content
+                    
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Error de red descargando media: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error de red descargando media: {str(e)}"
+            )
+    
+    async def get_media_content(self, media_id: str) -> bytes:
+        """
+        Obtiene el contenido de un archivo de media.
+        
+        Este método combina get_media_url y download_media para simplificar
+        la descarga de archivos de media en un solo paso.
+        
+        Args:
+            media_id: ID del media en WhatsApp
+            
+        Returns:
+            Contenido del archivo en bytes
+            
+        Raises:
+            HTTPException: Si ocurre un error obteniendo o descargando el media
+        """
+        logger.info(f"📥 Descargando media: {media_id}")
+        
+        # Primero obtener la URL de descarga
+        media_url = await self.get_media_url(media_id)
+        
+        # Luego descargar el contenido
+        content = await self.download_media(media_url)
+        
+        return content
     
     async def get_service_status(self) -> Dict[str, Any]:
         """
