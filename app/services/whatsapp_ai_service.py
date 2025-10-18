@@ -103,16 +103,20 @@ Información importante:
             try:
                 # Usar ffmpeg para convertir
                 # -i: input file
+                # -t 30: limitar a 30 segundos máximo
                 # -acodec pcm_s16le: audio codec WAV estándar
-                # -ar 16000: sample rate 16kHz (suficiente para voz)
+                # -ar 8000: sample rate 8kHz (voz humana, reduce mucho el tamaño)
                 # -ac 1: mono channel (reduce tamaño)
+                # -b:a 32k: bitrate bajo pero suficiente para voz
                 # -y: overwrite output
                 subprocess.run([
                     'ffmpeg',
                     '-i', input_path,
+                    '-t', '30',  # Máximo 30 segundos
                     '-acodec', 'pcm_s16le',
-                    '-ar', '16000',
+                    '-ar', '8000',  # 8kHz en vez de 16kHz
                     '-ac', '1',
+                    '-b:a', '32k',  # Bitrate bajo
                     '-y',
                     output_path
                 ], check=True, capture_output=True, text=True)
