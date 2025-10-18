@@ -14,7 +14,7 @@ from app.core.http_request import HTTPClient
 from app.models.whatsapp import (
     WhatsAppMessageSendRequest,
     WhatsAppMessageSendResponse,
-    WhatsAppErrorResponse
+    
 )
 
 logger = logging.getLogger(__name__)

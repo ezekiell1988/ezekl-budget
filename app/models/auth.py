@@ -4,8 +4,7 @@ Contiene todas las estructuras de datos para el flujo de login de 2 pasos con JW
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional
-from datetime import datetime
+from typing import Optional
 
 
 class RequestTokenRequest(BaseModel):

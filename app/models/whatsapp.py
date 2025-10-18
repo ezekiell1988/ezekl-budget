@@ -5,7 +5,6 @@ Define las estructuras de datos para webhooks y mensajes de WhatsApp.
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any, Dict
-from datetime import datetime
 
 
 class WhatsAppProfile(BaseModel):

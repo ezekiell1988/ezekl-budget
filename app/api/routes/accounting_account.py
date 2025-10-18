@@ -4,7 +4,7 @@ Proporciona funcionalidad para consultar el catálogo de cuentas contables con p
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 import json
 import logging
 from app.database.connection import execute_sp

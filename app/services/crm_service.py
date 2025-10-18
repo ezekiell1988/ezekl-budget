@@ -6,7 +6,7 @@ Proporciona métodos para interactuar con cuentas, contactos y casos.
 import aiohttp
 import json
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from fastapi import HTTPException
 
 from app.core.config import settings
@@ -15,7 +15,7 @@ from app.models.crm import (
     CaseResponse, CasesListResponse, CaseCreateRequest, CaseUpdateRequest,
     AccountResponse, AccountsListResponse, AccountCreateRequest, AccountUpdateRequest,
     ContactResponse, ContactsListResponse, ContactCreateRequest, ContactUpdateRequest,
-    CaseTypeCodesResponse, CRMOperationResponse, CRMHealthResponse, CRMDiagnoseResponse
+    CRMOperationResponse, CRMHealthResponse, CRMDiagnoseResponse
 )
 
 logger = logging.getLogger(__name__)

@@ -7,7 +7,6 @@ from fastapi import APIRouter, HTTPException, Request, Query, Header, Depends
 from fastapi.responses import PlainTextResponse
 from typing import Optional, Dict
 import logging
-import json
 from app.models.whatsapp import (
     WhatsAppWebhookPayload,
     WhatsAppMessageSendRequest,

@@ -13,7 +13,6 @@ import aiohttp
 from jose import jwe
 from app.core.config import settings
 from app.database.connection import execute_sp
-from app.services.email_service import send_notification_email
 from app.services.email_queue import queue_email
 from app.models.auth import (
     RequestTokenRequest,
@@ -25,8 +24,6 @@ from app.models.auth import (
     UserData,
     AuthErrorResponse
 )
-import secrets
-import string
 
 # Configurar logging
 logger = logging.getLogger(__name__)

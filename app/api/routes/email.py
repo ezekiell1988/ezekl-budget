@@ -5,15 +5,13 @@ Maneja la recepción de emails entrantes y reportes de entrega.
 
 from fastapi import APIRouter, Request, HTTPException
 from typing import Dict, Any, List
-import json
 from datetime import datetime
 import email
 from email import policy
 import logging
 from app.core.http_request import get_text
-from app.core.config import settings
 from app.services.email_service import email_service
-from app.models.requests import EmailSendRequest, WebhookEventRequest
+from app.models.requests import EmailSendRequest
 from app.models.responses import EmailSendResponse, WebhookEventResponse
 
 # Configurar logging

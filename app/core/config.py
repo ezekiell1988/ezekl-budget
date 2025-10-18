@@ -2,8 +2,6 @@
 Configuración de la aplicación híbrida FastAPI + Ionic Angular.
 """
 
-import os
-import socket
 from typing import Optional
 from pydantic_settings import BaseSettings
 
