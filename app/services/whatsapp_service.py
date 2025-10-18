@@ -39,7 +39,7 @@ class WhatsAppService:
         """Inicializa el servicio de WhatsApp."""
         self.access_token = settings.whatsapp_access_token
         self.phone_number_id = settings.whatsapp_phone_number_id
-        self.api_version = "v21.0"  # Versión fija de la API
+        self.api_version = settings.whatsapp_api_version
         self.base_url = f"https://graph.facebook.com/{self.api_version}"
         
         if self.access_token and self.phone_number_id:

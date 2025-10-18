@@ -76,6 +76,10 @@ jobs:
           CRM_CLIENT_SECRET=${{ secrets.CRM_CLIENT_SECRET }}
           CRM_D365_BASE_URL=${{ secrets.CRM_D365_BASE_URL }}
           CRM_API_VERSION=v9.0
+          WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+          WHATSAPP_API_VERSION=v24.0
           EOF
           
           # Detener contenedor anterior si existe

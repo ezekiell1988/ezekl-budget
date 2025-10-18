@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     whatsapp_access_token: Optional[str] = None
     whatsapp_phone_number_id: Optional[str] = None
     whatsapp_verify_token: str = "mi_token_secreto_whatsapp_2024"
+    whatsapp_api_version: str = "v24.0"
     
     @property
     def is_production(self) -> bool:
