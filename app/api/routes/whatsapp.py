@@ -11,7 +11,7 @@ import json
 from app.models.whatsapp import (
     WhatsAppWebhookPayload,
     WhatsAppMessageSendRequest,
-    WhatsAppMessageSendResponse
+    WhatsAppMessageSendResponse,
 )
 from app.services.whatsapp_service import whatsapp_service
 from app.services.whatsapp_ai_service import whatsapp_ai_service
@@ -51,49 +51,39 @@ WEBHOOK_VERIFY_TOKEN = settings.whatsapp_verify_token
     2. Configura el webhook URL: https://tu-dominio.com/api/whatsapp/webhook
     3. Configura el verify token: mi_token_secreto_whatsapp_2024
     4. Suscríbete a los eventos: messages
-    """
+    """,
 )
 async def verify_webhook(
     request: Request,
     mode: str = Query(alias="hub.mode", description="Modo del hub"),
     token: str = Query(alias="hub.verify_token", description="Token de verificación"),
-    challenge: str = Query(alias="hub.challenge", description="Challenge a retornar")
+    challenge: str = Query(alias="hub.challenge", description="Challenge a retornar"),
 ):
     """
     Verifica el webhook de WhatsApp.
-    
+
     Args:
         mode: Modo del hub (debe ser "subscribe")
         token: Token de verificación (debe coincidir con WEBHOOK_VERIFY_TOKEN)
         challenge: Challenge enviado por Meta
-        
+
     Returns:
         PlainTextResponse: El challenge si la verificación es exitosa
-        
+
     Raises:
         HTTPException: Error 403 si la verificación falla
     """
-    logger.info(f"📞 Verificación de webhook recibida")
-    logger.debug(f"Mode: {mode}, Token recibido: {token[:10]}..., Challenge: {challenge[:20]}...")
-    
+
     # Verificar que el modo sea "subscribe"
     if mode != "subscribe":
         logger.warning(f"❌ Modo inválido: {mode}")
-        raise HTTPException(
-            status_code=403,
-            detail="Modo de verificación inválido"
-        )
-    
+        raise HTTPException(status_code=403, detail="Modo de verificación inválido")
+
     # Verificar que el token coincida
     if token != WEBHOOK_VERIFY_TOKEN:
         logger.warning(f"❌ Token de verificación incorrecto")
-        raise HTTPException(
-            status_code=403,
-            detail="Token de verificación inválido"
-        )
-    
-    logger.info(f"✅ Webhook verificado exitosamente")
-    
+        raise HTTPException(status_code=403, detail="Token de verificación inválido")
+
     # Retornar el challenge para completar la verificación
     return PlainTextResponse(content=challenge)
 
@@ -130,30 +120,28 @@ async def verify_webhook(
     - El procesamiento es asíncrono (actualmente solo logging)
     """,
     responses={
-        200: {
-            "description": "Webhook procesado exitosamente"
-        },
-        500: {
-            "description": "Error interno del servidor"
-        }
-    }
+        200: {"description": "Webhook procesado exitosamente"},
+        500: {"description": "Error interno del servidor"},
+    },
 )
 async def receive_webhook(
     request: Request,
     payload: WhatsAppWebhookPayload,
-    x_hub_signature_256: Optional[str] = Header(None, description="Firma de Meta para validación")
+    x_hub_signature_256: Optional[str] = Header(
+        None, description="Firma de Meta para validación"
+    ),
 ):
     """
     Recibe y procesa webhooks de WhatsApp.
-    
+
     Args:
         request: Request de FastAPI
         payload: Payload del webhook validado con Pydantic
         x_hub_signature_256: Firma de seguridad de Meta
-        
+
     Returns:
         dict: Confirmación de recepción
-        
+
     Note:
         Por ahora solo imprime los datos recibidos.
         TODO: Implementar validación de firma x-hub-signature-256
@@ -161,115 +149,102 @@ async def receive_webhook(
         TODO: Implementar respuestas automáticas
     """
     try:
-        logger.info("=" * 80)
-        logger.info(f"📱 WEBHOOK DE WHATSAPP RECIBIDO")
-        logger.info("=" * 80)
-        
+        pass  # Logger eliminado
+
         # Log de la firma de seguridad
         if x_hub_signature_256:
-            logger.info(f"🔐 Firma de seguridad: {x_hub_signature_256[:30]}...")
+            pass  # Logger eliminado
         else:
             logger.warning("⚠️ Sin firma de seguridad (x-hub-signature-256)")
-        
+
         # Log del objeto principal
-        logger.info(f"📦 Tipo de objeto: {payload.object}")
-        
+
         # Procesar cada entrada
         for entry_idx, entry in enumerate(payload.entry, 1):
-            logger.info(f"\n📋 ENTRADA #{entry_idx}")
-            logger.info(f"  - WhatsApp Business Account ID: {entry.id}")
-            
+            pass  # Logger eliminado
+
             # Procesar cada cambio
             for change_idx, change in enumerate(entry.changes, 1):
-                logger.info(f"\n  🔄 CAMBIO #{change_idx}")
-                logger.info(f"    - Campo: {change.field}")
-                logger.info(f"    - Producto: {change.value.messaging_product}")
-                
+
                 # Metadata del número de teléfono
                 metadata = change.value.metadata
-                logger.info(f"    - Número de teléfono: {metadata.display_phone_number}")
-                logger.info(f"    - Phone Number ID: {metadata.phone_number_id}")
-                
+
                 # Procesar mensajes entrantes
                 if change.value.messages:
-                    logger.info(f"\n    📨 MENSAJES ENTRANTES: {len(change.value.messages)}")
-                    
+                    pass  # Logger eliminado
+
                     for msg_idx, message in enumerate(change.value.messages, 1):
-                        logger.info(f"\n      💬 MENSAJE #{msg_idx}")
-                        logger.info(f"        - ID: {message.id}")
-                        logger.info(f"        - De: {message.from_}")
-                        logger.info(f"        - Timestamp: {message.timestamp}")
-                        logger.info(f"        - Tipo: {message.type}")
-                        
+                        pass  # Logger eliminado
+
                         # Si es mensaje de texto, mostrar el contenido
                         if message.type == "text" and message.text:
-                            logger.info(f"        - Contenido: '{message.text.body}'")
-                        
+                            pass  # Logger eliminado
+
                         # Si es imagen, mostrar detalles
                         if message.type == "image" and message.image:
-                            logger.info(f"        - Imagen ID: {message.image.id}")
-                            logger.info(f"        - MIME Type: {message.image.mime_type}")
+                            pass  # Logger eliminado
                             if message.image.caption:
-                                logger.info(f"        - Caption: '{message.image.caption}'")
-                        
+                                pass  # Logger eliminado
+
                         # Si es audio, mostrar detalles
                         if message.type == "audio" and message.audio:
-                            logger.info(f"        - Audio ID: {message.audio.id}")
-                            logger.info(f"        - MIME Type: {message.audio.mime_type}")
+                            pass  # Logger eliminado
                             if message.audio.voice:
-                                logger.info(f"        - Es mensaje de voz: Sí")
-                        
+                                pass  # Logger eliminado
+
                         # Si es video, mostrar detalles
                         if message.type == "video" and message.video:
-                            logger.info(f"        - Video ID: {message.video.id}")
-                            logger.info(f"        - MIME Type: {message.video.mime_type}")
+                            pass  # Logger eliminado
                             if message.video.caption:
-                                logger.info(f"        - Caption: '{message.video.caption}'")
-                        
+                                pass  # Logger eliminado
+
                         # Log del contacto
                         contact_name = "Desconocido"
                         if change.value.contacts:
                             for contact in change.value.contacts:
                                 if contact.wa_id == message.from_:
                                     contact_name = contact.profile.name
-                                    logger.info(f"        - Nombre del contacto: {contact_name}")
-                                    logger.info(f"        - WhatsApp ID: {contact.wa_id}")
-                        
+
                         # 🤖 RESPUESTA AUTOMÁTICA CON IA MULTIMODAL
                         # Soporta: texto, imágenes y audios
                         if message.type in ["text", "image", "audio"]:
                             try:
                                 # ✅ Marcar mensaje como leído (doble check azul)
                                 await whatsapp_service.mark_message_as_read(message.id)
-                                
-                                logger.info(f"\n      🤖 Procesando mensaje {message.type} con IA para {message.from_}...")
-                                
+
                                 # Extraer texto (puede ser mensaje directo o caption)
                                 user_text = None
                                 image_data = None
                                 audio_data = None
                                 media_type = None
-                                
+
                                 if message.type == "text" and message.text:
                                     user_text = message.text.body
-                                
+
                                 elif message.type == "image" and message.image:
                                     # Descargar la imagen
-                                    logger.info(f"      📥 Descargando imagen...")
-                                    image_data = await whatsapp_service.get_media_content(message.image.id)
-                                    user_text = message.image.caption or "¿Qué ves en esta imagen?"
+                                    image_data = (
+                                        await whatsapp_service.get_media_content(
+                                            message.image.id
+                                        )
+                                    )
+                                    user_text = (
+                                        message.image.caption
+                                        or "¿Qué ves en esta imagen?"
+                                    )
                                     media_type = message.image.mime_type
-                                    logger.info(f"      ✅ Imagen descargada: {len(image_data)} bytes")
-                                
+
                                 elif message.type == "audio" and message.audio:
                                     # Descargar el audio
-                                    logger.info(f"      📥 Descargando audio...")
-                                    audio_data = await whatsapp_service.get_media_content(message.audio.id)
+                                    audio_data = (
+                                        await whatsapp_service.get_media_content(
+                                            message.audio.id
+                                        )
+                                    )
                                     # Para audios, dejar user_text vacío - la transcripción lo reemplazará
                                     user_text = None
                                     media_type = message.audio.mime_type
-                                    logger.info(f"      ✅ Audio descargado: {len(audio_data)} bytes")
-                                
+
                                 # Generar y enviar respuesta usando IA
                                 ai_result = await whatsapp_ai_service.process_and_reply(
                                     user_message=user_text,
@@ -277,70 +252,64 @@ async def receive_webhook(
                                     contact_name=contact_name,
                                     image_data=image_data,
                                     audio_data=audio_data,
-                                    media_type=media_type
+                                    media_type=media_type,
                                 )
-                                
+
                                 if ai_result["success"]:
-                                    logger.info(f"      ✅ Respuesta de IA enviada: {ai_result['whatsapp_message_id']}")
-                                    logger.info(f"      💬 Respuesta: {ai_result['ai_response'][:100]}...")
+                                    pass  # Logger eliminado
                                     if ai_result.get("processed_media"):
                                         media_info = ai_result["processed_media"]
                                         if media_info.get("has_image"):
-                                            logger.info(f"      🖼️ Imagen procesada con IA")
+                                            pass  # Logger eliminado
                                         if media_info.get("has_audio"):
-                                            logger.info(f"      🎤 Audio procesado con IA")
+                                            pass  # Logger eliminado
                                 else:
-                                    logger.error(f"      ❌ Error procesando con IA: {ai_result.get('error')}")
-                                    
+                                    logger.error(
+                                        f"      ❌ Error procesando con IA: {ai_result.get('error')}"
+                                    )
+
                             except Exception as reply_error:
-                                logger.error(f"      ❌ Error en respuesta automática con IA: {str(reply_error)}", exc_info=True)
-                
+                                logger.error(
+                                    f"      ❌ Error en respuesta automática con IA: {str(reply_error)}",
+                                    exc_info=True,
+                                )
+
                 # Procesar cambios de estado
                 if change.value.statuses:
-                    logger.info(f"\n    📊 ESTADOS DE MENSAJES: {len(change.value.statuses)}")
-                    
+                    pass  # Logger eliminado
+
                     for status_idx, status in enumerate(change.value.statuses, 1):
-                        logger.info(f"\n      📍 ESTADO #{status_idx}")
-                        logger.info(f"        - Estado: {json.dumps(status, indent=10)}")
-        
+                        pass  # Logger eliminado
+
         # Log del payload completo en formato JSON
-        logger.info("\n" + "=" * 80)
-        logger.info("📄 PAYLOAD COMPLETO (JSON):")
-        logger.info("=" * 80)
-        logger.info(json.dumps(payload.model_dump(by_alias=True), indent=2, ensure_ascii=False))
-        logger.info("=" * 80)
-        
+
         # Retornar confirmación de recepción
-        return {
-            "status": "received",
-            "message": "Webhook procesado exitosamente"
-        }
-        
+        return {"status": "received", "message": "Webhook procesado exitosamente"}
+
     except Exception as e:
-        logger.error(f"❌ Error procesando webhook de WhatsApp: {str(e)}", exc_info=True)
-        
+        logger.error(
+            f"❌ Error procesando webhook de WhatsApp: {str(e)}", exc_info=True
+        )
+
         # Meta requiere que siempre retornemos 200 para evitar reintentos
         # Por eso capturamos el error pero retornamos éxito
-        return {
-            "status": "error",
-            "message": f"Error procesando webhook: {str(e)}"
-        }
+        return {"status": "error", "message": f"Error procesando webhook: {str(e)}"}
 
 
 @router.get(
     "/status",
     summary="Estado del servicio de WhatsApp",
-    description="Verifica que el servicio de WhatsApp está activo y configurado correctamente"
+    description="Verifica que el servicio de WhatsApp está activo y configurado correctamente",
 )
 async def whatsapp_status():
     """
     Verifica el estado del servicio de WhatsApp.
-    
+
     Returns:
         dict: Estado del servicio
     """
     service_status = await whatsapp_service.get_service_status()
-    
+
     return {
         **service_status,
         "webhook_configured": True,
@@ -348,12 +317,13 @@ async def whatsapp_status():
         "features": {
             "receive_messages": True,
             "send_messages": service_status["configured"],
-            "validate_signature": False  # Pendiente implementar
-        }
+            "validate_signature": False,  # Pendiente implementar
+        },
     }
 
 
 # ============== ENDPOINTS PARA ENVÍO DE MENSAJES ==============
+
 
 @router.post(
     "/send",
@@ -387,38 +357,31 @@ async def whatsapp_status():
     responses={
         200: {
             "description": "Mensaje enviado exitosamente",
-            "model": WhatsAppMessageSendResponse
+            "model": WhatsAppMessageSendResponse,
         },
-        401: {
-            "description": "No autorizado - Token inválido o ausente"
-        },
-        400: {
-            "description": "Request inválido - Parámetros incorrectos"
-        },
-        500: {
-            "description": "Error del servidor o de WhatsApp API"
-        }
-    }
+        401: {"description": "No autorizado - Token inválido o ausente"},
+        400: {"description": "Request inválido - Parámetros incorrectos"},
+        500: {"description": "Error del servidor o de WhatsApp API"},
+    },
 )
 async def send_whatsapp_message(
     message_request: WhatsAppMessageSendRequest,
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """
     Envía un mensaje de WhatsApp.
-    
+
     Args:
         message_request: Datos del mensaje a enviar
         current_user: Usuario autenticado (dependency)
-        
+
     Returns:
         WhatsAppMessageSendResponse: Información del mensaje enviado
-        
+
     Raises:
         HTTPException: Si hay error al enviar el mensaje
     """
-    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando mensaje WhatsApp")
-    
+
     try:
         response = await whatsapp_service.send_message(message_request)
         return response
@@ -427,8 +390,7 @@ async def send_whatsapp_message(
     except Exception as e:
         logger.error(f"❌ Error inesperado enviando mensaje: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Error inesperado al enviar mensaje: {str(e)}"
+            status_code=500, detail=f"Error inesperado al enviar mensaje: {str(e)}"
         )
 
 
@@ -449,37 +411,34 @@ async def send_whatsapp_message(
     - `preview_url`: Si es true, muestra preview de URLs (default: false)
     """,
     responses={
-        200: {
-            "description": "Mensaje enviado exitosamente"
-        },
-        401: {
-            "description": "No autorizado"
-        },
-        500: {
-            "description": "Error al enviar mensaje"
-        }
-    }
+        200: {"description": "Mensaje enviado exitosamente"},
+        401: {"description": "No autorizado"},
+        500: {"description": "Error al enviar mensaje"},
+    },
 )
 async def send_text_message(
-    to: str = Query(description="Número de teléfono del destinatario", example="5491112345678"),
-    message: str = Query(description="Contenido del mensaje", example="Hola, ¿cómo estás?"),
+    to: str = Query(
+        description="Número de teléfono del destinatario", example="5491112345678"
+    ),
+    message: str = Query(
+        description="Contenido del mensaje", example="Hola, ¿cómo estás?"
+    ),
     preview_url: bool = Query(default=False, description="Mostrar preview de URLs"),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """
     Envía un mensaje de texto simple.
-    
+
     Args:
         to: Número de teléfono del destinatario
         message: Contenido del mensaje
         preview_url: Si es True, muestra preview de URLs
         current_user: Usuario autenticado
-        
+
     Returns:
         WhatsAppMessageSendResponse
     """
-    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando texto a {to}")
-    
+
     try:
         response = await whatsapp_service.send_text_message(to, message, preview_url)
         return response
@@ -488,8 +447,7 @@ async def send_text_message(
     except Exception as e:
         logger.error(f"❌ Error enviando texto: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Error al enviar mensaje de texto: {str(e)}"
+            status_code=500, detail=f"Error al enviar mensaje de texto: {str(e)}"
         )
 
 
@@ -512,19 +470,20 @@ async def send_text_message(
         200: {"description": "Imagen enviada exitosamente"},
         401: {"description": "No autorizado"},
         400: {"description": "Parámetros inválidos"},
-        500: {"description": "Error al enviar imagen"}
-    }
+        500: {"description": "Error al enviar imagen"},
+    },
 )
 async def send_image_message(
     to: str = Query(description="Número de teléfono del destinatario"),
-    image_url: Optional[str] = Query(default=None, description="URL pública de la imagen"),
+    image_url: Optional[str] = Query(
+        default=None, description="URL pública de la imagen"
+    ),
     image_id: Optional[str] = Query(default=None, description="ID de imagen subida"),
     caption: Optional[str] = Query(default=None, description="Caption de la imagen"),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Envía una imagen."""
-    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando imagen a {to}")
-    
+
     try:
         response = await whatsapp_service.send_image(to, image_url, image_id, caption)
         return response
@@ -532,10 +491,7 @@ async def send_image_message(
         raise
     except Exception as e:
         logger.error(f"❌ Error enviando imagen: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al enviar imagen: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error al enviar imagen: {str(e)}")
 
 
 @router.post(
@@ -552,23 +508,22 @@ async def send_image_message(
     responses={
         200: {"description": "Documento enviado exitosamente"},
         401: {"description": "No autorizado"},
-        500: {"description": "Error al enviar documento"}
-    }
+        500: {"description": "Error al enviar documento"},
+    },
 )
 async def send_document(
-    to: str = Query(..., description="Número de teléfono con código de país (ej: 5491112345678)"),
+    to: str = Query(
+        ..., description="Número de teléfono con código de país (ej: 5491112345678)"
+    ),
     link: str = Query(..., description="URL del documento"),
     caption: Optional[str] = Query(None, description="Texto descriptivo opcional"),
     filename: Optional[str] = Query(None, description="Nombre del archivo"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """Envía un documento a un número de WhatsApp."""
     try:
         result = await whatsapp_service.send_document(
-            to=to,
-            link=link,
-            caption=caption,
-            filename=filename
+            to=to, link=link, caption=caption, filename=filename
         )
         return result
     except Exception as e:
@@ -577,6 +532,7 @@ async def send_document(
 
 
 # ============== ENDPOINTS DE IA PARA WHATSAPP ==============
+
 
 @router.post(
     "/ai/chat",
@@ -605,63 +561,62 @@ async def send_document(
                         "response": "¡Hola! 👋 Soy el asistente de Ezekl Budget...",
                         "phone_number": "5491112345678",
                         "contact_name": "Juan Pérez",
-                        "processed_media": {
-                            "has_image": False,
-                            "has_audio": False
-                        }
+                        "processed_media": {"has_image": False, "has_audio": False},
                     }
                 }
-            }
+            },
         },
         401: {"description": "No autorizado"},
-        500: {"description": "Error generando respuesta"}
-    }
+        500: {"description": "Error generando respuesta"},
+    },
 )
 async def ai_chat(
     message: str = Query(..., description="Mensaje del usuario (texto o caption)"),
-    phone_number: str = Query(..., description="Número de teléfono (para contexto/historial)"),
+    phone_number: str = Query(
+        ..., description="Número de teléfono (para contexto/historial)"
+    ),
     contact_name: Optional[str] = Query(None, description="Nombre del contacto"),
-    image_id: Optional[str] = Query(None, description="ID de imagen de WhatsApp para procesar"),
-    audio_id: Optional[str] = Query(None, description="ID de audio de WhatsApp para procesar"),
-    current_user: dict = Depends(get_current_user)
+    image_id: Optional[str] = Query(
+        None, description="ID de imagen de WhatsApp para procesar"
+    ),
+    audio_id: Optional[str] = Query(
+        None, description="ID de audio de WhatsApp para procesar"
+    ),
+    current_user: dict = Depends(get_current_user),
 ):
     """Genera una respuesta de IA sin enviarla por WhatsApp. Soporta multimedia."""
     try:
         image_data = None
         audio_data = None
         media_type = None
-        
+
         # Descargar imagen si se proporcionó ID
         if image_id:
-            logger.info(f"📥 Descargando imagen {image_id}...")
             image_data = await whatsapp_service.get_media_content(image_id)
             media_type = "image/jpeg"  # WhatsApp generalmente usa JPEG
-            logger.info(f"✅ Imagen descargada: {len(image_data)} bytes")
-        
+
         # Descargar audio si se proporcionó ID
         if audio_id:
-            logger.info(f"📥 Descargando audio {audio_id}...")
             audio_data = await whatsapp_service.get_media_content(audio_id)
             media_type = "audio/ogg"  # WhatsApp voice messages son OGG
-            logger.info(f"✅ Audio descargado: {len(audio_data)} bytes")
-        
+
         response = await whatsapp_ai_service.generate_response(
             user_message=message,
             phone_number=phone_number,
             contact_name=contact_name,
             image_data=image_data,
             audio_data=audio_data,
-            media_type=media_type
+            media_type=media_type,
         )
-        
+
         return {
             "response": response,
             "phone_number": phone_number,
             "contact_name": contact_name,
             "processed_media": {
                 "has_image": bool(image_data),
-                "has_audio": bool(audio_data)
-            }
+                "has_audio": bool(audio_data),
+            },
         }
     except Exception as e:
         logger.error(f"Error generando respuesta de IA: {str(e)}")
@@ -688,50 +643,48 @@ async def ai_chat(
     4. Mantiene el historial de conversación
     """,
     responses={
-        200: {
-            "description": "Respuesta generada y enviada exitosamente"
-        },
+        200: {"description": "Respuesta generada y enviada exitosamente"},
         401: {"description": "No autorizado"},
-        500: {"description": "Error procesando mensaje"}
-    }
+        500: {"description": "Error procesando mensaje"},
+    },
 )
 async def ai_reply(
     message: str = Query(..., description="Mensaje del usuario (texto o caption)"),
     phone_number: str = Query(..., description="Número de teléfono destino"),
     contact_name: Optional[str] = Query(None, description="Nombre del contacto"),
-    image_id: Optional[str] = Query(None, description="ID de imagen de WhatsApp para procesar"),
-    audio_id: Optional[str] = Query(None, description="ID de audio de WhatsApp para procesar"),
-    current_user: dict = Depends(get_current_user)
+    image_id: Optional[str] = Query(
+        None, description="ID de imagen de WhatsApp para procesar"
+    ),
+    audio_id: Optional[str] = Query(
+        None, description="ID de audio de WhatsApp para procesar"
+    ),
+    current_user: dict = Depends(get_current_user),
 ):
     """Genera y envía una respuesta de IA por WhatsApp. Soporta multimedia."""
     try:
         image_data = None
         audio_data = None
         media_type = None
-        
+
         # Descargar imagen si se proporcionó ID
         if image_id:
-            logger.info(f"📥 Descargando imagen {image_id}...")
             image_data = await whatsapp_service.get_media_content(image_id)
             media_type = "image/jpeg"
-            logger.info(f"✅ Imagen descargada: {len(image_data)} bytes")
-        
+
         # Descargar audio si se proporcionó ID
         if audio_id:
-            logger.info(f"📥 Descargando audio {audio_id}...")
             audio_data = await whatsapp_service.get_media_content(audio_id)
             media_type = "audio/ogg"
-            logger.info(f"✅ Audio descargado: {len(audio_data)} bytes")
-        
+
         result = await whatsapp_ai_service.process_and_reply(
             user_message=message,
             phone_number=phone_number,
             contact_name=contact_name,
             image_data=image_data,
             audio_data=audio_data,
-            media_type=media_type
+            media_type=media_type,
         )
-        
+
         return result
     except Exception as e:
         logger.error(f"Error en respuesta automática de IA: {str(e)}")
@@ -752,19 +705,15 @@ async def ai_reply(
     """,
     responses={
         200: {"description": "Historial limpiado exitosamente"},
-        401: {"description": "No autorizado"}
-    }
+        401: {"description": "No autorizado"},
+    },
 )
 async def clear_ai_history(
-    phone_number: str,
-    current_user: dict = Depends(get_current_user)
+    phone_number: str, current_user: dict = Depends(get_current_user)
 ):
     """Limpia el historial de conversación de un usuario."""
     whatsapp_ai_service.clear_history(phone_number)
-    return {
-        "success": True,
-        "message": f"Historial limpiado para {phone_number}"
-    }
+    return {"success": True, "message": f"Historial limpiado para {phone_number}"}
 
 
 @router.get(
@@ -781,12 +730,10 @@ async def clear_ai_history(
     """,
     responses={
         200: {"description": "Estadísticas obtenidas exitosamente"},
-        401: {"description": "No autorizado"}
-    }
+        401: {"description": "No autorizado"},
+    },
 )
-async def get_ai_statistics(
-    current_user: dict = Depends(get_current_user)
-):
+async def get_ai_statistics(current_user: dict = Depends(get_current_user)):
     """Obtiene estadísticas del servicio de IA."""
     return whatsapp_ai_service.get_statistics()
 
@@ -795,29 +742,33 @@ async def get_ai_statistics(
     "/send/document-message",
     response_model=WhatsAppMessageSendResponse,
     summary="Enviar documento (alternativo)",
-    description="Endpoint alternativo para envío de documentos"
+    description="Endpoint alternativo para envío de documentos",
 )
 async def send_document_message(
     to: str = Query(description="Número de teléfono del destinatario"),
-    document_url: Optional[str] = Query(default=None, description="URL pública del documento"),
-    document_id: Optional[str] = Query(default=None, description="ID de documento subido"),
+    document_url: Optional[str] = Query(
+        default=None, description="URL pública del documento"
+    ),
+    document_id: Optional[str] = Query(
+        default=None, description="ID de documento subido"
+    ),
     filename: Optional[str] = Query(default=None, description="Nombre del archivo"),
     caption: Optional[str] = Query(default=None, description="Caption del documento"),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Envía un documento."""
-    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando documento a {to}")
-    
+
     try:
-        response = await whatsapp_service.send_document(to, document_url, document_id, filename, caption)
+        response = await whatsapp_service.send_document(
+            to, document_url, document_id, filename, caption
+        )
         return response
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ Error enviando documento: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Error al enviar documento: {str(e)}"
+            status_code=500, detail=f"Error al enviar documento: {str(e)}"
         )
 
 
@@ -834,8 +785,8 @@ async def send_document_message(
     responses={
         200: {"description": "Ubicación enviada exitosamente"},
         401: {"description": "No autorizado"},
-        500: {"description": "Error al enviar ubicación"}
-    }
+        500: {"description": "Error al enviar ubicación"},
+    },
 )
 async def send_location_message(
     to: str = Query(description="Número de teléfono del destinatario"),
@@ -843,21 +794,21 @@ async def send_location_message(
     longitude: float = Query(description="Longitud"),
     name: Optional[str] = Query(default=None, description="Nombre del lugar"),
     address: Optional[str] = Query(default=None, description="Dirección"),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Envía una ubicación."""
-    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando ubicación a {to}")
-    
+
     try:
-        response = await whatsapp_service.send_location(to, latitude, longitude, name, address)
+        response = await whatsapp_service.send_location(
+            to, latitude, longitude, name, address
+        )
         return response
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ Error enviando ubicación: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Error al enviar ubicación: {str(e)}"
+            status_code=500, detail=f"Error al enviar ubicación: {str(e)}"
         )
 
 
@@ -877,26 +828,26 @@ async def send_location_message(
         200: {"description": "Plantilla enviada exitosamente"},
         401: {"description": "No autorizado"},
         400: {"description": "Plantilla no encontrada o no aprobada"},
-        500: {"description": "Error al enviar plantilla"}
-    }
+        500: {"description": "Error al enviar plantilla"},
+    },
 )
 async def send_template_message(
     to: str = Query(description="Número de teléfono del destinatario"),
     template_name: str = Query(description="Nombre de la plantilla aprobada"),
     language_code: str = Query(default="es", description="Código de idioma"),
-    current_user: Dict = Depends(get_current_user)
+    current_user: Dict = Depends(get_current_user),
 ):
     """Envía una plantilla aprobada."""
-    logger.info(f"👤 Usuario {current_user['user'].get('codeLogin', 'unknown')} enviando plantilla '{template_name}' a {to}")
-    
+
     try:
-        response = await whatsapp_service.send_template(to, template_name, language_code)
+        response = await whatsapp_service.send_template(
+            to, template_name, language_code
+        )
         return response
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ Error enviando plantilla: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Error al enviar plantilla: {str(e)}"
+            status_code=500, detail=f"Error al enviar plantilla: {str(e)}"
         )
