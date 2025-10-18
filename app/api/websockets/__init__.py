@@ -19,7 +19,6 @@ async def websocket_realtime_endpoint(websocket: WebSocket):
     Mantiene la conexión activa y responde a pings del cliente.
     """
     await websocket.accept()
-    print(f"🔌 WebSocket conectado: {websocket.client}")
 
     try:
         # Enviar mensaje de bienvenida
@@ -83,9 +82,9 @@ async def websocket_realtime_endpoint(websocket: WebSocket):
                 await websocket.send_text(json.dumps(response))
 
     except WebSocketDisconnect:
-        print(f"🔌 WebSocket desconectado: {websocket.client}")
+        pass  # Logger eliminado
     except Exception as e:
-        print(f"❌ Error en WebSocket: {str(e)}")
+        pass  # Logger eliminado
         try:
             error_message = {
                 "type": "error",
