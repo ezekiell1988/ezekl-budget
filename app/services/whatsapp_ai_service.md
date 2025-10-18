@@ -2,12 +2,13 @@
 
 ## 📋 Descripción
 
-Servicio de inteligencia artificial para WhatsApp que proporciona respuestas automáticas usando Azure OpenAI. Integra **GPT-5** (o1 reasoning model) para generar respuestas contextuales e inteligentes, con soporte multimodal para **texto, imágenes y audios**.
+Servicio de inteligencia artificial para WhatsApp que proporciona respuestas automáticas usando Azure OpenAI. Integra **GPT-5** (o1 reasoning model) para generar respuestas contextuales e inteligentes, con soporte multimodal para **texto, imágenes, audios y documentos PDF**.
 
 **Características principales:**
 - 🤖 Respuestas inteligentes con GPT-5
 - 🎤 Transcripción de audio a texto con gpt-4o-transcribe
 - 🖼️ Procesamiento de imágenes
+- 📄 **Análisis directo de documentos PDF (sin extracción de texto)**
 - ✓✓ Marcado automático de mensajes como leídos
 - 💬 Historial de conversación por usuario
 - 🔄 Respuestas automáticas contextuales
@@ -62,6 +63,14 @@ Usuario WhatsApp → Meta Webhook → FastAPI → WhatsApp AI Service
 - Caption opcional con la imagen
 - Respuestas contextuales sobre el contenido visual
 
+### 📄 Procesamiento de PDFs
+- **Análisis directo por GPT-5**: El modelo recibe el PDF completo codificado en base64
+- **Sin extracción de texto**: No se usa PyPDF2 ni librerías externas
+- **Procesamiento nativo**: GPT-5 analiza el PDF directamente como lo hace con imágenes
+- **Con o sin caption**: Puedes enviar solo el PDF o acompañarlo con una pregunta
+- **Respuesta inmediata**: El modelo analiza y responde en el mismo mensaje
+- **Sin límites artificiales**: El modelo determina cuánto puede procesar del documento
+
 ### ✓✓ Confirmación de Lectura
 - Marca mensajes como leídos automáticamente
 - Doble check azul aparece inmediatamente
@@ -106,9 +115,10 @@ POST /api/whatsapp/webhook
 - Recibe mensajes de WhatsApp automáticamente
 - Marca mensajes como leídos (✓✓ azul) inmediatamente
 - Procesa con IA y responde automáticamente
-- Soporta: **texto, imágenes y audios**
+- Soporta: **texto, imágenes, audios y documentos PDF**
 - Audio: transcribe automáticamente antes de procesar
 - Imagen: analiza contenido visual con GPT-5
+- **PDF: envía el documento completo directamente a GPT-5 para análisis**
 
 #### Chat con IA (Manual)
 ```http
@@ -244,6 +254,13 @@ if message.type in ["text", "image", "audio"]:
         audio_data = await whatsapp_service.get_media_content(message.audio.id)
         user_text = None  # La transcripción reemplazará esto
     
+    elif message.type == "document":
+        # Descargar documento PDF
+        document_data = await whatsapp_service.get_media_content(message.document.id)
+        pdf_data = document_data
+        filename = message.document.filename
+        user_text = None  # El texto se extrae del PDF automáticamente
+    
     # Generar y enviar respuesta
     ai_result = await whatsapp_ai_service.process_and_reply(
         user_message=user_text,
@@ -251,6 +268,8 @@ if message.type in ["text", "image", "audio"]:
         contact_name=contact_name,
         image_data=image_data,
         audio_data=audio_data,
+        pdf_data=pdf_data,
+        filename=filename,
         media_type=media_type
     )
 ```
@@ -272,6 +291,24 @@ result = await whatsapp_ai_service.process_and_reply(
     user_message="¿Cómo creo un presupuesto?",
     phone_number="5491112345678",
     contact_name="Juan"
+)
+
+# Procesar PDF
+result = await whatsapp_ai_service.process_and_reply(
+    user_message="¿Cuál es el presupuesto total?",  # Pregunta sobre el PDF
+    phone_number="5491112345678",
+    contact_name="Juan",
+    pdf_data=pdf_bytes,
+    filename="documento.pdf"
+)
+
+# O enviar PDF sin pregunta para análisis general
+result = await whatsapp_ai_service.process_and_reply(
+    user_message=None,  # Sin pregunta específica
+    phone_number="5491112345678",
+    contact_name="Juan",
+    pdf_data=pdf_bytes,
+    filename="presupuesto.pdf"
 )
 
 # Limpiar historial de un usuario
@@ -327,6 +364,17 @@ El servicio registra información detallada para cada operación:
 🤖 Generando respuesta de IA para Juan Pérez con imagen
 ✅ Respuesta generada exitosamente
 💬 Respuesta: Veo en la imagen...
+```
+
+### Logs de PDF
+```
+✅ Marcando mensaje como leído: wamid.XXX
+📥 Descargando documento...
+✅ Documento descargado: 125847 bytes
+📄 Procesando PDF: presupuesto.pdf (125847 bytes)
+🤖 Generando respuesta de IA para Juan Pérez con PDF
+✅ Respuesta generada exitosamente
+💬 Respuesta: Este presupuesto anual tiene un total de $450,000...
 ```
 
 ---
@@ -422,14 +470,15 @@ stats = whatsapp_ai_service.get_statistics()
 
 ## ✅ Funcionalidades Completadas
 
-- [x] ✅ **Soporte multimodal**: texto, imágenes y audios
+- [x] ✅ **Soporte multimodal**: texto, imágenes, audios y PDFs
 - [x] ✅ **Transcripción de audio**: gpt-4o-transcribe integrado
 - [x] ✅ **Procesamiento de imágenes**: GPT-5 visión multimodal
+- [x] ✅ **Procesamiento de PDFs**: análisis directo por GPT-5 sin extracción de texto
 - [x] ✅ **Marcado de mensajes como leídos**: doble check azul automático
 - [x] ✅ **Respuestas automáticas con GPT-5**: o1 reasoning model
 - [x] ✅ **Historial de conversación**: contexto por usuario
 - [x] ✅ **HTTPClient optimizado**: multipart/form-data para audios
-- [x] ✅ **Sin dependencias externas**: eliminado ffmpeg
+- [x] ✅ **Sin dependencias externas**: eliminado ffmpeg y PyPDF2
 
 ## 🚀 Próximas Mejoras
 
@@ -492,6 +541,59 @@ stats = whatsapp_ai_service.get_statistics()
 **Sistema**:
 1. ✓✓ Marca como leído
 2. 📥 Descarga imagen
+3. 🤖 GPT-5 analiza visualmente
+
+**IA**: "¡Claro! Veo en el recibo un gasto de $1,250 en supermercado del 17 de octubre. Puedes agregarlo a tu presupuesto en la categoría 'Alimentación'. ¿Quieres que te guíe en el proceso? 📊"
+
+---
+
+### Ejemplo 4: Documento PDF (Análisis Directo)
+
+**Usuario**: 📄 *[Envía archivo: "presupuesto_anual_2025.pdf"]*
+
+**Sistema**:
+1. ✓✓ Marca como leído
+2. 📥 Descarga documento (125,847 bytes)
+3. � Codifica PDF en base64
+4. 🤖 GPT-5 analiza el PDF completo
+
+**IA**: "He analizado el presupuesto anual 2025. El documento contiene:
+
+📊 **Resumen Ejecutivo:**
+- Presupuesto total: $450,000
+- Distribuido en 6 departamentos
+- Período: Enero - Diciembre 2025
+
+**Principales partidas:**
+- Marketing: $45,000 (10%)
+- Recursos Humanos: $180,000 (40%)
+- Operaciones: $150,000 (33%)
+- Tecnología: $45,000 (10%)
+- Administración: $30,000 (7%)
+
+¿Te gustaría que profundice en algún área específica? 📈"
+
+**Usuario**: "Desglosame el presupuesto de marketing"
+
+**Sistema**:
+1. ✓✓ Marca como leído
+2. 🤖 GPT-5 usa el historial (ya tiene el PDF en contexto)
+
+**IA**: "Según el documento, el presupuesto de Marketing ($45,000) se distribuye así:
+
+💰 **Desglose detallado:**
+- Publicidad digital: $20,000 (44%)
+  - Google Ads: $10,000
+  - Meta Ads: $7,000
+  - LinkedIn Ads: $3,000
+- Eventos y ferias: $15,000 (33%)
+- Material promocional: $10,000 (23%)
+  - Diseño gráfico: $4,000
+  - Impresión: $6,000
+
+El documento indica que es un incremento del 15% respecto al año anterior. ¿Necesitas más detalles? �"
+
+---
 3. 🖼️ GPT-5 analiza imagen + caption
 
 **IA**: "Claro que sí! Veo que es un recibo de compra. Para agregarlo a tu presupuesto en Ezekl Budget:

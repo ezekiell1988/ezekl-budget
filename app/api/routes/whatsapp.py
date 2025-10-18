@@ -205,8 +205,8 @@ async def receive_webhook(
                                     contact_name = contact.profile.name
 
                         # 🤖 RESPUESTA AUTOMÁTICA CON IA MULTIMODAL
-                        # Soporta: texto, imágenes y audios
-                        if message.type in ["text", "image", "audio"]:
+                        # Soporta: texto, imágenes, audios y documentos PDF
+                        if message.type in ["text", "image", "audio", "document"]:
                             try:
                                 # ✅ Marcar mensaje como leído (doble check azul)
                                 await whatsapp_service.mark_message_as_read(message.id)
@@ -215,7 +215,9 @@ async def receive_webhook(
                                 user_text = None
                                 image_data = None
                                 audio_data = None
+                                pdf_data = None
                                 media_type = None
+                                filename = None
 
                                 if message.type == "text" and message.text:
                                     user_text = message.text.body
@@ -244,6 +246,26 @@ async def receive_webhook(
                                     user_text = None
                                     media_type = message.audio.mime_type
 
+                                elif message.type == "document" and message.document:
+                                    # Descargar el documento
+                                    # Solo procesar si es PDF
+                                    mime_type = message.document.mime_type
+                                    filename = getattr(message.document, 'filename', 'documento.pdf')
+                                    
+                                    if mime_type and 'pdf' in mime_type.lower():
+                                        pdf_data = (
+                                            await whatsapp_service.get_media_content(
+                                                message.document.id
+                                            )
+                                        )
+                                        # Caption opcional del documento
+                                        user_text = getattr(message.document, 'caption', None) or ""
+                                        media_type = mime_type
+                                    else:
+                                        # No es PDF, no procesar automáticamente
+                                        logger.info(f"⚠️ Documento recibido no es PDF: {mime_type}")
+                                        continue
+
                                 # Generar y enviar respuesta usando IA
                                 ai_result = await whatsapp_ai_service.process_and_reply(
                                     user_message=user_text,
@@ -251,7 +273,9 @@ async def receive_webhook(
                                     contact_name=contact_name,
                                     image_data=image_data,
                                     audio_data=audio_data,
+                                    pdf_data=pdf_data,
                                     media_type=media_type,
+                                    filename=filename,
                                 )
 
                                 if ai_result["success"]:
@@ -261,6 +285,8 @@ async def receive_webhook(
                                         if media_info.get("has_image"):
                                             pass  # Logger eliminado
                                         if media_info.get("has_audio"):
+                                            pass  # Logger eliminado
+                                        if media_info.get("has_pdf"):
                                             pass  # Logger eliminado
                                 else:
                                     logger.error(
