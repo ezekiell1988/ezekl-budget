@@ -266,7 +266,9 @@ Información importante:
                     }
                 })
             
-            # Si hay audio, transcribirlo con Whisper y agregarlo como texto
+            # Si hay audio, transcribirlo y reemplazar/complementar el user_message
+            # La transcripción se trata como si fuera el mensaje original del usuario
+            # (sin prefijos como "[Audio transcrito]:" para que GPT-5 lo procese naturalmente)
             if audio_data:
                 logger.info(f"🎤 Procesando audio ({len(audio_data)} bytes)")
                 
@@ -283,25 +285,24 @@ Información importante:
                         source_format = "ogg"
                 
                 # Transcribir directamente con Azure OpenAI (acepta OGG y otros formatos)
-                # Ya no necesitamos convertir a WAV primero
                 transcription = await self._transcribe_audio(audio_data, source_format)
                 
                 if transcription:
-                    # Agregar transcripción al mensaje
-                    audio_message = f"[Audio transcrito]: {transcription}"
-                    
+                    # Usar la transcripción directamente como el mensaje del usuario
+                    # Sin prefijos ni indicadores - GPT-5 lo procesa como texto normal
                     if user_message:
-                        # Si ya hay mensaje de texto, combinarlo
-                        user_message = f"{user_message}\n\n{audio_message}"
+                        # Si ya hay mensaje de texto (caption), combinarlo con la transcripción
+                        user_message = f"{user_message}\n\n{transcription}"
+                        logger.info(f"✅ Audio transcrito y combinado con caption")
                     else:
-                        # Si solo hay audio, usar la transcripción
-                        user_message = audio_message
-                    
-                    logger.info(f"✅ Transcripción agregada al mensaje")
+                        # Si solo hay audio, usar la transcripción directamente
+                        user_message = transcription
+                        logger.info(f"✅ Audio transcrito: '{transcription[:100]}...'")
                 else:
-                    logger.warning("⚠️ No se pudo transcribir el audio, usando mensaje por defecto")
+                    logger.warning("⚠️ No se pudo transcribir el audio")
                     if not user_message:
-                        user_message = "He recibido un audio pero no pude transcribirlo. ¿Podrías escribirme el mensaje?"
+                        # Solo si falla la transcripción y no hay texto alternativo
+                        user_message = "No pude procesar el audio. ¿Podrías escribirme tu mensaje?"
             
             # Siempre agregar el texto (puede ser el mensaje principal o un caption)
             if user_message:
