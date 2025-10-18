@@ -239,6 +239,9 @@ async def receive_webhook(
                         # Soporta: texto, imágenes y audios
                         if message.type in ["text", "image", "audio"]:
                             try:
+                                # ✅ Marcar mensaje como leído (doble check azul)
+                                await whatsapp_service.mark_message_as_read(message.id)
+                                
                                 logger.info(f"\n      🤖 Procesando mensaje {message.type} con IA para {message.from_}...")
                                 
                                 # Extraer texto (puede ser mensaje directo o caption)
@@ -262,7 +265,8 @@ async def receive_webhook(
                                     # Descargar el audio
                                     logger.info(f"      📥 Descargando audio...")
                                     audio_data = await whatsapp_service.get_media_content(message.audio.id)
-                                    user_text = "¿Qué dice este audio?" if message.audio.voice else "Analiza este audio"
+                                    # Para audios, dejar user_text vacío - la transcripción lo reemplazará
+                                    user_text = None
                                     media_type = message.audio.mime_type
                                     logger.info(f"      ✅ Audio descargado: {len(audio_data)} bytes")
                                 

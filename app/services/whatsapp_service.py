@@ -617,6 +617,41 @@ class WhatsAppService:
         
         return content
     
+    async def mark_message_as_read(self, message_id: str) -> bool:
+        """
+        Marca un mensaje como leído (doble check azul en WhatsApp).
+        
+        Args:
+            message_id: ID del mensaje a marcar como leído
+            
+        Returns:
+            bool: True si se marcó exitosamente, False en caso contrario
+            
+        Example:
+            await whatsapp_service.mark_message_as_read("wamid.XXX...")
+        """
+        try:
+            logger.info(f"✅ Marcando mensaje como leído: {message_id}")
+            
+            message_data = {
+                "messaging_product": "whatsapp",
+                "status": "read",
+                "message_id": message_id
+            }
+            
+            response = await self._make_request("POST", "messages", data=message_data)
+            
+            if response.get("success"):
+                logger.info(f"✅ Mensaje marcado como leído exitosamente")
+                return True
+            else:
+                logger.warning(f"⚠️ No se pudo marcar mensaje como leído: {response}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Error marcando mensaje como leído: {str(e)}")
+            return False
+    
     async def get_service_status(self) -> Dict[str, Any]:
         """
         Obtiene el estado del servicio de WhatsApp.
