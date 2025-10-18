@@ -195,7 +195,9 @@ Información importante:
                 user_content.append({
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:image/{image_format};base64,{image_base64}"
+                        "url": f"data:image/{image_format};base64,{image_base64}",
+                        "detail": "low"  # Reduce consumo de tokens: "low" | "high" | "auto"
+                        # "low" usa ~85 tokens por imagen, suficiente para WhatsApp
                     }
                 })
             
@@ -280,18 +282,36 @@ Información importante:
             logger.debug(f"🔧 Usando deployment: {deployment_name}")
             
             # Llamar a Azure OpenAI
-            # Nota: GPT-5 tiene restricciones en parámetros (temperature debe ser 1.0, no soporta frequency/presence penalty)
+            # Nota: GPT-5 (o1 reasoning model) requiere max_completion_tokens alto
+            # Los tokens se dividen entre reasoning_tokens (internos) y completion_tokens (respuesta visible)
+            # Con 500 tokens, el modelo usa todo para reasoning y devuelve contenido vacío
             response = await self.client.chat.completions.create(
                 model=deployment_name,  # Usar el deployment de chat configurado en .env
                 messages=messages,
-                max_completion_tokens=self.max_response_tokens,  # GPT-5 usa max_completion_tokens
-                # temperature, top_p, frequency_penalty, presence_penalty no soportados en GPT-5
+                max_completion_tokens=8000,  # Aumentado significativamente para modelos o1/GPT-5
+                # GPT-5/o1 necesita espacio para reasoning_tokens + completion_tokens
+                # temperature, top_p, frequency_penalty, presence_penalty no soportados en GPT-5/o1
             )
             
             # Log de la respuesta completa para debugging
             logger.debug(f"🔍 Respuesta completa de API: {response}")
             logger.debug(f"🔍 Choices: {response.choices}")
             logger.debug(f"🔍 Primer choice: {response.choices[0] if response.choices else 'Sin choices'}")
+            
+            # Log de uso de tokens (importante para modelos o1/GPT-5 con reasoning)
+            if hasattr(response, 'usage'):
+                usage = response.usage
+                logger.info(f"📊 Token usage - Prompt: {usage.prompt_tokens}, "
+                          f"Completion: {usage.completion_tokens}, "
+                          f"Total: {usage.total_tokens}")
+                
+                # Mostrar reasoning tokens si están disponibles (GPT-5/o1)
+                if hasattr(usage, 'completion_tokens_details'):
+                    details = usage.completion_tokens_details
+                    if hasattr(details, 'reasoning_tokens'):
+                        logger.info(f"🧠 Reasoning tokens: {details.reasoning_tokens}")
+                        logger.info(f"📝 Visible tokens: {usage.completion_tokens - details.reasoning_tokens}")
+
             
             # Extraer la respuesta
             if not response.choices or len(response.choices) == 0:
