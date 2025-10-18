@@ -3,10 +3,13 @@
 Ejecutor de archivos SQL para ezekl-budget.
 Permite ejecutar archivos .sql directamente en la base de datos desde la línea de comandos.
 
+Ubicación: /utils/sql_execute.py
+Archivos SQL: /ezekl-budget/*.sql
+
 Uso:
-    python -m sql_execute --file=spLoginTokenAdd
-    python -m sql_execute --file=spLoginTokenAdd.sql
-    python -m sql_execute --file=spLoginAuth --verbose
+    python -m utils.sql_execute --file=spLoginTokenAdd
+    python -m utils.sql_execute --file=spLoginTokenAdd.sql
+    python -m utils.sql_execute --file=spLoginAuth --verbose
 """
 
 import os
@@ -21,13 +24,27 @@ from typing import Optional, Dict, List, Tuple
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-# Cargar variables de entorno desde .env.local
-env_local_path = Path(__file__).parent.parent / '.env.local'
-if env_local_path.exists():
-    load_dotenv(env_local_path)
-    print(f"Cargado archivo de configuración: {env_local_path}")
+# Cargar variables de entorno de forma jerárquica:
+# 1. Primero cargar .env (valores por defecto)
+# 2. Luego cargar .env.local (sobrescribe valores específicos como DB)
+project_root = Path(__file__).parent.parent
+
+env_path = project_root / '.env'
+env_local_path = project_root / '.env.local'
+
+# Cargar .env primero (base)
+if env_path.exists():
+    load_dotenv(env_path)
+    print(f"✓ Cargado archivo base: {env_path}")
 else:
-    print(f"Archivo .env.local no encontrado en: {env_local_path}")
+    print(f"⚠ Archivo .env no encontrado en: {env_path}")
+
+# Cargar .env.local después (sobrescribe variables específicas)
+if env_local_path.exists():
+    load_dotenv(env_local_path, override=True)
+    print(f"✓ Cargado archivo local (override): {env_local_path}")
+else:
+    print(f"ℹ Archivo .env.local no encontrado (opcional): {env_local_path}")
 
 # Agregar el directorio padre al path para importar módulos de la app
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -63,12 +80,13 @@ class SQLExecutor:
     
     def __init__(self):
         """Inicializa el ejecutor SQL."""
-        self.current_dir = Path(__file__).parent
-        logger.info(f"SQLExecutor inicializado en directorio: {self.current_dir}")
+        # Los archivos SQL están en el directorio ezekl-budget/, no en utils/
+        self.sql_dir = Path(__file__).parent.parent / 'ezekl-budget'
+        logger.info(f"SQLExecutor inicializado. Buscando archivos SQL en: {self.sql_dir}")
     
     def find_sql_file(self, filename: str) -> Optional[Path]:
         """
-        Busca un archivo SQL en el directorio actual.
+        Busca un archivo SQL en el directorio ezekl-budget/.
         
         Args:
             filename (str): Nombre del archivo (con o sin extensión .sql)
@@ -80,13 +98,14 @@ class SQLExecutor:
         if not filename.endswith('.sql'):
             filename += '.sql'
         
-        file_path = self.current_dir / filename
+        file_path = self.sql_dir / filename
         
         if file_path.exists():
             logger.info(f"Archivo encontrado: {file_path}")
             return file_path
         
         logger.error(f"Archivo no encontrado: {file_path}")
+        logger.error(f"Directorio de búsqueda: {self.sql_dir}")
         return None
     
     def read_sql_file(self, file_path: Path) -> str:
@@ -399,13 +418,18 @@ class SQLExecutor:
 async def main():
     """Función principal del programa."""
     parser = argparse.ArgumentParser(
-        description='Ejecutor de archivos SQL para ezekl-budget',
+        description='Ejecutor de archivos SQL para ezekl-budget (ubicado en /utils/)',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Ejemplos de uso:
-  python -m sql_execute --file=spLoginTokenAdd
-  python -m sql_execute --file=spLoginTokenAdd.sql
-  python -m sql_execute --file=spLoginAuth --verbose
+  python -m utils.sql_execute --file=spLoginTokenAdd
+  python -m utils.sql_execute --file=spLoginTokenAdd.sql
+  python -m utils.sql_execute --file=spLoginAuth --verbose
+  python utils/sql_execute.py --file=spLoginTokenAdd -v
+  
+Notas:
+  - Los archivos SQL deben estar en el directorio /ezekl-budget/
+  - Ejecutar desde el directorio raíz del proyecto
         '''
     )
     
