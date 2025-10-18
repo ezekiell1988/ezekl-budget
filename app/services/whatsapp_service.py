@@ -520,17 +520,9 @@ class WhatsAppService:
                 }
             )
             
-            response = await http_client.get(url)
+            # Usar get_json para obtener la respuesta parseada directamente
+            data = await http_client.get_json(url)
             
-            if response.status != 200:
-                error_data = await response.json()
-                logger.error(f"❌ Error obteniendo URL de media: {error_data}")
-                raise HTTPException(
-                    status_code=response.status,
-                    detail=f"Error obteniendo URL de media: {error_data}"
-                )
-            
-            data = await response.json()
             media_url = data.get("url")
             
             if not media_url:
@@ -574,16 +566,9 @@ class WhatsAppService:
                 }
             )
             
-            response = await http_client.get(media_url)
+            # Usar get_bytes para obtener el contenido directamente
+            content = await http_client.get_bytes(media_url)
             
-            if response.status != 200:
-                logger.error(f"❌ Error descargando media: Status {response.status}")
-                raise HTTPException(
-                    status_code=response.status,
-                    detail=f"Error descargando media: Status {response.status}"
-                )
-            
-            content = await response.read()
             logger.info(f"✅ Media descargado: {len(content)} bytes")
             return content
                     
