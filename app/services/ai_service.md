@@ -1,44 +1,42 @@
-# WhatsApp AI Service - Documentación
+# AI Service - Documentación
 
 ## 📋 Descripción
 
-Servicio de inteligencia artificial para WhatsApp que proporciona respuestas automáticas usando Azure OpenAI. Integra **GPT-5** (o1 reasoning model) para generar respuestas contextuales e inteligentes, con soporte multimodal para **texto, imágenes, audios y documentos PDF**.
+Servicio de inteligencia artificial multimodal que proporciona respuestas automáticas usando Azure OpenAI. Integra **GPT-5** (o1 reasoning model) para generar respuestas contextuales e inteligentes, con soporte multimodal para **texto, imágenes y audios**.
 
 **Características principales:**
 - 🤖 Respuestas inteligentes con GPT-5
 - 🎤 Transcripción de audio a texto con gpt-4o-transcribe
 - 🖼️ Procesamiento de imágenes
-- 📄 **Análisis directo de documentos PDF (sin extracción de texto)**
-- ✓✓ Marcado automático de mensajes como leídos
 - 💬 Historial de conversación por usuario
 - 🔄 Respuestas automáticas contextuales
+- 📱 Integración con WhatsApp Business API (opcional)
+- 🌐 API REST para integración en cualquier plataforma
 
 ---
 
 ## 🏗️ Arquitectura
 
 ```
-Usuario WhatsApp → Meta Webhook → FastAPI → WhatsApp AI Service
-                        ↓                           ↓
-                   ✓✓ Leído                  Procesamiento:
-                                              - Texto → GPT-5
-                                              - Audio → Transcripción → GPT-5
-                                              - Imagen → GPT-5
-                        ↓                           ↓
-                  WhatsApp API ← Respuesta Automática ← Azure OpenAI
+Cliente (WhatsApp/API) → Endpoint → AI Service
+                            ↓            ↓
+                      Procesamiento:
+                       - Texto → GPT-5
+                       - Audio → Transcripción → GPT-5
+                       - Imagen → GPT-5
+                            ↓            ↓
+                  Respuesta Automática ← Azure OpenAI
 ```
 
 ### Flujo de Conversación Completo
 
-1. **Recepción**: Usuario envía mensaje (texto/audio/imagen) por WhatsApp
-2. **Webhook**: Meta envía notificación al endpoint `/api/whatsapp/webhook`
-3. **✓✓ Marcado como leído**: Se marca el mensaje con doble check azul inmediatamente
-4. **Procesamiento multimodal**:
+1. **Recepción**: Cliente envía mensaje (texto/audio/imagen)
+2. **Procesamiento multimodal**:
    - **Audio**: Transcripción automática con Azure OpenAI (gpt-4o-transcribe)
    - **Imagen**: Análisis visual con GPT-5
    - **Texto**: Procesamiento directo
-5. **IA**: GPT-5 genera respuesta contextual basada en el historial
-6. **Envío**: La respuesta se envía automáticamente al usuario por WhatsApp
+3. **IA**: GPT-5 genera respuesta contextual basada en el historial
+4. **Respuesta**: Se retorna la respuesta (con envío opcional por WhatsApp)
 
 ---
 
@@ -63,19 +61,6 @@ Usuario WhatsApp → Meta Webhook → FastAPI → WhatsApp AI Service
 - Caption opcional con la imagen
 - Respuestas contextuales sobre el contenido visual
 
-### 📄 Procesamiento de PDFs
-- **Análisis directo por GPT-5**: El modelo recibe el PDF completo codificado en base64
-- **Sin extracción de texto**: No se usa PyPDF2 ni librerías externas
-- **Procesamiento nativo**: GPT-5 analiza el PDF directamente como lo hace con imágenes
-- **Con o sin caption**: Puedes enviar solo el PDF o acompañarlo con una pregunta
-- **Respuesta inmediata**: El modelo analiza y responde en el mismo mensaje
-- **Sin límites artificiales**: El modelo determina cuánto puede procesar del documento
-
-### ✓✓ Confirmación de Lectura
-- Marca mensajes como leídos automáticamente
-- Doble check azul aparece inmediatamente
-- Mejor experiencia de usuario con feedback visual
-
 ### 💬 Gestión de Historial
 - Mantiene historial de conversación por usuario
 - Máximo configurable de mensajes por conversación (default: 10)
@@ -85,8 +70,8 @@ Usuario WhatsApp → Meta Webhook → FastAPI → WhatsApp AI Service
 ### 🎯 Personalización
 - Respuestas adaptadas al nombre del usuario
 - Sistema de instrucciones personalizable
-- Límite de tokens configurable para WhatsApp
-- Max 8000 tokens de completition para reasoning (GPT-5)
+- Límite de tokens configurable
+- Max 8000 tokens de completion para reasoning (GPT-5)
 
 ### 🛡️ Manejo de Errores
 - Respuesta de fallback automática en caso de error
@@ -98,15 +83,15 @@ Usuario WhatsApp → Meta Webhook → FastAPI → WhatsApp AI Service
 
 ## 📦 Componentes
 
-### 1. `whatsapp_ai_service.py`
+### 1. `ai_service.py`
 
 Servicio principal que maneja:
 - Inicialización de Azure OpenAI client
 - Gestión de historial de conversaciones
 - Generación de respuestas con IA
-- Integración con WhatsApp Business API
+- Integración opcional con WhatsApp Business API
 
-### 2. Endpoints en `whatsapp.py`
+### 2. Endpoints en `ai.py`
 
 #### Webhook (Automático)
 ```http
@@ -115,10 +100,9 @@ POST /api/whatsapp/webhook
 - Recibe mensajes de WhatsApp automáticamente
 - Marca mensajes como leídos (✓✓ azul) inmediatamente
 - Procesa con IA y responde automáticamente
-- Soporta: **texto, imágenes, audios y documentos PDF**
+- Soporta: **texto, imágenes y audios**
 - Audio: transcribe automáticamente antes de procesar
 - Imagen: analiza contenido visual con GPT-5
-- **PDF: envía el documento completo directamente a GPT-5 para análisis**
 
 #### Chat con IA (Manual)
 ```http
@@ -254,68 +238,88 @@ if message.type in ["text", "image", "audio"]:
         audio_data = await whatsapp_service.get_media_content(message.audio.id)
         user_text = None  # La transcripción reemplazará esto
     
-    elif message.type == "document":
-        # Descargar documento PDF
-        document_data = await whatsapp_service.get_media_content(message.document.id)
-        pdf_data = document_data
-        filename = message.document.filename
-        user_text = None  # El texto se extrae del PDF automáticamente
-    
     # Generar y enviar respuesta
-    ai_result = await whatsapp_ai_service.process_and_reply(
+    ai_result = await ai_service.process_and_reply(
         user_message=user_text,
         phone_number=message.from_,
         contact_name=contact_name,
         image_data=image_data,
         audio_data=audio_data,
-        pdf_data=pdf_data,
-        filename=filename,
-        media_type=media_type
+        media_type=media_type,
+        send_via_whatsapp=True  # Opcional, default True
     )
 ```
 
 ### 2. Uso Programático
 
 ```python
-from app.services.whatsapp_ai_service import whatsapp_ai_service
+from app.services.ai_service import ai_service
 
-# Solo generar respuesta (sin enviar)
-response = await whatsapp_ai_service.generate_response(
+# Solo generar respuesta (sin enviar por WhatsApp)
+response = await ai_service.generate_response(
     user_message="¿Cómo creo un presupuesto?",
     phone_number="5491112345678",
     contact_name="Juan"
 )
 
-# Generar y enviar automáticamente
-result = await whatsapp_ai_service.process_and_reply(
+# Generar y enviar automáticamente por WhatsApp
+result = await ai_service.process_and_reply(
     user_message="¿Cómo creo un presupuesto?",
     phone_number="5491112345678",
-    contact_name="Juan"
+    contact_name="Juan",
+    send_via_whatsapp=True
 )
 
-# Procesar PDF
-result = await whatsapp_ai_service.process_and_reply(
-    user_message="¿Cuál es el presupuesto total?",  # Pregunta sobre el PDF
-    phone_number="5491112345678",
+# Generar respuesta sin enviar por WhatsApp
+result = await ai_service.process_and_reply(
+    user_message="¿Cómo creo un presupuesto?",
+    phone_number="user123",
     contact_name="Juan",
-    pdf_data=pdf_bytes,
-    filename="documento.pdf"
-)
-
-# O enviar PDF sin pregunta para análisis general
-result = await whatsapp_ai_service.process_and_reply(
-    user_message=None,  # Sin pregunta específica
-    phone_number="5491112345678",
-    contact_name="Juan",
-    pdf_data=pdf_bytes,
-    filename="presupuesto.pdf"
+    send_via_whatsapp=False
 )
 
 # Limpiar historial de un usuario
-whatsapp_ai_service.clear_history("5491112345678")
+ai_service.clear_history("5491112345678")
 
 # Obtener estadísticas
-stats = whatsapp_ai_service.get_statistics()
+stats = ai_service.get_statistics()
+```
+
+### 3. Uso vía API REST
+
+```bash
+# Chat con texto simple
+curl -X POST "http://localhost:8001/api/ai/chat" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "¿Cómo creo un presupuesto?",
+    "user_id": "user123",
+    "user_name": "Juan"
+  }'
+
+# Chat multimodal con imagen
+curl -X POST "http://localhost:8001/api/ai/chat/multimodal" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "message=¿Qué es esto?" \
+  -F "user_id=user123" \
+  -F "user_name=Juan" \
+  -F "image=@/path/to/image.jpg"
+
+# Chat multimodal con audio
+curl -X POST "http://localhost:8001/api/ai/chat/multimodal" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "user_id=user123" \
+  -F "user_name=Juan" \
+  -F "audio=@/path/to/audio.ogg"
+
+# Limpiar historial
+curl -X DELETE "http://localhost:8001/api/ai/history/user123" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Obtener estadísticas
+curl -X GET "http://localhost:8001/api/ai/statistics" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ---
@@ -366,17 +370,6 @@ El servicio registra información detallada para cada operación:
 💬 Respuesta: Veo en la imagen...
 ```
 
-### Logs de PDF
-```
-✅ Marcando mensaje como leído: wamid.XXX
-📥 Descargando documento...
-✅ Documento descargado: 125847 bytes
-📄 Procesando PDF: presupuesto.pdf (125847 bytes)
-🤖 Generando respuesta de IA para Juan Pérez con PDF
-✅ Respuesta generada exitosamente
-💬 Respuesta: Este presupuesto anual tiene un total de $450,000...
-```
-
 ---
 
 ## 🎯 Mejores Prácticas
@@ -403,7 +396,7 @@ Siempre ofrece alternativas si la IA no puede ayudar:
 ### 4. Limpia el Historial Periódicamente
 Para conversaciones largas o problemas de contexto:
 ```python
-whatsapp_ai_service.clear_history(phone_number)
+ai_service.clear_history(phone_number)
 ```
 
 ---
@@ -452,7 +445,7 @@ x_hub_signature_256: Optional[str] = Header(None)
 
 ### Estadísticas Disponibles
 ```python
-stats = whatsapp_ai_service.get_statistics()
+stats = ai_service.get_statistics()
 # {
 #   "active_conversations": 5,
 #   "total_messages": 42,
@@ -470,15 +463,14 @@ stats = whatsapp_ai_service.get_statistics()
 
 ## ✅ Funcionalidades Completadas
 
-- [x] ✅ **Soporte multimodal**: texto, imágenes, audios y PDFs
+- [x] ✅ **Soporte multimodal**: texto, imágenes y audios
 - [x] ✅ **Transcripción de audio**: gpt-4o-transcribe integrado
 - [x] ✅ **Procesamiento de imágenes**: GPT-5 visión multimodal
-- [x] ✅ **Procesamiento de PDFs**: análisis directo por GPT-5 sin extracción de texto
 - [x] ✅ **Marcado de mensajes como leídos**: doble check azul automático
 - [x] ✅ **Respuestas automáticas con GPT-5**: o1 reasoning model
 - [x] ✅ **Historial de conversación**: contexto por usuario
 - [x] ✅ **HTTPClient optimizado**: multipart/form-data para audios
-- [x] ✅ **Sin dependencias externas**: eliminado ffmpeg y PyPDF2
+- [x] ✅ **Sin dependencias externas**: eliminado ffmpeg
 
 ## 🚀 Próximas Mejoras
 
@@ -543,7 +535,18 @@ stats = whatsapp_ai_service.get_statistics()
 2. 📥 Descarga imagen
 3. 🤖 GPT-5 analiza visualmente
 
+**IA**: "**Usuario**: 🖼️ *[Envía imagen de un recibo]* + Caption: "¿Puedo agregar esto a mi presupuesto?"
+
+**Sistema**:
+1. ✓✓ Marca como leído
+2. 📥 Descarga imagen
+3. 🖼️ GPT-5 analiza imagen + caption
+
 **IA**: "¡Claro! Veo en el recibo un gasto de $1,250 en supermercado del 17 de octubre. Puedes agregarlo a tu presupuesto en la categoría 'Alimentación'. ¿Quieres que te guíe en el proceso? 📊"
+
+---
+
+## 📞 Contacto y Soporte"
 
 ---
 

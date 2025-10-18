@@ -1,7 +1,7 @@
 """
-Servicio de IA para WhatsApp usando Azure OpenAI.
-Proporciona respuestas inteligentes automáticas a mensajes de WhatsApp.
-Soporta procesamiento multimodal: texto, imágenes, audios y PDFs.
+Servicio de IA usando Azure OpenAI.
+Proporciona respuestas inteligentes automáticas a mensajes.
+Soporta procesamiento multimodal: texto, imágenes y audios.
 """
 
 import base64
@@ -11,21 +11,20 @@ from openai import AsyncAzureOpenAI
 
 from app.core.config import settings
 from app.core.http_request import HTTPClient
-from app.services.whatsapp_service import whatsapp_service
 
 logger = logging.getLogger(__name__)
 
 
-class WhatsAppAIService:
+class AIService:
     """
-    Servicio para generar respuestas automáticas de IA a mensajes de WhatsApp.
+    Servicio para generar respuestas automáticas de IA.
     
     Utiliza Azure OpenAI para generar respuestas contextuales e inteligentes
     basadas en el historial de conversación y el contexto del negocio.
     """
     
     def __init__(self):
-        """Inicializa el servicio de IA para WhatsApp."""
+        """Inicializa el servicio de IA."""
         self._client: Optional[AsyncAzureOpenAI] = None
         self._conversation_history: Dict[str, List[Dict[str, str]]] = {}
         
@@ -209,13 +208,11 @@ Información importante:
         contact_name: Optional[str] = None,
         image_data: Optional[bytes] = None,
         audio_data: Optional[bytes] = None,
-        pdf_data: Optional[bytes] = None,
-        media_type: Optional[str] = None,
-        filename: Optional[str] = None
+        media_type: Optional[str] = None
     ) -> str:
         """
         Genera una respuesta inteligente usando Azure OpenAI.
-        Soporta procesamiento multimodal: texto, imágenes, audios y PDFs.
+        Soporta procesamiento multimodal: texto, imágenes y audios.
         
         Args:
             user_message: Mensaje de texto del usuario (puede ser caption o texto solo)
@@ -223,9 +220,7 @@ Información importante:
             contact_name: Nombre del contacto (opcional)
             image_data: Datos de imagen en bytes (opcional)
             audio_data: Datos de audio en bytes (opcional)
-            pdf_data: Datos de PDF en bytes (opcional)
             media_type: Tipo MIME del media (opcional, ej: 'image/jpeg', 'audio/ogg')
-            filename: Nombre del archivo (para PDFs)
             
         Returns:
             Respuesta generada por la IA
@@ -236,33 +231,6 @@ Información importante:
         try:
             # Construir el contenido del mensaje del usuario
             user_content = []
-            
-            # Si hay PDF, codificarlo en base64 y enviarlo directamente al modelo
-            if pdf_data:
-                logger.info(f"📄 Procesando PDF: {filename or 'documento.pdf'} ({len(pdf_data)} bytes)")
-                pdf_base64 = base64.b64encode(pdf_data).decode('utf-8')
-                pdf_filename = filename or "documento.pdf"
-                
-                # Agregar el PDF como contenido (similar a una imagen)
-                user_content.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:application/pdf;base64,{pdf_base64}"
-                    }
-                })
-                
-                # Agregar el texto del usuario si existe
-                if user_message:
-                    user_content.append({
-                        "type": "text",
-                        "text": user_message
-                    })
-                else:
-                    # Si no hay mensaje, pedir al modelo que analice el PDF
-                    user_content.append({
-                        "type": "text",
-                        "text": f"Analiza este documento PDF '{pdf_filename}' y proporciona un resumen breve de su contenido."
-                    })
             
             # Si hay imagen, agregarla al contenido
             if image_data:
@@ -321,14 +289,13 @@ Información importante:
                         user_message = "No pude procesar el audio. ¿Podrías escribirme tu mensaje?"
             
             # Siempre agregar el texto (puede ser el mensaje principal o un caption)
-            # EXCEPTO si ya se agregó como parte del PDF o imagen
-            if user_message and not pdf_data and not image_data:
+            if user_message:
                 user_content.append({
                     "type": "text",
                     "text": user_message
                 })
-            elif not user_content:
-                # Si no hay contenido en absoluto, usar un texto por defecto
+            elif not image_data and not audio_data:
+                # Si no hay mensaje ni media, usar un texto por defecto
                 user_content.append({
                     "type": "text",
                     "text": "Hola"
@@ -445,66 +412,65 @@ Información importante:
         contact_name: Optional[str] = None,
         image_data: Optional[bytes] = None,
         audio_data: Optional[bytes] = None,
-        pdf_data: Optional[bytes] = None,
         media_type: Optional[str] = None,
-        filename: Optional[str] = None
+        send_via_whatsapp: bool = True
     ) -> Dict[str, any]:
         """
-        Procesa un mensaje (texto, imagen, audio o PDF) y envía una respuesta automática por WhatsApp.
+        Procesa un mensaje (texto, imagen o audio) y opcionalmente envía una respuesta por WhatsApp.
         
         Args:
             user_message: Mensaje de texto del usuario (puede ser caption)
-            phone_number: Número de teléfono del usuario
+            phone_number: Número de teléfono del usuario (o identificador único)
             contact_name: Nombre del contacto (opcional)
             image_data: Datos de imagen en bytes (opcional)
             audio_data: Datos de audio en bytes (opcional)
-            pdf_data: Datos de PDF en bytes (opcional)
             media_type: Tipo MIME del media (opcional)
-            filename: Nombre del archivo (para PDFs)
+            send_via_whatsapp: Si es True, envía la respuesta por WhatsApp (default: True)
             
         Returns:
-            Dict con el resultado del envío
+            Dict con el resultado del procesamiento
         """
         try:
-            # Generar respuesta de IA (puede procesar texto, imagen, audio o PDF)
+            # Generar respuesta de IA (puede procesar texto, imagen o audio)
             ai_response = await self.generate_response(
                 user_message=user_message,
                 phone_number=phone_number,
                 contact_name=contact_name,
                 image_data=image_data,
                 audio_data=audio_data,
-                pdf_data=pdf_data,
-                media_type=media_type,
-                filename=filename
+                media_type=media_type
             )
             
-            # Enviar respuesta por WhatsApp
-            media_info = []
-            if image_data:
-                media_info.append("imagen")
-            if audio_data:
-                media_info.append("audio")
-            if pdf_data:
-                media_info.append(f"PDF ({filename or 'documento.pdf'})")
-            media_str = f" ({' y '.join(media_info)})" if media_info else ""
-            
-            
-            whatsapp_response = await whatsapp_service.send_text_message(
-                to=phone_number,
-                body=ai_response
-            )
-            
-            
-            return {
+            result = {
                 "success": True,
                 "ai_response": ai_response,
-                "whatsapp_message_id": whatsapp_response.messages[0]['id'] if whatsapp_response.messages else None,
                 "processed_media": {
                     "has_image": bool(image_data),
-                    "has_audio": bool(audio_data),
-                    "has_pdf": bool(pdf_data)
+                    "has_audio": bool(audio_data)
                 }
             }
+            
+            # Enviar respuesta por WhatsApp solo si se solicita
+            if send_via_whatsapp:
+                from app.services.whatsapp_service import whatsapp_service
+                
+                media_info = []
+                if image_data:
+                    media_info.append("imagen")
+                if audio_data:
+                    media_info.append("audio")
+                media_str = f" ({' y '.join(media_info)})" if media_info else ""
+                
+                
+                whatsapp_response = await whatsapp_service.send_text_message(
+                    to=phone_number,
+                    body=ai_response
+                )
+                
+                result["whatsapp_message_id"] = whatsapp_response.messages[0]['id'] if whatsapp_response.messages else None
+                
+            
+            return result
             
         except Exception as e:
             logger.error(f"❌ Error procesando y respondiendo mensaje: {str(e)}", exc_info=True)
@@ -528,4 +494,4 @@ Información importante:
 
 
 # Instancia global del servicio
-whatsapp_ai_service = WhatsAppAIService()
+ai_service = AIService()

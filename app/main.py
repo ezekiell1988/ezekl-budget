@@ -16,7 +16,7 @@ import sys
 
 # Configurar logging con nivel DEBUG para ver todos los logs
 logging.basicConfig(
-    level=logging.INFO,  # Cambiar a DEBUG para ver todos los logs
+    level=logging.DEBUG,  # Cambiar a DEBUG para ver todos los logs
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)  # Enviar logs a stdout para Docker
