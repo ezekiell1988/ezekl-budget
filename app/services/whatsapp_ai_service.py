@@ -6,8 +6,10 @@ Soporta procesamiento multimodal: texto, imágenes y audios.
 
 import logging
 import base64
+import io
 from typing import Optional, Dict, List, Tuple
 from openai import AsyncAzureOpenAI
+from pydub import AudioSegment
 
 from app.core.config import settings
 from app.services.whatsapp_service import whatsapp_service
@@ -74,6 +76,37 @@ Información importante:
             Audio codificado en base64
         """
         return base64.b64encode(audio_bytes).decode('utf-8')
+    
+    def _convert_audio_to_wav(self, audio_bytes: bytes, source_format: str = "ogg") -> bytes:
+        """
+        Convierte audio a formato WAV (requerido por GPT-5).
+        
+        Args:
+            audio_bytes: Bytes del audio original
+            source_format: Formato de origen (ogg, mp3, m4a, etc.)
+            
+        Returns:
+            bytes: Audio convertido a WAV
+        """
+        try:
+            logger.info(f"🔄 Convirtiendo audio de {source_format} a WAV...")
+            
+            # Cargar audio desde bytes
+            audio_io = io.BytesIO(audio_bytes)
+            audio = AudioSegment.from_file(audio_io, format=source_format)
+            
+            # Convertir a WAV en memoria
+            wav_io = io.BytesIO()
+            audio.export(wav_io, format="wav")
+            wav_bytes = wav_io.getvalue()
+            
+            logger.info(f"✅ Audio convertido: {len(audio_bytes)} bytes ({source_format}) → {len(wav_bytes)} bytes (WAV)")
+            
+            return wav_bytes
+            
+        except Exception as e:
+            logger.error(f"❌ Error convirtiendo audio: {str(e)}")
+            raise
         
     @property
     def client(self) -> AsyncAzureOpenAI:
@@ -204,23 +237,35 @@ Información importante:
             # Si hay audio, agregarla al contenido
             if audio_data:
                 logger.info(f"🎤 Procesando audio ({len(audio_data)} bytes)")
-                audio_base64 = self._encode_audio_to_base64(audio_data)
                 
-                # Determinar el formato del audio
-                audio_format = "ogg"  # default para WhatsApp voice messages
+                # Determinar el formato del audio original
+                source_format = "ogg"  # default para WhatsApp voice messages
                 if media_type:
                     if "mp3" in media_type.lower():
-                        audio_format = "mp3"
+                        source_format = "mp3"
                     elif "wav" in media_type.lower():
-                        audio_format = "wav"
+                        source_format = "wav"
                     elif "m4a" in media_type.lower():
-                        audio_format = "m4a"
+                        source_format = "m4a"
+                    elif "ogg" in media_type.lower() or "opus" in media_type.lower():
+                        source_format = "ogg"
+                
+                # GPT-5 solo soporta WAV y MP3
+                # Convertir a WAV si no es MP3 o WAV
+                if source_format not in ["wav", "mp3"]:
+                    audio_data = self._convert_audio_to_wav(audio_data, source_format)
+                    audio_format = "wav"
+                else:
+                    audio_format = source_format
+                
+                # Codificar a base64
+                audio_base64 = self._encode_audio_to_base64(audio_data)
                 
                 user_content.append({
                     "type": "input_audio",
                     "input_audio": {
                         "data": audio_base64,
-                        "format": audio_format
+                        "format": audio_format  # Ahora será "wav" o "mp3"
                     }
                 })
             
