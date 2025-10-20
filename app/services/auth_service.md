@@ -227,42 +227,127 @@ auth_session:whatsapp:{phone_number}
 
 ## 🧪 Testing
 
-### Probar Logout Web
+### Probar Login Tradicional Web
 ```bash
-# 1. Login
+# 1. Solicitar token
+curl -X POST http://localhost:8000/api/auth/request-token \
+  -H "Content-Type: application/json" \
+  -d '{"email": "usuario@example.com"}'
+
+# 2. Login con token recibido por email
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"codeLogin": "USER01", "token": "123456"}'
+  -d '{"codeLogin": "USR001", "token": "123456"}'
 
 # Respuesta incluye accessToken
 
-# 2. Verificar token
+# 3. Verificar token
 curl -X GET http://localhost:8000/api/auth/verify-token \
   -H "Authorization: Bearer {accessToken}"
 
-# 3. Logout
+# 4. Logout
 curl -X POST http://localhost:8000/api/auth/logout \
   -H "Authorization: Bearer {accessToken}"
 
-# 4. Intentar usar token nuevamente (debería fallar)
+# 5. Intentar usar token nuevamente (debería fallar)
 curl -X GET http://localhost:8000/api/auth/verify-token \
   -H "Authorization: Bearer {accessToken}"
 
 # Resultado: 401 "Sesión inválida o expirada"
 ```
 
+### Probar Microsoft OAuth - Web (Primera Vez)
+```bash
+# 1. Abrir en navegador
+http://localhost:8000/api/auth/microsoft/login
+
+# 2. Autenticar con Microsoft
+# Sistema ejecuta spLoginMicrosoftAddOrEdit automáticamente
+
+# 3. Si es primera vez, redirige a:
+# /#/login?microsoft_pending=true&codeLoginMicrosoft={uuid}&displayName={name}
+
+# 4. Frontend envía asociación
+curl -X POST http://localhost:8000/api/auth/microsoft/associate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "codeLogin": "USR001",
+    "codeLoginMicrosoft": "uuid-de-microsoft"
+  }'
+
+# 5. Respuesta con token JWE para usar en Authorization header
+```
+
+### Probar Microsoft OAuth - Web (Ya Asociado)
+```bash
+# 1. Abrir en navegador
+http://localhost:8000/api/auth/microsoft/login
+
+# 2. Autenticar con Microsoft
+# Sistema detecta asociación existente
+
+# 3. Redirige automáticamente con token:
+# /#/login?microsoft_success=true&token={jwe_token}
+
+# 4. Login automático, listo para usar
+```
+
+### Probar WhatsApp con Microsoft (Primera Vez)
+```bash
+# 1. Simular que usuario no está autenticado
+curl -X GET "http://localhost:8000/api/whatsapp/auth/status?phone_number=5491112345678"
+
+# 2. Generar token de autenticación
+curl -X POST http://localhost:8000/api/whatsapp/auth/request-token \
+  -H "Content-Type: application/json" \
+  -d '{"phone_number": "5491112345678"}'
+
+# 3. Abrir link retornado en navegador
+# http://localhost:8000/api/whatsapp/auth/page?token={token}
+
+# 4. Sistema redirige a Microsoft OAuth automáticamente
+
+# 5. Después de autenticar, muestra formulario para codeLogin
+
+# 6. Usuario ingresa codeLogin
+# JavaScript hace POST a /api/auth/microsoft/associate/whatsapp
+
+# 7. Verificar autenticación
+curl -X GET "http://localhost:8000/api/whatsapp/auth/status?phone_number=5491112345678"
+
+# Resultado: authenticated = true
+```
+
 ### Probar Logout WhatsApp
 ```bash
-# Después de autenticación exitosa por WhatsApp
-
 # 1. Verificar estado
 curl -X GET "http://localhost:8000/api/whatsapp/auth/status?phone_number=5491112345678"
 
 # 2. Logout
 curl -X DELETE "http://localhost:8000/api/whatsapp/auth/logout?phone_number=5491112345678"
 
-# 3. Verificar estado nuevamente (debería estar no autenticado)
+# 3. Verificar estado nuevamente
 curl -X GET "http://localhost:8000/api/whatsapp/auth/status?phone_number=5491112345678"
+
+# Resultado: authenticated = false
+```
+
+### Probar Sesiones en Redis
+```bash
+# Ver todas las sesiones activas
+redis-cli KEYS "auth_session:*"
+
+# Ver datos de sesión web
+redis-cli GET "auth_session:web:usuario@example.com"
+
+# Ver datos de sesión WhatsApp
+redis-cli GET "auth_session:whatsapp:5491112345678"
+
+# Ver TTL de sesión
+redis-cli TTL "auth_session:web:usuario@example.com"
+
+# Eliminar sesión manualmente (forzar logout)
+redis-cli DEL "auth_session:web:usuario@example.com"
 ```
 
 ## 🔄 Endpoints Unificables
@@ -317,18 +402,322 @@ Response:
 3. Usuarios activos deberán re-autenticarse
 4. Monitorear logs de autenticación
 
+## 🔐 Autenticación con Microsoft OAuth
+
+### Descripción General
+
+El sistema soporta autenticación con Microsoft OAuth (Azure AD) tanto para web como para WhatsApp, integrándose perfectamente con el sistema unificado de sesiones.
+
+### Stored Procedures Utilizados
+
+#### 1. `spLoginMicrosoftAddOrEdit`
+**Propósito:** Guardar o actualizar datos de una cuenta de Microsoft
+
+**Input:**
+```json
+{
+  "id": "uuid-microsoft",
+  "mail": "usuario@company.com",
+  "displayName": "Usuario Ejemplo",
+  "userPrincipalName": "usuario@company.onmicrosoft.com",
+  "givenName": "Usuario",
+  "surname": "Ejemplo",
+  "jobTitle": "Cargo",
+  "department": "Departamento",
+  "companyName": "Empresa",
+  "officeLocation": "Oficina",
+  "businessPhones": ["555-1234"],
+  "mobilePhone": "555-9999",
+  "tenantId": "tenant-uuid",
+  "preferredLanguage": "es-MX"
+}
+```
+
+**Output:**
+```json
+{
+  "success": true,
+  "operation": "INSERT|UPDATE",
+  "idLoginMicrosoft": 123,
+  "associationStatus": "associated|needs_association",
+  "microsoftUser": {...},
+  "linkedUser": {...}  // Solo si associationStatus = "associated"
+}
+```
+
+**Lógica:**
+1. Busca usuario Microsoft existente
+2. INSERT o UPDATE según corresponda
+3. Verifica asociación con `tbLogin`
+4. Retorna estado de asociación
+
+#### 2. `spLoginLoginMicrosoftAssociate`
+**Propósito:** Asociar cuenta de Microsoft con usuario existente
+
+**Input:**
+```json
+{
+  "codeLogin": "USR001",
+  "codeLoginMicrosoft": "uuid-microsoft"
+}
+```
+
+**Output:**
+```json
+{
+  "success": true,
+  "message": "Cuentas asociadas exitosamente",
+  "idAssociation": 789,
+  "userData": {
+    "idLogin": 456,
+    "codeLogin": "USR001",
+    "nameLogin": "Usuario",
+    "phoneLogin": "5551234567",
+    "emailLogin": "usuario@example.com"
+  }
+}
+```
+
+**Validaciones:**
+- ✅ Verifica existencia de `codeLogin` y `codeLoginMicrosoft`
+- ✅ Previene doble asociación
+- ✅ Crea registro en `tbLoginLoginMicrosoft`
+
+### Flujo Microsoft OAuth - Web
+
+```
+1. Usuario hace clic en "Login con Microsoft"
+   ↓
+2. GET /api/auth/microsoft/login
+   - Redirige a Microsoft OAuth
+   ↓
+3. Usuario autentica en Microsoft
+   ↓
+4. GET /api/auth/microsoft/callback?code=xxx
+   - Intercambia code por access_token
+   - Consulta Microsoft Graph API
+   - EXEC spLoginMicrosoftAddOrEdit
+   ↓
+5a. Si associationStatus = "associated":
+    - Genera token JWE
+    - Guarda sesión: auth_session:web:{email}
+    - Redirige: /#/login?microsoft_success=true&token={jwe}
+    ✅ Login automático exitoso
+    
+5b. Si associationStatus = "needs_association":
+    - Redirige: /#/login?microsoft_pending=true&
+                codeLoginMicrosoft={id}&
+                displayName={name}&email={email}
+    ↓
+6. Frontend muestra formulario para codeLogin
+   ↓
+7. POST /api/auth/microsoft/associate
+   Body: {codeLogin, codeLoginMicrosoft}
+   - EXEC spLoginLoginMicrosoftAssociate
+   - Genera token JWE
+   - Guarda sesión: auth_session:web:{email}
+   ✅ Asociación y login exitosos
+```
+
+### Flujo Microsoft OAuth - WhatsApp
+
+```
+1. Usuario sin auth envía mensaje
+   ↓
+2. Bot genera token temporal (5min)
+   - Incluye: phone_number, bot_phone_number
+   - Envía link de autenticación
+   ↓
+3. GET /api/whatsapp/auth/page?token={token}
+   - Valida token
+   - Construye state (base64):
+     {whatsapp_token, phone_number, bot_phone_number}
+   - Redirige a Microsoft OAuth con state
+   ↓
+4. Usuario autentica en Microsoft
+   ↓
+5. GET /api/auth/microsoft/callback?code=xxx&state=yyy
+   - Decodifica state → detecta flujo WhatsApp
+   - Intercambia code por access_token
+   - Consulta Microsoft Graph API
+   - EXEC spLoginMicrosoftAddOrEdit
+   ↓
+6a. Si associationStatus = "associated":
+    - Guarda sesión: auth_session:whatsapp:{phone}
+    - Elimina token temporal
+    - Muestra HTML de éxito con botón WhatsApp
+    ✅ Login automático exitoso
+    
+6b. Si associationStatus = "needs_association":
+    - Muestra HTML con formulario inline
+    - Usuario ingresa su codeLogin
+    ↓
+7. POST /api/auth/microsoft/associate/whatsapp
+   Body: {codeLogin, codeLoginMicrosoft, phoneNumber, whatsappToken}
+   - Valida whatsappToken
+   - EXEC spLoginLoginMicrosoftAssociate
+   - Guarda sesión: auth_session:whatsapp:{phone}
+   - Elimina token temporal
+   - Retorna éxito
+   ↓
+8. JavaScript muestra éxito y botón WhatsApp
+   ✅ Asociación y login exitosos
+```
+
+### Endpoints Microsoft OAuth
+
+#### `GET /api/auth/microsoft/login`
+Inicia flujo OAuth con Microsoft.
+
+**Query Parameters:**
+- `whatsapp_auth`: JSON con datos de WhatsApp (opcional)
+
+**Comportamiento:**
+- Web: State solo contiene session_id
+- WhatsApp: State incluye whatsapp_token, phone_number, bot_phone_number
+
+#### `GET /api/auth/microsoft/callback`
+Recibe callback de Microsoft OAuth.
+
+**Query Parameters:**
+- `code`: Authorization code de Microsoft
+- `state`: Estado codificado (base64)
+
+**Proceso:**
+1. Intercambia code por tokens
+2. Obtiene datos de Microsoft Graph API
+3. Ejecuta `spLoginMicrosoftAddOrEdit`
+4. Si `associated`: Crea sesión y retorna token/página
+5. Si `needs_association`: Solicita codeLogin
+
+#### `POST /api/auth/microsoft/associate`
+Asocia cuenta Microsoft con usuario (Web).
+
+**Body:**
+```json
+{
+  "codeLogin": "USR001",
+  "codeLoginMicrosoft": "uuid-microsoft"
+}
+```
+
+**Response:**
+```json
+{
+  "accessToken": "jwe_token_here",
+  "tokenType": "Bearer",
+  "expiresIn": 86400,
+  "user": {...}
+}
+```
+
+#### `POST /api/auth/microsoft/associate/whatsapp`
+Asocia cuenta Microsoft con usuario (WhatsApp).
+
+**Body:**
+```json
+{
+  "codeLogin": "USR001",
+  "codeLoginMicrosoft": "uuid-microsoft",
+  "phoneNumber": "5491112345678",
+  "whatsappToken": "temp-token"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Cuenta asociada exitosamente",
+  "user": {...}
+}
+```
+
+### Estructura de Base de Datos
+
+#### Tabla: `tbLoginMicrosoft`
+```sql
+idLoginMicrosoft        INT PRIMARY KEY
+codeLoginMicrosoft      NVARCHAR(500)  -- UUID de Microsoft
+nameLoginMicrosoft      NVARCHAR(255)  -- displayName
+emailLoginMicrosoft     NVARCHAR(500)  -- email
+userPrincipalName       NVARCHAR(500)
+jobTitle                NVARCHAR(255)
+department              NVARCHAR(255)
+companyName             NVARCHAR(255)
+microsoftTenantId       NVARCHAR(100)
+accessToken             NVARCHAR(MAX)
+refreshToken            NVARCHAR(MAX)
+tokenExpiresAt          DATETIME2
+lastLoginDate           DATETIME2
+loginCount              INT
+isActive                BIT
+```
+
+#### Tabla: `tbLoginLoginMicrosoft` (N:N)
+```sql
+idLoginLoginMicrosoft   INT PRIMARY KEY
+idLogin                 INT → tbLogin
+idLoginMicrosoft        INT → tbLoginMicrosoft
+createdDate             DATETIME2
+```
+
+### Sesiones Microsoft en Redis
+
+Una vez autenticado con Microsoft, el sistema crea sesiones exactamente iguales a las demás:
+
+**Web:**
+```
+Key: auth_session:web:usuario@company.com
+TTL: 86400 segundos
+Data: {
+  "codeLogin": "USR001",
+  "name": "Usuario Ejemplo",
+  "email": "usuario@company.com",
+  "session_type": "web",
+  "microsoft_id": "uuid-microsoft",
+  ...
+}
+```
+
+**WhatsApp:**
+```
+Key: auth_session:whatsapp:5491112345678
+TTL: 86400 segundos
+Data: {
+  "codeLogin": "USR001",
+  "name": "Usuario Ejemplo",
+  "email": "usuario@company.com",
+  "session_type": "whatsapp",
+  "microsoft_id": "uuid-microsoft",
+  ...
+}
+```
+
+### Ventajas de la Unificación
+
+1. **Mismo sistema de sesiones:** Microsoft usa Redis igual que login tradicional
+2. **Logout funciona igual:** DELETE sesión de Redis invalida la autenticación
+3. **Refresh funciona igual:** Extiende sesión sin re-autenticar
+4. **Validación consistente:** `get_current_user()` valida todas las sesiones igual
+5. **Código reutilizable:** SPs centralizan lógica de asociación
+
 ## 🎉 Resumen Final
 
 **Sistema de autenticación ahora:**
 - ✅ Unificado entre web y WhatsApp
+- ✅ Soporta login tradicional y Microsoft OAuth
 - ✅ Sesiones reales de 24 horas en Redis
 - ✅ Logout funciona correctamente
 - ✅ Código centralizado y mantenible
 - ✅ Extensible a nuevos canales
 - ✅ Seguridad mejorada
+- ✅ Stored Procedures para datos Microsoft
+- ✅ Asociación de cuentas con validación
 
 **Próximos pasos sugeridos:**
-1. Testear ambos flujos (web y WhatsApp)
+1. Testear todos los flujos (web tradicional, web Microsoft, WhatsApp Microsoft)
 2. Monitorear Redis para ver sesiones activas
 3. Considerar agregar endpoints de administración de sesiones
 4. Implementar refresh automático antes de expiración
+5. Verificar que SPs manejen todos los casos edge

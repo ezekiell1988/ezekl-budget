@@ -788,19 +788,263 @@ async def microsoft_callback(
 
         # Verificar si necesita asociación
         association_status = result.get("associationStatus", "unknown")
+        microsoft_user_info = result.get("microsoftUser", {})
+        code_login_microsoft = microsoft_user_info.get("microsoftUserId", user_data.get("id", ""))
         
         if association_status == "needs_association":
-            # Usuario Microsoft no asociado - redirigir para asociación
-            code_login_microsoft = result.get("codeLoginMicrosoft", "")
+            # Usuario Microsoft no asociado - necesita vincular con cuenta existente
             display_name = microsoft_data.get("displayName", "")
             email = microsoft_data.get("mail", "")
             
-            redirect_url = (f"{settings.effective_url_base}/#/login?"
-                          f"microsoft_pending=true&"
-                          f"codeLoginMicrosoft={code_login_microsoft}&"
-                          f"displayName={display_name}&"
-                          f"email={email}")
-            return RedirectResponse(url=redirect_url)
+            if is_whatsapp_auth:
+                # Flujo WhatsApp: Mostrar formulario de asociación en la misma página
+                from fastapi.responses import HTMLResponse
+                
+                phone_number = whatsapp_data["phone_number"]
+                bot_phone_number = whatsapp_data.get("bot_phone_number")
+                
+                # Preparar número de WhatsApp para el botón
+                if bot_phone_number:
+                    wa_number = bot_phone_number.replace("+", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+                else:
+                    wa_number = settings.whatsapp_phone_number_id
+                
+                return HTMLResponse(
+                    content=f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Asociar Cuenta - Ezekl Budget</title>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {{
+                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                min-height: 100vh;
+                                margin: 0;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            }}
+                            .container {{
+                                background: white;
+                                padding: 40px;
+                                border-radius: 12px;
+                                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                                text-align: center;
+                                max-width: 500px;
+                                width: 90%;
+                            }}
+                            .icon {{ font-size: 60px; margin-bottom: 20px; }}
+                            h1 {{
+                                color: #333;
+                                margin-bottom: 10px;
+                                font-size: 28px;
+                            }}
+                            .user-info {{
+                                background: #f8f9fa;
+                                padding: 20px;
+                                border-radius: 8px;
+                                margin: 20px 0;
+                            }}
+                            .user-name {{
+                                font-size: 20px;
+                                font-weight: 600;
+                                color: #2c3e50;
+                                margin-bottom: 5px;
+                            }}
+                            .user-email {{
+                                color: #7f8c8d;
+                                font-size: 14px;
+                            }}
+                            .form-group {{
+                                margin: 25px 0;
+                                text-align: left;
+                            }}
+                            label {{
+                                display: block;
+                                margin-bottom: 8px;
+                                color: #555;
+                                font-weight: 500;
+                            }}
+                            input {{
+                                width: 100%;
+                                padding: 12px;
+                                border: 2px solid #e0e0e0;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                box-sizing: border-box;
+                                transition: border-color 0.3s;
+                            }}
+                            input:focus {{
+                                outline: none;
+                                border-color: #667eea;
+                            }}
+                            .button-group {{
+                                display: flex;
+                                gap: 10px;
+                                margin-top: 25px;
+                            }}
+                            button {{
+                                flex: 1;
+                                padding: 15px 30px;
+                                border: none;
+                                border-radius: 8px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                            }}
+                            .btn-primary {{
+                                background: #667eea;
+                                color: white;
+                            }}
+                            .btn-primary:hover {{
+                                background: #5568d3;
+                                transform: translateY(-2px);
+                                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+                            }}
+                            .btn-secondary {{
+                                background: #95a5a6;
+                                color: white;
+                            }}
+                            .btn-secondary:hover {{
+                                background: #7f8c8d;
+                            }}
+                            .error {{
+                                color: #e74c3c;
+                                font-size: 14px;
+                                margin-top: 10px;
+                                display: none;
+                            }}
+                            .info {{
+                                background: #e3f2fd;
+                                color: #1976d2;
+                                padding: 15px;
+                                border-radius: 8px;
+                                margin-bottom: 20px;
+                                font-size: 14px;
+                            }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="icon">🔗</div>
+                            <h1>Asociar Cuenta</h1>
+                            
+                            <div class="user-info">
+                                <div class="user-name">{display_name}</div>
+                                <div class="user-email">{email}</div>
+                            </div>
+                            
+                            <div class="info">
+                                <strong>Primera vez con Microsoft</strong><br>
+                                Ingresa tu código de usuario existente para vincular tu cuenta de Microsoft.
+                            </div>
+                            
+                            <form id="associateForm">
+                                <div class="form-group">
+                                    <label for="codeLogin">Código de Usuario:</label>
+                                    <input 
+                                        type="text" 
+                                        id="codeLogin" 
+                                        name="codeLogin" 
+                                        placeholder="Ej: USR001"
+                                        required
+                                        autofocus
+                                    >
+                                </div>
+                                
+                                <div class="error" id="errorMessage"></div>
+                                
+                                <div class="button-group">
+                                    <button type="button" class="btn-secondary" onclick="window.location.href='https://wa.me/{wa_number}'">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" class="btn-primary">
+                                        Asociar Cuenta
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <script>
+                            document.getElementById('associateForm').addEventListener('submit', async function(e) {{
+                                e.preventDefault();
+                                
+                                const codeLogin = document.getElementById('codeLogin').value.trim();
+                                const errorDiv = document.getElementById('errorMessage');
+                                const submitBtn = e.target.querySelector('.btn-primary');
+                                
+                                if (!codeLogin) {{
+                                    errorDiv.textContent = 'Por favor ingresa tu código de usuario';
+                                    errorDiv.style.display = 'block';
+                                    return;
+                                }}
+                                
+                                // Deshabilitar botón durante la petición
+                                submitBtn.disabled = true;
+                                submitBtn.textContent = 'Asociando...';
+                                errorDiv.style.display = 'none';
+                                
+                                try {{
+                                    const response = await fetch('/api/auth/microsoft/associate/whatsapp', {{
+                                        method: 'POST',
+                                        headers: {{
+                                            'Content-Type': 'application/json'
+                                        }},
+                                        body: JSON.stringify({{
+                                            codeLogin: codeLogin,
+                                            codeLoginMicrosoft: '{code_login_microsoft}',
+                                            phoneNumber: '{phone_number}',
+                                            whatsappToken: '{whatsapp_data["whatsapp_token"]}'
+                                        }})
+                                    }});
+                                    
+                                    const data = await response.json();
+                                    
+                                    if (response.ok && data.success) {{
+                                        // Mostrar éxito y redirigir a WhatsApp
+                                        document.querySelector('.container').innerHTML = `
+                                            <div class="icon">✅</div>
+                                            <h1>¡Cuenta Asociada!</h1>
+                                            <div class="user-info">
+                                                <div class="user-name">${{data.user.name || '{display_name}'}}</div>
+                                                <div class="user-email">${{data.user.email || '{email}'}}</div>
+                                            </div>
+                                            <p>Tu cuenta de Microsoft está ahora vinculada.</p>
+                                            <p>Tu sesión es válida por 24 horas.</p>
+                                            <button onclick="window.location.href='https://wa.me/{wa_number}?text=Hola'" class="btn-primary" style="margin-top: 20px;">
+                                                Volver a WhatsApp
+                                            </button>
+                                        `;
+                                    }} else {{
+                                        errorDiv.textContent = data.message || data.detail || 'Error al asociar la cuenta';
+                                        errorDiv.style.display = 'block';
+                                        submitBtn.disabled = false;
+                                        submitBtn.textContent = 'Asociar Cuenta';
+                                    }}
+                                }} catch (error) {{
+                                    errorDiv.textContent = 'Error de conexión. Por favor intenta nuevamente.';
+                                    errorDiv.style.display = 'block';
+                                    submitBtn.disabled = false;
+                                    submitBtn.textContent = 'Asociar Cuenta';
+                                }}
+                            }});
+                        </script>
+                    </body>
+                    </html>
+                    """
+                )
+            else:
+                # Flujo web: Redirigir a la página de asociación del frontend
+                redirect_url = (f"{settings.effective_url_base}/#/login?"
+                              f"microsoft_pending=true&"
+                              f"codeLoginMicrosoft={code_login_microsoft}&"
+                              f"displayName={display_name}&"
+                              f"email={email}")
+                return RedirectResponse(url=redirect_url)
         
         elif association_status == "associated":
             # Usuario ya asociado - login automático
@@ -1131,6 +1375,16 @@ async def associate_microsoft_account(data: dict):
         # Crear token JWE para el usuario
         jwe_token, expiry_date = create_jwe_token(user_data)
 
+        # Guardar sesión en Redis también
+        from app.services.auth_service import auth_service
+        user_email = user_data.get("email")
+        if user_email:
+            await auth_service.save_session(
+                user_id=user_email,
+                user_data=user_data,
+                session_type="web",
+                expires_in_seconds=86400  # 24 horas
+            )
         
         return LoginResponse(
             success=True,
@@ -1144,6 +1398,112 @@ async def associate_microsoft_account(data: dict):
         raise
     except Exception as e:
         logger.error(f"Error inesperado en asociación Microsoft: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error interno del servidor"
+        )
+
+
+@router.post(
+    "/microsoft/associate/whatsapp",
+    summary="Asociar cuenta Microsoft con usuario existente (WhatsApp)",
+    description="""Endpoint específico para asociar cuenta Microsoft desde WhatsApp.
+    
+    Similar a /microsoft/associate pero:
+    1. Valida el token temporal de WhatsApp
+    2. Asocia las cuentas usando spLoginLoginMicrosoftAssociate
+    3. Crea sesión en Redis para WhatsApp (no devuelve token JWE)
+    4. Retorna éxito para que el frontend redirija a WhatsApp
+    """,
+)
+async def associate_microsoft_account_whatsapp(data: dict):
+    """
+    Asocia cuenta Microsoft con usuario existente y crea sesión de WhatsApp.
+    
+    Args:
+        data: {
+            "codeLogin": "USR001",
+            "codeLoginMicrosoft": "uuid-microsoft",
+            "phoneNumber": "5491112345678",
+            "whatsappToken": "token-temporal"
+        }
+
+    Returns:
+        {"success": True, "message": "...", "user": {...}}
+    """
+    try:
+        code_login = data.get("codeLogin")
+        code_login_microsoft = data.get("codeLoginMicrosoft")
+        phone_number = data.get("phoneNumber")
+        whatsapp_token = data.get("whatsappToken")
+        
+        if not all([code_login, code_login_microsoft, phone_number, whatsapp_token]):
+            raise HTTPException(
+                status_code=400,
+                detail="Todos los campos son requeridos"
+            )
+
+        # Validar token temporal de WhatsApp
+        from app.services.whatsapp_service import whatsapp_service
+        token_data = await whatsapp_service.get_phone_from_auth_token(whatsapp_token)
+        
+        if not token_data or token_data[0] != phone_number:
+            raise HTTPException(
+                status_code=401,
+                detail="Token de WhatsApp inválido o expirado"
+            )
+
+        # Ejecutar SP de asociación
+        association_data = {
+            "codeLogin": code_login,
+            "codeLoginMicrosoft": code_login_microsoft
+        }
+
+        json_param = json.dumps(association_data)
+        result = await execute_stored_procedure("spLoginLoginMicrosoftAssociate", json_param)
+        
+        if not result.get("success"):
+            error_message = result.get("message", "Error en la asociación")
+            logger.error(f"Error en asociación WhatsApp: {error_message}")
+            
+            if "not found" in error_message.lower() or "no encontrado" in error_message.lower():
+                raise HTTPException(status_code=404, detail=error_message)
+            elif "already associated" in error_message.lower() or "ya está asociada" in error_message.lower():
+                raise HTTPException(status_code=409, detail=error_message)
+            else:
+                raise HTTPException(status_code=400, detail=error_message)
+
+        # Obtener datos del usuario asociado
+        user_data = result.get("userData", {})
+        
+        if not user_data:
+            raise HTTPException(
+                status_code=500, 
+                detail="Error obteniendo datos del usuario"
+            )
+
+        # Guardar sesión de WhatsApp en Redis (24 horas)
+        await whatsapp_service.save_whatsapp_auth(
+            phone_number=phone_number,
+            user_data=user_data,
+            expires_in_seconds=86400
+        )
+
+        # Eliminar token temporal (ya fue usado)
+        await whatsapp_service.delete_auth_token(whatsapp_token)
+
+        logger.info(f"✅ Cuenta Microsoft asociada y sesión WhatsApp creada para {phone_number}")
+
+        return {
+            "success": True,
+            "message": "Cuenta asociada exitosamente",
+            "user": user_data
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error inesperado en asociación Microsoft WhatsApp: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Error interno del servidor"

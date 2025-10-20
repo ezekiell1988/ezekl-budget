@@ -29,6 +29,19 @@ REDIS_DECODE_RESPONSES=true
 
 ## Arquitectura de Autenticación
 
+### Documentación Completa
+
+Para entender el sistema completo de autenticación unificado (Web, WhatsApp y Microsoft OAuth), consulta:
+
+📄 **[Sistema Unificado de Autenticación](./auth_service.md)**
+
+Este documento incluye:
+- Arquitectura de sesiones en Redis
+- Flujos de autenticación para Web y WhatsApp
+- Integración con Microsoft OAuth
+- Stored Procedures de asociación de cuentas
+- Ejemplos de testing completos
+
 ### Componentes
 
 1. **`app/core/redis.py`**: Cliente Redis genérico y reutilizable para toda la aplicación
