@@ -26,11 +26,6 @@ class Settings(BaseSettings):
     azure_communication_key: str
     azure_communication_sender_address: str
     
-    # Configuración de deployment
-    deploy_host: Optional[str] = None
-    deploy_user: Optional[str] = None
-    deploy_base_path: Optional[str] = None
-    
     # Configuración de Microsoft Azure AD (opcional para autenticación)
     azure_client_id: Optional[str] = None
     azure_client_secret: Optional[str] = None

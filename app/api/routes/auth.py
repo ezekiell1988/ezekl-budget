@@ -852,6 +852,29 @@ async def microsoft_callback(
                                 color: #666;
                                 font-size: 15px;
                             }}
+                            .whatsapp-button {{
+                                display: inline-block;
+                                margin-top: 20px;
+                                padding: 15px 30px;
+                                background: #25D366;
+                                color: white;
+                                text-decoration: none;
+                                border-radius: 50px;
+                                font-weight: bold;
+                                font-size: 16px;
+                                box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+                                transition: all 0.3s ease;
+                            }}
+                            .whatsapp-button:hover {{
+                                background: #20BA5A;
+                                transform: translateY(-2px);
+                                box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+                            }}
+                            .whatsapp-icon {{
+                                display: inline-block;
+                                margin-right: 8px;
+                                font-size: 20px;
+                            }}
                         </style>
                     </head>
                     <body>
@@ -869,8 +892,12 @@ async def microsoft_callback(
                             <div class="phone">+{phone_number}</div>
                             
                             <div class="instruction">
-                                <p><strong>Ya puedes cerrar esta ventana y volver a WhatsApp.</strong></p>
+                                <p><strong>¡Todo listo!</strong></p>
                                 <p>Ahora puedes usar el bot sin restricciones. Tu sesión es válida por 24 horas.</p>
+                                <a href="https://wa.me/{settings.whatsapp_phone_number_id}" class="whatsapp-button">
+                                    <span class="whatsapp-icon">💬</span>
+                                    Volver a WhatsApp
+                                </a>
                             </div>
                         </div>
                     </body>
