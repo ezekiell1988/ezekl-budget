@@ -127,7 +127,8 @@ class Settings(BaseSettings):
             return self.microsoft_redirect_uri
         
         # Generar automáticamente basado en la URL base
-        return f"{self.effective_url_base}/api/auth/callback/microsoft"
+        # IMPORTANTE: Esta URL debe coincidir exactamente con la registrada en Entra ID
+        return f"{self.effective_url_base}/api/auth/microsoft/callback"
     
     @property
     def effective_db_host(self) -> str:
