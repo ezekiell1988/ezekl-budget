@@ -114,15 +114,16 @@ def verify_jwe_token(token: str) -> Dict[str, Any] | None:
 async def get_current_user(authorization: Optional[str] = Header(None)):
     """
     Dependency para obtener el usuario actual desde el token JWE en el header Authorization.
+    Valida tanto el token JWE como la sesión activa en Redis.
     
     Args:
         authorization: Header Authorization con formato "Bearer {token}"
         
     Returns:
-        Datos del usuario si el token es válido
+        Datos del usuario si el token es válido y la sesión existe en Redis
         
     Raises:
-        HTTPException: Si el token no es válido o no está presente
+        HTTPException: Si el token no es válido, no está presente, o la sesión no existe
     """
     if not authorization:
         raise HTTPException(
@@ -164,6 +165,23 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
             detail="Datos de usuario no encontrados en token",
             headers={"WWW-Authenticate": "Bearer"}
         )
+    
+    # Validar sesión en Redis (verificar que no haya hecho logout)
+    from app.services.auth_service import auth_service
+    user_email = user_data.get("email")
+    
+    if user_email:
+        is_session_active = await auth_service.is_authenticated(
+            user_id=user_email,
+            session_type="web"
+        )
+        
+        if not is_session_active:
+            raise HTTPException(
+                status_code=401, 
+                detail="Sesión inválida o expirada. Por favor, inicie sesión nuevamente.",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
     
     return {
         "user": user_data,
@@ -360,6 +378,16 @@ async def login(data: LoginRequest):
         # Generar token JWE
         access_token, expires_at = create_jwe_token(auth_data)
 
+        # Guardar sesión en Redis (24 horas) para unificar con WhatsApp
+        from app.services.auth_service import auth_service
+        user_email = auth_data.get("email")
+        if user_email:
+            await auth_service.save_session(
+                user_id=user_email,
+                user_data=auth_data,
+                session_type="web",
+                expires_in_seconds=86400  # 24 horas
+            )
 
         return LoginResponse(
             success=True,
@@ -474,6 +502,15 @@ async def refresh_token(current_user: Dict = Depends(get_current_user)):
         # Generar nuevo token JWE con tiempo extendido
         new_access_token, new_expires_at = create_jwe_token(user_data)
 
+        # Extender también la sesión en Redis
+        from app.services.auth_service import auth_service
+        user_email = user_data.get("email")
+        if user_email:
+            await auth_service.extend_session(
+                user_id=user_email,
+                session_type="web",
+                expires_in_seconds=86400  # 24 horas
+            )
 
         return LoginResponse(
             success=True,
@@ -491,25 +528,43 @@ async def refresh_token(current_user: Dict = Depends(get_current_user)):
 @router.post(
     "/logout",
     response_model=LogoutResponse,
-    summary="Cerrar sesión",
-    description="""Invalida la sesión actual del usuario.
+    summary="Cerrar sesión (Web y WhatsApp)",
+    description="""Invalida la sesión actual del usuario en Redis.
     
-    Nota: Con JWE no podemos invalidar tokens del lado servidor,
-    por lo que este endpoint principalmente serve para limpiar
-    datos del cliente y registrar el evento de logout.
+    **Autenticación requerida:**
+    - Header: Authorization: Bearer {jwe_token}
+    
+    **Funcionalidad:**
+    - Elimina la sesión del usuario en Redis
+    - El token JWE queda inválido para futuras peticiones
+    - Funciona tanto para web como para WhatsApp
+    
+    **Nota:** El cliente también debe eliminar el token almacenado localmente.
     """,
 )
-async def logout():
+async def logout(current_user: Dict = Depends(get_current_user)):
     """
-    Procesa el logout del usuario.
+    Procesa el logout del usuario (web o WhatsApp).
+
+    Args:
+        current_user: Datos del usuario obtenidos del token JWE
 
     Returns:
         Confirmación del logout
     """
     try:
-        # Con JWE no podemos invalidar tokens del lado servidor
-        # El cliente debe eliminar el token almacenado localmente
-
+        from app.services.auth_service import auth_service
+        
+        user_data = current_user.get("user", {})
+        user_email = user_data.get("email")
+        
+        if user_email:
+            # Eliminar sesión de Redis (funciona para web y whatsapp)
+            await auth_service.delete_session(
+                user_id=user_email,
+                session_type="web"
+            )
+            logger.info(f"✅ Sesión eliminada para {user_email}")
 
         return LogoutResponse(
             success=True,
@@ -761,6 +816,7 @@ async def microsoft_callback(
                 
                 phone_number = whatsapp_data["phone_number"]
                 whatsapp_token = whatsapp_data["whatsapp_token"]
+                bot_phone_number = whatsapp_data.get("bot_phone_number")
                 
                 # Guardar autenticación en Redis (válida por 24 horas)
                 await whatsapp_service.save_whatsapp_auth(
@@ -773,6 +829,16 @@ async def microsoft_callback(
                 await whatsapp_service.delete_auth_token(whatsapp_token)
                 
                 logger.info(f"✅ Usuario de WhatsApp autenticado exitosamente: {phone_number}")
+                
+                # Preparar número de WhatsApp para el botón (limpiar formato)
+                # Si tenemos bot_phone_number (ej: "+1 555 123 4567"), limpiar para wa.me
+                # Si no, usar settings.whatsapp_phone_number_id como fallback
+                if bot_phone_number:
+                    # Remover espacios, guiones, paréntesis y el símbolo +
+                    wa_number = bot_phone_number.replace("+", "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+                else:
+                    # Fallback al phone_number_id configurado
+                    wa_number = settings.whatsapp_phone_number_id
                 
                 # Mostrar página de éxito
                 return HTMLResponse(
@@ -894,7 +960,7 @@ async def microsoft_callback(
                             <div class="instruction">
                                 <p><strong>¡Todo listo!</strong></p>
                                 <p>Ahora puedes usar el bot sin restricciones. Tu sesión es válida por 24 horas.</p>
-                                <a href="https://wa.me/{settings.whatsapp_phone_number_id}" class="whatsapp-button">
+                                <a href="https://wa.me/{wa_number}?text=Hola" class="whatsapp-button">
                                     <span class="whatsapp-icon">💬</span>
                                     Volver a WhatsApp
                                 </a>
@@ -905,7 +971,17 @@ async def microsoft_callback(
                     """
                 )
             else:
-                # Flujo web normal
+                # Flujo web normal - guardar sesión en Redis también
+                from app.services.auth_service import auth_service
+                user_email = user_login_data.get("email")
+                if user_email:
+                    await auth_service.save_session(
+                        user_id=user_email,
+                        user_data=user_login_data,
+                        session_type="web",
+                        expires_in_seconds=86400  # 24 horas
+                    )
+                
                 redirect_url = (f"{settings.effective_url_base}/#/login?"
                               f"microsoft_success=true&"
                               f"token={jwe_token}")

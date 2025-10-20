@@ -222,9 +222,10 @@ async def receive_webhook(
                                 if not is_authenticated:
                                     logger.info(f"🔒 Usuario no autenticado: {message.from_} ({contact_name})")
                                     
-                                    # Generar token de autenticación
+                                    # Generar token de autenticación (incluir número del bot)
                                     token = await whatsapp_service.create_auth_token(
                                         phone_number=message.from_,
+                                        bot_phone_number=metadata.display_phone_number,
                                         expires_in_seconds=300  # 5 minutos
                                     )
                                     
@@ -1140,10 +1141,10 @@ async def whatsapp_auth_page(
                 status_code=400, detail="Token de autenticación no proporcionado"
             )
 
-        # Obtener número de teléfono del token
-        phone_number = await whatsapp_service.get_phone_from_auth_token(token)
+        # Validar token y obtener números (phone_number, bot_phone_number)
+        token_data = await whatsapp_service.get_phone_from_auth_token(token)
 
-        if not phone_number:
+        if not token_data:
             # Token inválido o expirado
             return HTMLResponse(
                 content="""
@@ -1198,11 +1199,18 @@ async def whatsapp_auth_page(
                 status_code=404,
             )
 
+        # Extraer phone_number y bot_phone_number de la tupla
+        phone_number, bot_phone_number = token_data
+
         # Construir state con información de WhatsApp (base64 JSON)
         import json
         import base64
 
-        state_data = {"whatsapp_token": token, "phone_number": phone_number}
+        state_data = {
+            "whatsapp_token": token,
+            "phone_number": phone_number,
+            "bot_phone_number": bot_phone_number
+        }
         state_json = json.dumps(state_data)
         state_b64 = base64.b64encode(state_json.encode()).decode()
 
