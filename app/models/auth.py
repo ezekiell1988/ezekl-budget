@@ -272,14 +272,40 @@ class LogoutResponse(BaseModel):
         description="Mensaje confirmando el cierre de sesión",
         examples=["Sesión cerrada exitosamente"]
     )
+    
+    microsoft_logout_url: Optional[str] = Field(
+        default=None,
+        description="URL de logout de Microsoft (solo si se solicitó logout de Microsoft)",
+        examples=["https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=..."]
+    )
+    
+    redirect_required: Optional[bool] = Field(
+        default=False,
+        description="Indica si el cliente debe redirigir a microsoft_logout_url",
+        examples=[False, True]
+    )
 
     class Config:
         """Configuración del modelo Pydantic."""
         json_schema_extra = {
-            "example": {
-                "success": True,
-                "message": "Sesión cerrada exitosamente"
-            }
+            "examples": [
+                {
+                    "description": "Logout local únicamente",
+                    "value": {
+                        "success": True,
+                        "message": "Sesión cerrada exitosamente"
+                    }
+                },
+                {
+                    "description": "Logout con Microsoft",
+                    "value": {
+                        "success": True,
+                        "message": "Sesión cerrada exitosamente",
+                        "microsoft_logout_url": "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=...",
+                        "redirect_required": True
+                    }
+                }
+            ]
         }
 
 

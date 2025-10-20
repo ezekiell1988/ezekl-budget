@@ -126,6 +126,13 @@ class Settings(BaseSettings):
         return f"{self.effective_url_base}/api/auth/microsoft/callback"
     
     @property
+    def microsoft_logout_endpoint(self) -> str:
+        """Retorna el endpoint de logout de Microsoft OAuth."""
+        if self.azure_tenant_id:
+            return f"https://login.microsoftonline.com/{self.azure_tenant_id}/oauth2/v2.0/logout"
+        return "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+    
+    @property
     def effective_db_host(self) -> str:
         """Retorna el host efectivo de BD basado en el ambiente."""
         if self.is_production:

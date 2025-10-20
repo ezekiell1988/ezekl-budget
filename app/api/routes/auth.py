@@ -3,7 +3,7 @@ Endpoints de autenticación para el sistema Ezekl Budget.
 Maneja el flujo de login de 2 pasos con tokens temporales y JWE.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, Query
 from fastapi.responses import RedirectResponse
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
@@ -534,23 +534,31 @@ async def refresh_token(current_user: Dict = Depends(get_current_user)):
     **Autenticación requerida:**
     - Header: Authorization: Bearer {jwe_token}
     
+    **Query Parameters:**
+    - `microsoft_logout` (opcional): Si es "true", también cierra sesión en Microsoft
+    
     **Funcionalidad:**
     - Elimina la sesión del usuario en Redis
     - El token JWE queda inválido para futuras peticiones
     - Funciona tanto para web como para WhatsApp
+    - Opcionalmente redirige a Microsoft para cerrar sesión completa
     
     **Nota:** El cliente también debe eliminar el token almacenado localmente.
     """,
 )
-async def logout(current_user: Dict = Depends(get_current_user)):
+async def logout(
+    current_user: Dict = Depends(get_current_user),
+    microsoft_logout: str = Query(default="false", description="Si es 'true', también cierra sesión en Microsoft")
+):
     """
     Procesa el logout del usuario (web o WhatsApp).
 
     Args:
         current_user: Datos del usuario obtenidos del token JWE
+        microsoft_logout: Si es "true", redirige a logout de Microsoft
 
     Returns:
-        Confirmación del logout
+        Confirmación del logout o redirección a Microsoft
     """
     try:
         from app.services.auth_service import auth_service
@@ -565,6 +573,27 @@ async def logout(current_user: Dict = Depends(get_current_user)):
                 session_type="web"
             )
             logger.info(f"✅ Sesión eliminada para {user_email}")
+
+        # Si se solicita logout de Microsoft, redirigir
+        if microsoft_logout.lower() == "true":
+            # URL de post-logout (donde redirigir después del logout de Microsoft)
+            post_logout_redirect = f"{settings.effective_url_base}/#/login?logout=success"
+            
+            # Construir URL de logout de Microsoft
+            logout_url = (
+                f"{settings.microsoft_logout_endpoint}"
+                f"?post_logout_redirect_uri={post_logout_redirect}"
+            )
+            
+            logger.info(f"🔄 Redirigiendo a logout de Microsoft: {logout_url}")
+            
+            # Retornar la URL de logout para que el cliente redirija
+            return {
+                "success": True,
+                "message": "Sesión cerrada exitosamente",
+                "microsoft_logout_url": logout_url,
+                "redirect_required": True
+            }
 
         return LogoutResponse(
             success=True,

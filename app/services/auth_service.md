@@ -353,9 +353,216 @@ redis-cli DEL "auth_session:web:usuario@example.com"
 ## 🔄 Endpoints Unificables
 
 ### Ya Unificados
-- ✅ `POST /api/auth/logout` - Funciona para web
+- ✅ `POST /api/auth/logout` - Funciona para web (con opción de logout de Microsoft)
 - ✅ `DELETE /api/whatsapp/auth/logout` - Funciona para WhatsApp
 - ✅ Ambos usan el mismo servicio subyacente
+
+### Logout con Microsoft (Nuevo) ⭐
+
+El endpoint de logout ahora soporta un parámetro opcional `microsoft_logout` que permite cerrar sesión también en Microsoft Azure AD.
+
+#### Endpoint Mejorado
+
+```http
+POST /api/auth/logout?microsoft_logout=true
+Authorization: Bearer {jwe_token}
+```
+
+#### Tipos de Logout
+
+**1. Logout Local (Default) - `microsoft_logout=false`**
+```
+Usuario → Tu App → Redis
+```
+- ✅ Invalida la sesión en Redis
+- ✅ El token JWE queda inútil
+- ❌ El usuario sigue logueado en Microsoft
+- ✅ **Recomendado para la mayoría de casos**
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Sesión cerrada exitosamente"
+}
+```
+
+**2. Logout Completo con Microsoft - `microsoft_logout=true`**
+```
+Usuario → Tu App → Redis → Microsoft Azure AD → Usuario
+```
+- ✅ Invalida la sesión en Redis
+- ✅ El token JWE queda inútil
+- ✅ Cierra sesión en Microsoft completamente
+- ✅ Afecta TODAS las apps que usan ese login de Microsoft
+- ⚠️ **Solo usar si el usuario lo solicita explícitamente**
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Sesión cerrada exitosamente",
+  "microsoft_logout_url": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/logout?post_logout_redirect_uri=...",
+  "redirect_required": true
+}
+```
+
+#### Implementación en Frontend
+
+**Opción 1: Logout Simple (Default)**
+```typescript
+async function logout() {
+  try {
+    const token = localStorage.getItem('accessToken');
+    
+    const response = await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      window.location.href = '/#/login';
+    }
+  } catch (error) {
+    console.error('Error en logout:', error);
+  }
+}
+```
+
+**Opción 2: Logout con Microsoft**
+```typescript
+async function logoutWithMicrosoft() {
+  try {
+    const token = localStorage.getItem('accessToken');
+    
+    const response = await fetch('/api/auth/logout?microsoft_logout=true', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      
+      if (data.redirect_required && data.microsoft_logout_url) {
+        // Redirigir al logout de Microsoft
+        window.location.href = data.microsoft_logout_url;
+      } else {
+        window.location.href = '/#/login';
+      }
+    }
+  } catch (error) {
+    console.error('Error en logout:', error);
+  }
+}
+```
+
+**Opción 3: Modal de Confirmación (Recomendado)**
+```typescript
+async function showLogoutOptions() {
+  const choice = await showModal({
+    title: 'Cerrar Sesión',
+    message: '¿Cómo deseas cerrar sesión?',
+    options: [
+      {
+        label: 'Solo esta aplicación',
+        value: 'local',
+        description: 'Seguirás conectado en Microsoft'
+      },
+      {
+        label: 'Cerrar sesión completa',
+        value: 'microsoft',
+        description: 'Cerrará sesión en Microsoft y todas las aplicaciones'
+      }
+    ]
+  });
+  
+  if (choice === 'local') {
+    await logout();
+  } else if (choice === 'microsoft') {
+    await logoutWithMicrosoft();
+  }
+}
+```
+
+#### Configuración Requerida en Azure Entra ID
+
+⚠️ **IMPORTANTE:** Para que el logout de Microsoft funcione, debes configurar el **Post Logout Redirect URI** en Entra ID:
+
+1. **Acceder a Azure Portal**
+   - Ve a https://portal.azure.com
+   - Navega a **Entra ID** (anteriormente Azure Active Directory)
+
+2. **Seleccionar tu App Registration**
+   - Ve a **App registrations**
+   - Selecciona tu aplicación (Ezekl Budget)
+
+3. **Configurar Post Logout Redirect URI**
+   - Ve a **Authentication**
+   - En la sección **Front-channel logout URL**, agrega:
+     ```
+     http://localhost:8001/#/login?logout=success    (desarrollo)
+     https://budget.ezekl.com/#/login?logout=success (producción)
+     ```
+   - Click en **Save**
+
+**¿Qué pasa si NO configuro esto?**
+
+❌ El logout de Microsoft fallará con error:
+```
+AADSTS50011: The reply URL specified in the request does not match 
+the reply URLs configured for the application
+```
+
+#### Ventajas y Desventajas
+
+**Ventajas del Logout con Microsoft:**
+- ✅ **Cierre completo:** Previene acceso no autorizado si alguien más usa la computadora
+- ✅ **Cumplimiento:** Requerido en algunos entornos corporativos
+- ✅ **Control total:** Usuario decide cuándo cerrar sesión de Microsoft
+
+**Desventajas:**
+- ⚠️ **Afecta otras apps:** Cierra sesión en TODAS las apps que usan ese Microsoft Account
+- ⚠️ **UX confuso:** Usuario puede no entender por qué se cerró sesión en Outlook, Teams, etc.
+- ⚠️ **Re-login molesto:** Usuario debe volver a autenticarse en todos lados
+
+**Recomendaciones:**
+1. **Default = Logout Local** - La mayoría de usuarios prefieren esto
+2. **Explicar claramente** - Si ofreces logout de Microsoft, explica qué hace
+3. **Considerar contexto** - Computadoras compartidas → logout completo recomendado
+4. **Testing frecuente** - Probar en dev/staging antes de producción
+
+#### Testing del Logout con Microsoft
+
+```bash
+# 1. Login normal
+curl -X POST http://localhost:8001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"codeLogin": "USR001", "token": "12345"}'
+
+# 2. Logout con Microsoft
+curl -X POST "http://localhost:8001/api/auth/logout?microsoft_logout=true" \
+  -H "Authorization: Bearer {accessToken}"
+
+# Resultado incluye microsoft_logout_url
+
+# 3. Abrir microsoft_logout_url en navegador
+# Microsoft cerrará sesión y redirigirá a tu app
+
+# 4. Verificar que Microsoft cerró sesión
+curl -X GET http://localhost:8001/api/auth/microsoft
+# Microsoft debe pedir credenciales nuevamente
+```
 
 ### Posibles Mejoras Futuras
 
