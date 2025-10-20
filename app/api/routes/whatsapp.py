@@ -1,16 +1,21 @@
 """
 Endpoints para integración con WhatsApp Business API.
-Proporciona webhook para recibir mensajes y notificaciones de WhatsApp.
+Proporciona webhook para recibir mensajes, notificaciones y autenticación de usuarios.
 """
 
 from fastapi import APIRouter, HTTPException, Request, Query, Header, Depends
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, HTMLResponse
 from typing import Optional, Dict
 import logging
 from app.models.whatsapp import (
     WhatsAppWebhookPayload,
     WhatsAppMessageSendRequest,
     WhatsAppMessageSendResponse,
+)
+from app.models.auth import (
+    WhatsAppAuthTokenRequest,
+    WhatsAppAuthTokenResponse,
+    WhatsAppAuthStatusResponse,
 )
 from app.services.whatsapp_service import whatsapp_service
 from app.services.ai_service import ai_service
@@ -210,6 +215,44 @@ async def receive_webhook(
                             try:
                                 # ✅ Marcar mensaje como leído (doble check azul)
                                 await whatsapp_service.mark_message_as_read(message.id)
+
+                                # 🔐 VERIFICAR AUTENTICACIÓN DEL USUARIO
+                                is_authenticated = await whatsapp_service.is_whatsapp_authenticated(message.from_)
+                                
+                                if not is_authenticated:
+                                    logger.info(f"🔒 Usuario no autenticado: {message.from_} ({contact_name})")
+                                    
+                                    # Generar token de autenticación
+                                    token = await whatsapp_service.create_auth_token(
+                                        phone_number=message.from_,
+                                        expires_in_seconds=300  # 5 minutos
+                                    )
+                                    
+                                    # Construir URL de autenticación
+                                    from app.core.config import settings
+                                    auth_url = f"{settings.effective_url_base}/api/whatsapp/auth/page?token={token}"
+                                    
+                                    # Enviar mensaje con link de autenticación
+                                    auth_message = (
+                                        f"👋 ¡Hola {contact_name}!\n\n"
+                                        f"Para usar este servicio, necesitas autenticarte con tu cuenta de Microsoft.\n\n"
+                                        f"🔐 *Autentícate aquí:*\n{auth_url}\n\n"
+                                        f"⏱️ Este link es válido por *5 minutos*.\n\n"
+                                        f"Una vez autenticado, podrás usar el bot sin restricciones por 24 horas. ✅"
+                                    )
+                                    
+                                    await whatsapp_service.send_text_message(
+                                        to=message.from_,
+                                        body=auth_message,
+                                        preview_url=True
+                                    )
+                                    
+                                    logger.info(f"📤 Link de autenticación enviado a {message.from_}")
+                                    continue  # No procesar el mensaje hasta que se autentique
+                                
+                                # Usuario autenticado, obtener sus datos
+                                auth_data = await whatsapp_service.get_whatsapp_auth(message.from_)
+                                logger.info(f"✅ Usuario autenticado: {message.from_} ({auth_data.get('name', contact_name)})")
 
                                 # Extraer texto (puede ser mensaje directo o caption)
                                 user_text = None
@@ -849,4 +892,411 @@ async def send_template_message(
         logger.error(f"❌ Error enviando plantilla: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Error al enviar plantilla: {str(e)}"
+        )
+
+
+# ============== ENDPOINTS DE AUTENTICACIÓN ==============
+
+
+@router.post(
+    "/auth/request-token",
+    response_model=WhatsAppAuthTokenResponse,
+    summary="Solicitar token de autenticación",
+    description="""Genera un token de autenticación único para un usuario de WhatsApp.
+    
+    El token generado es válido por 5 minutos y permite al usuario autenticarse
+    con su cuenta de Microsoft para usar el bot de WhatsApp.
+    
+    **Flujo de autenticación:**
+    1. Se genera un token único asociado al número de teléfono
+    2. Se retorna una URL de autenticación con el token
+    3. El usuario visita la URL y se autentica con Microsoft
+    4. Una vez autenticado, puede usar el bot por 24 horas
+    
+    **Formato del número:**
+    - Debe incluir código de país sin '+'
+    - Ejemplo: "5491112345678" para Argentina
+    - Ejemplo: "521234567890" para México
+    """,
+    responses={
+        200: {
+            "description": "Token generado exitosamente",
+            "model": WhatsAppAuthTokenResponse,
+        },
+        500: {"description": "Error al generar token"},
+    },
+)
+async def request_auth_token(request: WhatsAppAuthTokenRequest):
+    """
+    Genera un token de autenticación para un usuario de WhatsApp.
+
+    Args:
+        request: Datos de la solicitud (phone_number)
+
+    Returns:
+        WhatsAppAuthTokenResponse: Token y URL de autenticación
+
+    Raises:
+        HTTPException: Si hay error al generar el token
+    """
+    try:
+        # Generar token con expiración de 5 minutos
+        token = await whatsapp_service.create_auth_token(
+            phone_number=request.phone_number, expires_in_seconds=300
+        )
+
+        # Construir URL de autenticación
+        auth_url = f"{settings.effective_url_base}/api/whatsapp/auth/page?token={token}"
+
+        logger.info(f"🔑 Token de autenticación generado para {request.phone_number}")
+
+        return WhatsAppAuthTokenResponse(
+            success=True,
+            token=token,
+            auth_url=auth_url,
+            message=f"Token generado exitosamente. Válido por 5 minutos.",
+        )
+
+    except Exception as e:
+        logger.error(
+            f"❌ Error generando token para {request.phone_number}: {str(e)}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Error al generar token de autenticación: {str(e)}"
+        )
+
+
+@router.get(
+    "/auth/status",
+    response_model=WhatsAppAuthStatusResponse,
+    summary="Verificar estado de autenticación",
+    description="""Verifica si un usuario de WhatsApp está autenticado.
+    
+    Retorna el estado de autenticación y los datos del usuario si está autenticado.
+    
+    **Formato del número:**
+    - Debe incluir código de país sin '+'
+    - Ejemplo: "5491112345678" para Argentina
+    - Ejemplo: "521234567890" para México
+    """,
+    responses={
+        200: {
+            "description": "Estado de autenticación verificado",
+            "model": WhatsAppAuthStatusResponse,
+        },
+        500: {"description": "Error al verificar estado"},
+    },
+)
+async def check_auth_status(
+    phone_number: str = Query(
+        description="Número de teléfono del usuario (con código de país, sin '+')"
+    ),
+):
+    """
+    Verifica el estado de autenticación de un usuario.
+
+    Args:
+        phone_number: Número de teléfono del usuario
+
+    Returns:
+        WhatsAppAuthStatusResponse: Estado de autenticación y datos del usuario
+
+    Raises:
+        HTTPException: Si hay error al verificar el estado
+    """
+    try:
+        # Verificar si el usuario está autenticado
+        is_authenticated = await whatsapp_service.is_whatsapp_authenticated(
+            phone_number
+        )
+
+        if is_authenticated:
+            # Obtener datos de autenticación
+            auth_data = await whatsapp_service.get_whatsapp_auth(phone_number)
+
+            return WhatsAppAuthStatusResponse(
+                authenticated=True,
+                phone_number=phone_number,
+                user_data=auth_data,
+                message="Usuario autenticado correctamente",
+            )
+        else:
+            return WhatsAppAuthStatusResponse(
+                authenticated=False,
+                phone_number=phone_number,
+                user_data=None,
+                message="Usuario no autenticado",
+            )
+
+    except Exception as e:
+        logger.error(
+            f"❌ Error verificando autenticación de {phone_number}: {str(e)}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al verificar estado de autenticación: {str(e)}",
+        )
+
+
+@router.delete(
+    "/auth/logout",
+    summary="Cerrar sesión de WhatsApp",
+    description="""Cierra la sesión de un usuario de WhatsApp.
+    
+    Elimina toda la información de autenticación del usuario, requiriendo
+    que se autentique nuevamente para usar el bot.
+    
+    **Formato del número:**
+    - Debe incluir código de país sin '+'
+    - Ejemplo: "5491112345678" para Argentina
+    - Ejemplo: "521234567890" para México
+    """,
+    responses={
+        200: {"description": "Sesión cerrada exitosamente"},
+        500: {"description": "Error al cerrar sesión"},
+    },
+)
+async def logout_whatsapp_user(
+    phone_number: str = Query(
+        description="Número de teléfono del usuario (con código de país, sin '+')"
+    ),
+):
+    """
+    Cierra la sesión de un usuario de WhatsApp.
+
+    Args:
+        phone_number: Número de teléfono del usuario
+
+    Returns:
+        dict: Confirmación de cierre de sesión
+
+    Raises:
+        HTTPException: Si hay error al cerrar la sesión
+    """
+    try:
+        # Eliminar autenticación
+        await whatsapp_service.delete_whatsapp_auth(phone_number)
+
+        logger.info(f"👋 Sesión cerrada para {phone_number}")
+
+        return {
+            "success": True,
+            "message": f"Sesión cerrada exitosamente para {phone_number}",
+        }
+
+    except Exception as e:
+        logger.error(
+            f"❌ Error cerrando sesión de {phone_number}: {str(e)}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Error al cerrar sesión: {str(e)}"
+        )
+
+
+@router.get(
+    "/auth/page",
+    response_class=HTMLResponse,
+    summary="Página de autenticación",
+    description="""Página HTML que redirige al usuario al flujo de autenticación de Microsoft.
+    
+    Esta página:
+    1. Valida el token de autenticación
+    2. Extrae el número de teléfono asociado
+    3. Redirige automáticamente a Microsoft OAuth
+    4. Pasa el contexto de WhatsApp en el parámetro state
+    
+    **Uso:**
+    - El usuario accede a esta URL desde el mensaje de WhatsApp
+    - La redirección es automática (no requiere interacción)
+    - Si el token es inválido o expiró, muestra mensaje de error
+    """,
+    responses={
+        200: {"description": "Página HTML de autenticación"},
+        400: {"description": "Token no proporcionado"},
+        404: {"description": "Token inválido o expirado"},
+        500: {"description": "Error al procesar autenticación"},
+    },
+)
+async def whatsapp_auth_page(
+    token: str = Query(description="Token de autenticación generado previamente"),
+):
+    """
+    Página HTML que inicia el flujo de autenticación de Microsoft.
+
+    Args:
+        token: Token de autenticación único
+
+    Returns:
+        HTMLResponse: Página HTML con redirección automática
+
+    Raises:
+        HTTPException: Si el token es inválido o hay error
+    """
+    try:
+        if not token:
+            raise HTTPException(
+                status_code=400, detail="Token de autenticación no proporcionado"
+            )
+
+        # Obtener número de teléfono del token
+        phone_number = await whatsapp_service.get_phone_from_auth_token(token)
+
+        if not phone_number:
+            # Token inválido o expirado
+            return HTMLResponse(
+                content="""
+                <!DOCTYPE html>
+                <html lang="es">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Token Expirado - WhatsApp Auth</title>
+                    <style>
+                        body {
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
+                            margin: 0;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        }
+                        .container {
+                            background: white;
+                            padding: 2rem;
+                            border-radius: 1rem;
+                            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                            text-align: center;
+                            max-width: 400px;
+                        }
+                        .icon {
+                            font-size: 4rem;
+                            margin-bottom: 1rem;
+                        }
+                        h1 {
+                            color: #e53e3e;
+                            margin-bottom: 1rem;
+                        }
+                        p {
+                            color: #4a5568;
+                            line-height: 1.6;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="icon">⏱️</div>
+                        <h1>Token Expirado</h1>
+                        <p>El link de autenticación ha expirado o es inválido.</p>
+                        <p>Por favor, solicita un nuevo link de autenticación desde WhatsApp.</p>
+                    </div>
+                </body>
+                </html>
+                """,
+                status_code=404,
+            )
+
+        # Construir state con información de WhatsApp (base64 JSON)
+        import json
+        import base64
+
+        state_data = {"whatsapp_token": token, "phone_number": phone_number}
+        state_json = json.dumps(state_data)
+        state_b64 = base64.b64encode(state_json.encode()).decode()
+
+        # Construir URL de Microsoft OAuth
+        microsoft_auth_url = (
+            f"{settings.microsoft_authorization_endpoint}"
+            f"?client_id={settings.microsoft_client_id}"
+            f"&response_type=code"
+            f"&redirect_uri={settings.microsoft_redirect_uri}"
+            f"&response_mode=query"
+            f"&scope=openid%20profile%20email%20User.Read"
+            f"&state={state_b64}"
+        )
+
+        logger.info(
+            f"🔐 Redirigiendo a Microsoft OAuth para WhatsApp user: {phone_number}"
+        )
+
+        # Retornar página HTML con redirección automática
+        return HTMLResponse(
+            content=f"""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Autenticación WhatsApp - Redirigiendo...</title>
+                <meta http-equiv="refresh" content="2;url={microsoft_auth_url}">
+                <style>
+                    body {{
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    }}
+                    .container {{
+                        background: white;
+                        padding: 2rem;
+                        border-radius: 1rem;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                        text-align: center;
+                        max-width: 400px;
+                    }}
+                    .spinner {{
+                        border: 4px solid #f3f3f3;
+                        border-top: 4px solid #667eea;
+                        border-radius: 50%;
+                        width: 50px;
+                        height: 50px;
+                        animation: spin 1s linear infinite;
+                        margin: 0 auto 1rem;
+                    }}
+                    @keyframes spin {{
+                        0% {{ transform: rotate(0deg); }}
+                        100% {{ transform: rotate(360deg); }}
+                    }}
+                    h1 {{
+                        color: #2d3748;
+                        margin-bottom: 0.5rem;
+                    }}
+                    p {{
+                        color: #4a5568;
+                        line-height: 1.6;
+                    }}
+                    .whatsapp-icon {{
+                        font-size: 3rem;
+                        margin-bottom: 1rem;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="whatsapp-icon">💬</div>
+                    <h1>Autenticación WhatsApp</h1>
+                    <div class="spinner"></div>
+                    <p>Redirigiendo a Microsoft para autenticarte...</p>
+                    <p style="font-size: 0.9rem; color: #718096; margin-top: 1rem;">
+                        Si no eres redirigido automáticamente, 
+                        <a href="{microsoft_auth_url}" style="color: #667eea;">haz clic aquí</a>
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error en página de autenticación: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al procesar autenticación de WhatsApp: {str(e)}",
         )

@@ -579,13 +579,82 @@ async def microsoft_callback(
     """
     Callback de Microsoft OAuth2.
     Procesa el código de autorización y completa el flujo de autenticación.
+    
+    Soporta dos flujos:
+    1. Login web normal (state vacío o sin whatsapp_token)
+    2. Autenticación de WhatsApp (state contiene whatsapp_token y phone_number)
     """
     try:
+        # Detectar si es una autenticación de WhatsApp
+        is_whatsapp_auth = False
+        whatsapp_data = None
+        
+        if state:
+            try:
+                import base64
+                decoded_state = base64.urlsafe_b64decode(state.encode()).decode()
+                whatsapp_data = json.loads(decoded_state)
+                
+                if whatsapp_data.get("whatsapp_token") and whatsapp_data.get("phone_number"):
+                    is_whatsapp_auth = True
+                    logger.info(f"🔄 Flujo de autenticación de WhatsApp detectado para {whatsapp_data['phone_number']}")
+            except Exception:
+                # State no es de WhatsApp, continuar con flujo normal
+                pass
+        
         if error:
             logger.error(f"Error de Microsoft OAuth: {error} - {error_description}")
-            # Redirigir al frontend con error
-            redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error={error}"
-            return RedirectResponse(url=redirect_url)
+            
+            # Redirigir según el tipo de flujo
+            if is_whatsapp_auth:
+                from fastapi.responses import HTMLResponse
+                return HTMLResponse(
+                    content=f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Error - Ezekl Budget</title>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {{
+                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                min-height: 100vh;
+                                margin: 0;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            }}
+                            .container {{
+                                background: white;
+                                padding: 40px;
+                                border-radius: 12px;
+                                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                                text-align: center;
+                                max-width: 500px;
+                            }}
+                            h1 {{ color: #e74c3c; }}
+                            p {{ color: #555; line-height: 1.6; }}
+                            .icon {{ font-size: 60px; margin-bottom: 20px; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="icon">❌</div>
+                            <h1>Error de Autenticación</h1>
+                            <p>{error_description or error}</p>
+                            <p>Por favor, intenta nuevamente desde WhatsApp.</p>
+                        </div>
+                    </body>
+                    </html>
+                    """,
+                    status_code=400
+                )
+            else:
+                # Flujo web normal
+                redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error={error}"
+                return RedirectResponse(url=redirect_url)
 
         if not code:
             logger.error("No se recibió código de autorización de Microsoft")
@@ -685,15 +754,187 @@ async def microsoft_callback(
             # Crear token JWE para el usuario asociado
             jwe_token, expiry_date = create_jwe_token(user_login_data)
             
-            redirect_url = (f"{settings.effective_url_base}/#/login?"
-                          f"microsoft_success=true&"
-                          f"token={jwe_token}")
-            return RedirectResponse(url=redirect_url)
+            # Si es autenticación de WhatsApp, guardar en Redis y mostrar página de éxito
+            if is_whatsapp_auth:
+                from app.services.whatsapp_service import whatsapp_service
+                from fastapi.responses import HTMLResponse
+                
+                phone_number = whatsapp_data["phone_number"]
+                whatsapp_token = whatsapp_data["whatsapp_token"]
+                
+                # Guardar autenticación en Redis (válida por 24 horas)
+                await whatsapp_service.save_whatsapp_auth(
+                    phone_number=phone_number,
+                    user_data=user_login_data,
+                    expires_in_seconds=86400  # 24 horas
+                )
+                
+                # Eliminar el token de autenticación temporal (ya fue usado)
+                await whatsapp_service.delete_auth_token(whatsapp_token)
+                
+                logger.info(f"✅ Usuario de WhatsApp autenticado exitosamente: {phone_number}")
+                
+                # Mostrar página de éxito
+                return HTMLResponse(
+                    content=f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Autenticación Exitosa - Ezekl Budget</title>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {{
+                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                min-height: 100vh;
+                                margin: 0;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            }}
+                            .container {{
+                                background: white;
+                                padding: 40px;
+                                border-radius: 12px;
+                                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                                text-align: center;
+                                max-width: 500px;
+                            }}
+                            h1 {{
+                                color: #27ae60;
+                                margin-bottom: 20px;
+                            }}
+                            p {{
+                                color: #555;
+                                line-height: 1.6;
+                                margin-bottom: 15px;
+                            }}
+                            .icon {{
+                                font-size: 80px;
+                                margin-bottom: 20px;
+                                animation: bounce 1s ease infinite;
+                            }}
+                            @keyframes bounce {{
+                                0%, 100% {{ transform: translateY(0); }}
+                                50% {{ transform: translateY(-10px); }}
+                            }}
+                            .user-info {{
+                                background: #f8f9fa;
+                                padding: 15px;
+                                border-radius: 8px;
+                                margin: 20px 0;
+                            }}
+                            .user-name {{
+                                font-weight: bold;
+                                color: #667eea;
+                                font-size: 18px;
+                                margin-bottom: 5px;
+                            }}
+                            .user-email {{
+                                color: #666;
+                                font-size: 14px;
+                            }}
+                            .phone {{
+                                background: #e8f5e9;
+                                padding: 10px 20px;
+                                border-radius: 6px;
+                                display: inline-block;
+                                margin-top: 15px;
+                                font-family: monospace;
+                                color: #27ae60;
+                                font-weight: bold;
+                            }}
+                            .instruction {{
+                                margin-top: 25px;
+                                padding-top: 25px;
+                                border-top: 2px solid #eee;
+                                color: #666;
+                                font-size: 15px;
+                            }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="icon">✅</div>
+                            <h1>¡Autenticación Exitosa!</h1>
+                            <p>Tu cuenta de WhatsApp ha sido autenticada correctamente.</p>
+                            
+                            <div class="user-info">
+                                <div class="user-name">{user_login_data.get('name', 'Usuario')}</div>
+                                <div class="user-email">{user_login_data.get('email', '')}</div>
+                            </div>
+                            
+                            <p>WhatsApp asociado:</p>
+                            <div class="phone">+{phone_number}</div>
+                            
+                            <div class="instruction">
+                                <p><strong>Ya puedes cerrar esta ventana y volver a WhatsApp.</strong></p>
+                                <p>Ahora puedes usar el bot sin restricciones. Tu sesión es válida por 24 horas.</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                    """
+                )
+            else:
+                # Flujo web normal
+                redirect_url = (f"{settings.effective_url_base}/#/login?"
+                              f"microsoft_success=true&"
+                              f"token={jwe_token}")
+                return RedirectResponse(url=redirect_url)
         
         else:
             logger.error(f"Estado de asociación desconocido: {association_status}")
-            redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=unknown_status"
-            return RedirectResponse(url=redirect_url)
+            
+            if is_whatsapp_auth:
+                from fastapi.responses import HTMLResponse
+                return HTMLResponse(
+                    content="""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Error - Ezekl Budget</title>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {
+                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                min-height: 100vh;
+                                margin: 0;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            }
+                            .container {
+                                background: white;
+                                padding: 40px;
+                                border-radius: 12px;
+                                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                                text-align: center;
+                                max-width: 500px;
+                            }
+                            h1 { color: #e74c3c; }
+                            p { color: #555; line-height: 1.6; }
+                            .icon { font-size: 60px; margin-bottom: 20px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="icon">❌</div>
+                            <h1>Error de Autenticación</h1>
+                            <p>No se pudo completar la autenticación.</p>
+                            <p>Por favor, contacta al administrador del sistema.</p>
+                        </div>
+                    </body>
+                    </html>
+                    """,
+                    status_code=500
+                )
+            else:
+                redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=unknown_status"
+                return RedirectResponse(url=redirect_url)
 
     except Exception as e:
         logger.error(f"Error en callback de Microsoft: {str(e)}")

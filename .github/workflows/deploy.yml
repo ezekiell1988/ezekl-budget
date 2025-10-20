@@ -84,7 +84,28 @@ jobs:
           WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
           WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }}
           WHATSAPP_API_VERSION=v24.0
+          REDIS_HOST=localhost
+          REDIS_PORT=6379
+          REDIS_DB=0
+          REDIS_PASSWORD=
+          REDIS_DECODE_RESPONSES=true
           EOF
+          
+          # Verificar e instalar Redis si no está instalado
+          echo "📦 Verificando Redis..."
+          if ! command -v redis-server &> /dev/null; then
+            echo "📥 Instalando Redis..."
+            sudo apt-get update
+            sudo apt-get install -y redis-server
+            sudo systemctl enable redis-server
+            sudo systemctl start redis-server
+            echo "✅ Redis instalado y configurado"
+          else
+            echo "✅ Redis ya está instalado"
+            # Asegurar que Redis esté corriendo
+            sudo systemctl start redis-server || true
+            sudo systemctl status redis-server --no-pager
+          fi
           
           # Detener contenedor anterior si existe
           echo "🛑 Deteniendo contenedor anterior..."

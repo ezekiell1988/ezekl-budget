@@ -309,3 +309,120 @@ class AuthErrorResponse(BaseModel):
                 "detail": "Token inválido o expirado"
             }
         }
+
+
+# ============== MODELOS PARA AUTENTICACIÓN DE WHATSAPP ==============
+
+
+class WhatsAppAuthTokenRequest(BaseModel):
+    """
+    Modelo para solicitar un token de autenticación de WhatsApp.
+    """
+    
+    phone_number: str = Field(
+        description="Número de teléfono del usuario (formato internacional sin +)",
+        min_length=10,
+        max_length=15,
+        examples=["5491112345678", "521234567890"]
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "phone_number": "5491112345678"
+            }
+        }
+
+
+class WhatsAppAuthTokenResponse(BaseModel):
+    """
+    Modelo de respuesta con el token de autenticación de WhatsApp.
+    """
+    
+    success: bool = Field(
+        description="Indica si el token fue creado exitosamente"
+    )
+    
+    token: Optional[str] = Field(
+        default=None,
+        description="Token único de autenticación (válido por 5 minutos)"
+    )
+    
+    auth_url: Optional[str] = Field(
+        default=None,
+        description="URL completa para autenticación con Microsoft"
+    )
+    
+    message: str = Field(
+        description="Mensaje descriptivo del resultado"
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "token": "abc123xyz789",
+                "auth_url": "https://budget.ezekl.com/whatsapp-auth?token=abc123xyz789",
+                "message": "Token creado exitosamente. Válido por 5 minutos."
+            }
+        }
+
+
+class WhatsAppAuthVerifyRequest(BaseModel):
+    """
+    Modelo para verificar un token de autenticación de WhatsApp.
+    """
+    
+    token: str = Field(
+        description="Token de autenticación a verificar",
+        min_length=10
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "token": "abc123xyz789"
+            }
+        }
+
+
+class WhatsAppAuthStatusResponse(BaseModel):
+    """
+    Modelo de respuesta con el estado de autenticación de WhatsApp.
+    """
+    
+    authenticated: bool = Field(
+        description="Indica si el usuario está autenticado"
+    )
+    
+    phone_number: Optional[str] = Field(
+        default=None,
+        description="Número de teléfono del usuario"
+    )
+    
+    user_data: Optional[dict] = Field(
+        default=None,
+        description="Datos del usuario autenticado"
+    )
+    
+    message: str = Field(
+        description="Mensaje descriptivo del estado"
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "authenticated": True,
+                "phone_number": "5491112345678",
+                "user_data": {
+                    "codeLogin": "USER001",
+                    "email": "user@example.com",
+                    "name": "Juan Pérez"
+                },
+                "message": "Usuario autenticado correctamente"
+            }
+        }

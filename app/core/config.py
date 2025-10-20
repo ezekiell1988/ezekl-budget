@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     whatsapp_verify_token: str = "mi_token_secreto_whatsapp_2024"
     whatsapp_api_version: str = "v24.0"
     
+    # Configuración de Redis
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_password: Optional[str] = None
+    redis_decode_responses: bool = True
+    
     @property
     def is_production(self) -> bool:
         """Detecta si la aplicación está corriendo en producción basado en ENVIRONMENT."""

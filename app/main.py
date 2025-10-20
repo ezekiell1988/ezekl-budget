@@ -39,12 +39,30 @@ async def lifespan(app: FastAPI):
     Reemplaza los deprecated on_event("startup") y on_event("shutdown").
     """
     # Startup
+    from app.core.redis import redis_client
+    
+    # Inicializar email queue
     await email_queue.start()
+    
+    # Inicializar Redis
+    try:
+        await redis_client.initialize()
+        logger.info("✅ Redis inicializado exitosamente")
+    except Exception as e:
+        logger.warning(f"⚠️  Redis no disponible: {str(e)}")
+        logger.warning("⚠️  La autenticación de WhatsApp no funcionará sin Redis")
     
     yield  # Aquí la aplicación está ejecutándose
     
-    # Shutdown  
+    # Shutdown
     await email_queue.stop()
+    
+    # Cerrar Redis
+    try:
+        await redis_client.close()
+        logger.info("Redis connection closed")
+    except Exception as e:
+        logger.warning(f"Error closing Redis: {str(e)}")
 
 
 # Configurar rutas para archivos estáticos del frontend Ionic

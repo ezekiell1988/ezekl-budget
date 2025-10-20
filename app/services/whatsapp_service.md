@@ -11,6 +11,13 @@ WHATSAPP_PHONE_NUMBER_ID=tu_phone_number_id
 WHATSAPP_BUSINESS_ACCOUNT_ID=tu_business_account_id
 WHATSAPP_VERIFY_TOKEN=tu_verify_token_secreto
 WHATSAPP_API_VERSION=v21.0
+
+# Redis Configuration (Requerido para autenticación de WhatsApp)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=
+REDIS_DECODE_RESPONSES=true
 ```
 
 ### Obtener Phone Number ID
@@ -19,6 +26,25 @@ WHATSAPP_API_VERSION=v21.0
 2. Selecciona tu aplicación de WhatsApp Business
 3. Ve a "WhatsApp" > "Configuración de API"
 4. Copia el "Phone Number ID"
+
+## Arquitectura de Autenticación
+
+### Componentes
+
+1. **`app/core/redis.py`**: Cliente Redis genérico y reutilizable para toda la aplicación
+2. **`app/services/whatsapp_service.py`**: Servicio completo de WhatsApp incluyendo mensajería y autenticación
+3. **`app/api/routes/whatsapp.py`**: Todos los endpoints de WhatsApp (webhook, envío, autenticación)
+
+### Flujo de Autenticación
+
+1. Usuario envía mensaje por WhatsApp → Sistema verifica autenticación
+2. Si NO está autenticado: 
+   - Sistema genera token único (válido 5 minutos)
+   - Envía link de autenticación por WhatsApp
+3. Usuario hace clic en link → Página HTML con auto-redirect a Microsoft OAuth
+4. Usuario se autentica con Microsoft
+5. Callback guarda datos en Redis (válido 24 horas)
+6. Usuario puede usar el bot sin restricciones
 
 ## Endpoints Disponibles
 
@@ -49,6 +75,8 @@ Meta envía notificaciones aquí cuando ocurren eventos.
 **Sin autenticación requerida** (Meta envía directamente)
 
 **Funcionalidad implementada:**
+- ✅ Verifica autenticación del usuario antes de procesar
+- ✅ Envía link de autenticación si no está autenticado
 - ✅ Marca mensajes como leídos automáticamente (doble check azul)
 - ✅ Procesa mensajes de texto con IA
 - ✅ Procesa imágenes con análisis visual
@@ -227,9 +255,100 @@ POST /api/whatsapp/send/text?to=5491112345678&message=Hola%20mundo
 - `template_name`: Nombre de la plantilla aprobada
 - `language_code`: Código de idioma (default: "es")
 
-### 10. Marcar Mensaje como Leído (POST)
+### 10. Solicitar Token de Autenticación (POST)
 
-**Endpoint:** Usado internamente por el webhook
+**Endpoint:** `POST /api/whatsapp/auth/request-token`
+
+**Sin autenticación requerida**
+
+Genera un token único para que un usuario de WhatsApp se autentique con Microsoft.
+
+**Body:**
+```json
+{
+  "phone_number": "5491112345678"
+}
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "token": "token_generado_aqui",
+  "auth_url": "https://tu-dominio.com/api/whatsapp/auth/page?token=...",
+  "message": "Token generado exitosamente. Válido por 5 minutos."
+}
+```
+
+### 11. Verificar Estado de Autenticación (GET)
+
+**Endpoint:** `GET /api/whatsapp/auth/status?phone_number=5491112345678`
+
+**Sin autenticación requerida**
+
+Verifica si un usuario de WhatsApp está autenticado.
+
+**Respuesta (autenticado):**
+```json
+{
+  "authenticated": true,
+  "phone_number": "5491112345678",
+  "user_data": {
+    "codeLogin": 123,
+    "email": "usuario@ejemplo.com",
+    "name": "Juan Pérez",
+    "authenticated_at": "2025-10-20T10:30:00",
+    "expires_at": "2025-10-21T10:30:00"
+  },
+  "message": "Usuario autenticado correctamente"
+}
+```
+
+**Respuesta (no autenticado):**
+```json
+{
+  "authenticated": false,
+  "phone_number": "5491112345678",
+  "user_data": null,
+  "message": "Usuario no autenticado"
+}
+```
+
+### 12. Cerrar Sesión de WhatsApp (DELETE)
+
+**Endpoint:** `DELETE /api/whatsapp/auth/logout?phone_number=5491112345678`
+
+**Sin autenticación requerida**
+
+Cierra la sesión de un usuario de WhatsApp (elimina su autenticación).
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Sesión cerrada exitosamente para 5491112345678"
+}
+```
+
+### 13. Página de Autenticación (GET)
+
+**Endpoint:** `GET /api/whatsapp/auth/page?token=TOKEN_GENERADO`
+
+**Sin autenticación requerida**
+
+Página HTML que redirige automáticamente al flujo de autenticación de Microsoft.
+
+**Flujo:**
+1. Valida el token de autenticación
+2. Extrae el número de teléfono asociado
+3. Redirige automáticamente a Microsoft OAuth
+4. Pasa el contexto de WhatsApp en el parámetro state
+
+**Casos:**
+- ✅ Token válido: Redirige a Microsoft OAuth
+- ❌ Token inválido/expirado: Muestra página de error
+
+### 14. Marcar Mensaje como Leído (Interno)
 
 **Método del servicio:**
 ```python
@@ -241,15 +360,6 @@ await whatsapp_service.mark_message_as_read(message_id)
 - Muestra doble check azul (✓✓) al usuario
 - Se ejecuta automáticamente al recibir mensajes
 - Mejora la experiencia de usuario con feedback visual
-
-**Ejemplo programático:**
-```python
-# Marcar mensaje como leído
-success = await whatsapp_service.mark_message_as_read("wamid.XXX...")
-
-if success:
-    print("✅ Mensaje marcado como leído")
-```
 
 ## Tipos de Mensajes Soportados
 
@@ -371,7 +481,18 @@ curl -X POST "http://localhost:8001/api/whatsapp/send/text" \
 
 El sistema genera logs detallados:
 
-### Logs de Mensaje de Texto
+### Logs de Autenticación
+```
+🔒 Usuario no autenticado: 5491112345678 (Juan Pérez)
+🔑 Token de autenticación creado para 5491112345678: xYz123abc4...
+📤 Link de autenticación enviado a 5491112345678
+🔐 Redirigiendo a Microsoft OAuth para WhatsApp user: 5491112345678
+✅ Token válido para 5491112345678
+✅ Usuario de WhatsApp autenticado exitosamente: 5491112345678
+✅ Autenticación guardada para 5491112345678
+```
+
+### Logs de Mensaje de Texto (Usuario Autenticado)
 ```
 📱 WEBHOOK DE WHATSAPP RECIBIDO
 📦 Tipo de objeto: whatsapp_business_account
@@ -387,9 +508,9 @@ El sistema genera logs detallados:
         - Contenido: 'Hola'
         - Nombre del contacto: Juan Pérez
       
-      🤖 Procesando mensaje text con IA para 5491112345678...
       ✅ Marcando mensaje como leído: wamid.XXX
-      ✅ Mensaje marcado como leído exitosamente
+      ✅ Usuario autenticado: 5491112345678 (Juan Pérez)
+      🤖 Procesando mensaje text con IA para 5491112345678...
       🤖 Generando respuesta de IA para Juan Pérez
       ✅ Respuesta generada exitosamente
       📤 Enviando respuesta de IA a Juan Pérez
@@ -409,8 +530,9 @@ El sistema genera logs detallados:
     - Es mensaje de voz: Sí
     - Nombre del contacto: Familia Baltodano
   
-  🤖 Procesando mensaje audio con IA para 50622703332...
   ✅ Marcando mensaje como leído: wamid.XXX
+  ✅ Usuario autenticado: 50622703332 (Familia Baltodano)
+  🤖 Procesando mensaje audio con IA para 50622703332...
   📥 Descargando audio...
   ✅ Audio descargado: 8383 bytes
   🎤 Procesando audio (8383 bytes)
@@ -435,14 +557,89 @@ El sistema genera logs detallados:
     - MIME Type: image/jpeg
     - Caption: 'Mira esta foto'
   
-  🤖 Procesando mensaje image con IA para 5491112345678...
   ✅ Marcando mensaje como leído: wamid.XXX
+  ✅ Usuario autenticado: 5491112345678 (Juan Pérez)
+  🤖 Procesando mensaje image con IA para 5491112345678...
   📥 Descargando imagen...
   ✅ Imagen descargada: 45231 bytes
   🖼️ Procesando imagen (45231 bytes)
   🤖 Generando respuesta de IA para Juan Pérez con imagen
   ✅ Respuesta generada exitosamente
   🖼️ Imagen procesada con IA
+```
+
+## Métodos del Servicio WhatsApp
+
+### Mensajería
+
+```python
+# Enviar texto simple
+await whatsapp_service.send_text_message(
+    to="5491112345678",
+    body="Hola mundo",
+    preview_url=True
+)
+
+# Enviar imagen
+await whatsapp_service.send_image(
+    to="5491112345678",
+    image_url="https://ejemplo.com/imagen.jpg",
+    caption="Mira esta imagen"
+)
+
+# Enviar ubicación
+await whatsapp_service.send_location(
+    to="5491112345678",
+    latitude=-34.603722,
+    longitude=-58.381592,
+    name="Obelisco",
+    address="Buenos Aires, Argentina"
+)
+
+# Marcar como leído
+await whatsapp_service.mark_message_as_read("wamid.XXX...")
+```
+
+### Autenticación
+
+```python
+# Crear token de autenticación
+token = await whatsapp_service.create_auth_token(
+    phone_number="5491112345678",
+    expires_in_seconds=300  # 5 minutos
+)
+
+# Obtener teléfono desde token
+phone = await whatsapp_service.get_phone_from_auth_token(token)
+
+# Guardar autenticación de usuario
+await whatsapp_service.save_whatsapp_auth(
+    phone_number="5491112345678",
+    user_data={
+        "codeLogin": 123,
+        "email": "usuario@ejemplo.com",
+        "name": "Juan Pérez"
+    },
+    expires_in_seconds=86400  # 24 horas
+)
+
+# Verificar si está autenticado
+is_auth = await whatsapp_service.is_whatsapp_authenticated("5491112345678")
+
+# Obtener datos de autenticación
+auth_data = await whatsapp_service.get_whatsapp_auth("5491112345678")
+
+# Extender autenticación
+await whatsapp_service.extend_whatsapp_auth(
+    phone_number="5491112345678",
+    expires_in_seconds=86400
+)
+
+# Cerrar sesión (logout)
+await whatsapp_service.delete_whatsapp_auth("5491112345678")
+
+# Eliminar token temporal
+await whatsapp_service.delete_auth_token(token)
 ```
 
 ## Recursos Adicionales

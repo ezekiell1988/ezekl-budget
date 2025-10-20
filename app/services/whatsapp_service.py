@@ -1,16 +1,20 @@
 """
 Servicio para integración con WhatsApp Business API.
 Proporciona métodos para enviar mensajes de texto, imágenes, videos, documentos, 
-ubicaciones, contactos y mensajes interactivos.
+ubicaciones, contactos, mensajes interactivos y autenticación de usuarios.
 """
 
 import aiohttp
+import json
 import logging
+import secrets
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import HTTPException
 
 from app.core.config import settings
 from app.core.http_request import HTTPClient
+from app.core.redis import redis_client
 from app.models.whatsapp import (
     WhatsAppMessageSendRequest,
     WhatsAppMessageSendResponse,
@@ -669,6 +673,205 @@ class WhatsAppService:
                 "interactive"
             ]
         }
+    
+    # ============== MÉTODOS DE AUTENTICACIÓN DE WHATSAPP ==============
+    
+    async def create_auth_token(self, phone_number: str, expires_in_seconds: int = 300) -> str:
+        """
+        Crea un token único para autenticación de WhatsApp.
+        
+        Args:
+            phone_number: Número de teléfono del usuario
+            expires_in_seconds: Tiempo de expiración en segundos (default: 5 minutos)
+            
+        Returns:
+            Token único generado
+        """
+        # Inicializar Redis si no está conectado
+        if not redis_client.is_connected:
+            await redis_client.initialize()
+        
+        token = secrets.token_urlsafe(32)
+        
+        key = f"whatsapp_auth_token:{token}"
+        data = {
+            "phone_number": phone_number,
+            "created_at": datetime.now().isoformat(),
+            "expires_in": expires_in_seconds
+        }
+        
+        await redis_client.set(key, data, expires_in_seconds=expires_in_seconds)
+        
+        logger.info(f"🔑 Token de autenticación creado para {phone_number}: {token[:10]}...")
+        return token
+    
+    async def get_phone_from_auth_token(self, token: str) -> Optional[str]:
+        """
+        Obtiene el número de teléfono asociado a un token de autenticación.
+        
+        Args:
+            token: Token de autenticación
+            
+        Returns:
+            Número de teléfono si el token es válido, None si no existe o expiró
+        """
+        # Inicializar Redis si no está conectado
+        if not redis_client.is_connected:
+            await redis_client.initialize()
+        
+        key = f"whatsapp_auth_token:{token}"
+        data = await redis_client.get(key)
+        
+        if not data:
+            logger.warning(f"⚠️  Token no encontrado o expirado: {token[:10]}...")
+            return None
+        
+        phone_number = data.get("phone_number")
+        logger.info(f"✅ Token válido para {phone_number}")
+        return phone_number
+    
+    async def delete_auth_token(self, token: str) -> bool:
+        """
+        Elimina un token de autenticación (consumido o cancelado).
+        
+        Args:
+            token: Token a eliminar
+            
+        Returns:
+            True si se eliminó, False si no existía
+        """
+        # Inicializar Redis si no está conectado
+        if not redis_client.is_connected:
+            await redis_client.initialize()
+        
+        key = f"whatsapp_auth_token:{token}"
+        result = await redis_client.delete(key)
+        
+        if result:
+            logger.info(f"🗑️  Token eliminado: {token[:10]}...")
+        
+        return result
+    
+    async def save_whatsapp_auth(
+        self,
+        phone_number: str,
+        user_data: Dict[str, Any],
+        expires_in_seconds: int = 86400  # 24 horas por defecto
+    ) -> bool:
+        """
+        Guarda la autenticación de un usuario de WhatsApp.
+        
+        Args:
+            phone_number: Número de teléfono del usuario
+            user_data: Datos del usuario autenticado (codeLogin, email, name, etc.)
+            expires_in_seconds: Tiempo de expiración (default: 24 horas)
+            
+        Returns:
+            True si se guardó exitosamente
+        """
+        # Inicializar Redis si no está conectado
+        if not redis_client.is_connected:
+            await redis_client.initialize()
+        
+        key = f"whatsapp_auth:{phone_number}"
+        data = {
+            **user_data,
+            "authenticated_at": datetime.now().isoformat(),
+            "expires_at": (datetime.now() + timedelta(seconds=expires_in_seconds)).isoformat()
+        }
+        
+        await redis_client.set(key, data, expires_in_seconds=expires_in_seconds)
+        
+        logger.info(f"✅ Autenticación guardada para {phone_number}")
+        return True
+    
+    async def get_whatsapp_auth(self, phone_number: str) -> Optional[Dict[str, Any]]:
+        """
+        Obtiene los datos de autenticación de un usuario de WhatsApp.
+        
+        Args:
+            phone_number: Número de teléfono del usuario
+            
+        Returns:
+            Datos del usuario si está autenticado, None si no está autenticado o expiró
+        """
+        # Inicializar Redis si no está conectado
+        if not redis_client.is_connected:
+            await redis_client.initialize()
+        
+        key = f"whatsapp_auth:{phone_number}"
+        data = await redis_client.get(key)
+        
+        if not data:
+            logger.debug(f"Usuario no autenticado: {phone_number}")
+            return None
+        
+        logger.debug(f"Usuario autenticado encontrado: {phone_number}")
+        return data
+    
+    async def is_whatsapp_authenticated(self, phone_number: str) -> bool:
+        """
+        Verifica si un usuario de WhatsApp está autenticado.
+        
+        Args:
+            phone_number: Número de teléfono del usuario
+            
+        Returns:
+            True si está autenticado, False si no
+        """
+        auth_data = await self.get_whatsapp_auth(phone_number)
+        return auth_data is not None
+    
+    async def delete_whatsapp_auth(self, phone_number: str) -> bool:
+        """
+        Elimina la autenticación de un usuario de WhatsApp (logout).
+        
+        Args:
+            phone_number: Número de teléfono del usuario
+            
+        Returns:
+            True si se eliminó, False si no existía
+        """
+        # Inicializar Redis si no está conectado
+        if not redis_client.is_connected:
+            await redis_client.initialize()
+        
+        key = f"whatsapp_auth:{phone_number}"
+        result = await redis_client.delete(key)
+        
+        if result:
+            logger.info(f"🗑️  Autenticación eliminada para {phone_number}")
+        
+        return result
+    
+    async def extend_whatsapp_auth(
+        self,
+        phone_number: str,
+        expires_in_seconds: int = 86400  # 24 horas
+    ) -> bool:
+        """
+        Extiende el tiempo de autenticación de un usuario de WhatsApp.
+        
+        Args:
+            phone_number: Número de teléfono del usuario
+            expires_in_seconds: Nuevo tiempo de expiración
+            
+        Returns:
+            True si se extendió exitosamente, False si no estaba autenticado
+        """
+        # Obtener datos actuales
+        auth_data = await self.get_whatsapp_auth(phone_number)
+        if not auth_data:
+            return False
+        
+        # Actualizar fecha de expiración
+        auth_data["expires_at"] = (datetime.now() + timedelta(seconds=expires_in_seconds)).isoformat()
+        
+        # Guardar con nueva expiración
+        await self.save_whatsapp_auth(phone_number, auth_data, expires_in_seconds)
+        
+        logger.info(f"⏰ Autenticación extendida para {phone_number}")
+        return True
 
 
 # Instancia global del servicio de WhatsApp
