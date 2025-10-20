@@ -319,12 +319,54 @@ export class MeService {
   }
 
   /**
-   * Cierra la sesión del usuario
+   * Cierra la sesión del usuario con opciones
    */
   private async logout(): Promise<void> {
+    // Importar AlertController dinámicamente para evitar dependencias circulares
+    const { AlertController } = await import('@ionic/angular/standalone');
+    const alertController = new AlertController();
+
+    const alert = await alertController.create({
+      header: 'Cerrar Sesión',
+      message: '¿Cómo deseas cerrar tu sesión?',
+      cssClass: 'logout-alert',
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+          cssClass: 'alert-button-cancel',
+        },
+        {
+          text: 'Solo esta aplicación',
+          cssClass: 'alert-button-local',
+          handler: async () => {
+            await this.performLogout(false);
+          },
+        },
+        {
+          text: 'Cerrar sesión completa (Microsoft)',
+          cssClass: 'alert-button-microsoft',
+          handler: async () => {
+            await this.performLogout(true);
+          },
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  /**
+   * Ejecuta el logout
+   */
+  private async performLogout(includeMicrosoft: boolean): Promise<void> {
     try {
-      await this.authService.logout();
-      this.router.navigate(['/login'], { replaceUrl: true });
+      await this.authService.logout(includeMicrosoft);
+
+      // Solo navegar si no hay redirección a Microsoft
+      if (!includeMicrosoft) {
+        this.router.navigate(['/login'], { replaceUrl: true });
+      }
     } catch (error) {
       console.error('Error cerrando sesión:', error);
       // Forzar navegación a login incluso si hay error

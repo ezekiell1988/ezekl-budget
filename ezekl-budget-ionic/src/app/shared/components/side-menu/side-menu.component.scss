@@ -119,3 +119,47 @@ ion-list-header {
     color: var(--ion-color-light);
   }
 }
+
+// === Logout Alert Custom Styles ===
+// Los estilos con ::ng-deep se aplican a elementos renderizados fuera del componente
+// como los ion-alert que Ionic crea dinámicamente
+:host ::ng-deep {
+  .logout-alert {
+    .alert-wrapper {
+      .alert-head {
+        h2 {
+          font-size: 20px;
+          font-weight: 600;
+        }
+      }
+
+      .alert-message {
+        font-size: 15px;
+        color: var(--ion-color-medium);
+        margin-bottom: 16px;
+      }
+
+      .alert-button-group {
+        .alert-button {
+          font-size: 15px;
+
+          &.alert-button-cancel {
+            color: var(--ion-color-medium);
+            font-weight: 400;
+          }
+
+          &.alert-button-local {
+            color: var(--ion-color-primary);
+            font-weight: 500;
+          }
+
+          &.alert-button-microsoft {
+            color: var(--ion-color-danger);
+            font-weight: 600;
+          }
+        }
+      }
+    }
+  }
+}
+

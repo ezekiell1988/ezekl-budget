@@ -374,13 +374,45 @@ export class AuthService {
 
   /**
    * Cerrar sesión
+   * @param includeMicrosoft Si es true, también cierra sesión en Microsoft
    */
-  async logout(): Promise<void> {
+  async logout(includeMicrosoft: boolean = false): Promise<void> {
+    const token = this.currentToken;
+
     try {
-      // Llamar al endpoint de logout (opcional con JWE)
-      await firstValueFrom(
-        this.http.post(`${this.API_BASE}/logout`, {})
+      // Llamar al endpoint de logout con parámetro opcional
+      const response = await firstValueFrom(
+        this.http.post<any>(
+          `${this.API_BASE}/logout${includeMicrosoft ? '?microsoft_logout=true' : ''}`,
+          {},
+          {
+            headers: token ? {
+              'Authorization': `Bearer ${token}`
+            } : {}
+          }
+        )
       );
+
+      // Si requiere redirección a Microsoft
+      if (response?.redirect_required && response.microsoft_logout_url) {
+        // Limpiar datos locales primero
+        await this.clearAuthData();
+
+        // Actualizar estado
+        this.updateAuthState({
+          isAuthenticated: false,
+          user: undefined,
+          token: undefined,
+          expiresAt: undefined
+        });
+
+        // Resetear wizard
+        this.resetWizard();
+
+        // Redirigir a Microsoft para logout completo
+        window.location.href = response.microsoft_logout_url;
+        return;
+      }
     } catch (error) {
       console.error('Error en logout del servidor:', error);
       // Continuar con logout local aunque falle el servidor
