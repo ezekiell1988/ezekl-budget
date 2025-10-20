@@ -1208,10 +1208,10 @@ async def whatsapp_auth_page(
 
         # Construir URL de Microsoft OAuth
         microsoft_auth_url = (
-            f"{settings.microsoft_authorization_endpoint}"
-            f"?client_id={settings.microsoft_client_id}"
+            f"{settings.effective_microsoft_authorization_endpoint}"
+            f"?client_id={settings.azure_client_id}"
             f"&response_type=code"
-            f"&redirect_uri={settings.microsoft_redirect_uri}"
+            f"&redirect_uri={settings.effective_microsoft_redirect_uri}"
             f"&response_mode=query"
             f"&scope=openid%20profile%20email%20User.Read"
             f"&state={state_b64}"

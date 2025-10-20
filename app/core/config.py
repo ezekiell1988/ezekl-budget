@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     azure_client_secret: Optional[str] = None
     azure_tenant_id: Optional[str] = None
     
+    # Microsoft OAuth Endpoints (para autenticación web y WhatsApp)
+    microsoft_authorization_endpoint: Optional[str] = None
+    microsoft_token_endpoint: Optional[str] = None
+    microsoft_redirect_uri: Optional[str] = None
+    
     # Configuración de Dynamics 365 CRM
     crm_tenant_id: Optional[str] = None
     crm_client_id: Optional[str] = None
@@ -90,6 +95,39 @@ class Settings(BaseSettings):
             return "https://budget.ezekl.com"
         else:
             return "http://localhost:8001"
+    
+    @property
+    def effective_microsoft_authorization_endpoint(self) -> str:
+        """Retorna el endpoint de autorización de Microsoft OAuth."""
+        if self.microsoft_authorization_endpoint:
+            return self.microsoft_authorization_endpoint
+        
+        # Generar automáticamente si se tiene tenant_id
+        if self.azure_tenant_id:
+            return f"https://login.microsoftonline.com/{self.azure_tenant_id}/oauth2/v2.0/authorize"
+        
+        return "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+    
+    @property
+    def effective_microsoft_token_endpoint(self) -> str:
+        """Retorna el endpoint de token de Microsoft OAuth."""
+        if self.microsoft_token_endpoint:
+            return self.microsoft_token_endpoint
+        
+        # Generar automáticamente si se tiene tenant_id
+        if self.azure_tenant_id:
+            return f"https://login.microsoftonline.com/{self.azure_tenant_id}/oauth2/v2.0/token"
+        
+        return "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+    
+    @property
+    def effective_microsoft_redirect_uri(self) -> str:
+        """Retorna el redirect URI de Microsoft OAuth."""
+        if self.microsoft_redirect_uri:
+            return self.microsoft_redirect_uri
+        
+        # Generar automáticamente basado en la URL base
+        return f"{self.effective_url_base}/api/auth/callback/microsoft"
     
     @property
     def effective_db_host(self) -> str:
