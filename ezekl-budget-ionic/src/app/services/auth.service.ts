@@ -8,6 +8,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError, from, firstValueFrom } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { Preferences } from '@capacitor/preferences';
+import { environment } from '../../environments/environment';
 import {
   AuthUser,
   AuthState,
@@ -47,10 +48,8 @@ export class AuthService {
   private initPromise: Promise<void>;
 
   constructor(private http: HttpClient) {
-    // Configurar URL base del API según el entorno
-    this.API_BASE = window.location.hostname === 'localhost'
-      ? 'http://localhost:8001/api/auth'
-      : 'https://budget.ezekl.com/api/auth';
+    // Configurar URL base del API desde environment
+    this.API_BASE = `${environment.apiUrl}/api/auth`;
 
     console.log('AuthService: API_BASE configurado como:', this.API_BASE);
 

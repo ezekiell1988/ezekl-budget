@@ -110,6 +110,18 @@ export class MeService {
             route: '/demo-realtime',
             enabled: true,
             color: 'primary'
+          },
+          {
+            id: 'demo-copilot',
+            title: 'Chat Copilot Studio',
+            icon: 'chatbubbles',
+            route: '/demo-copilot',
+            enabled: true,
+            color: 'secondary',
+            badge: {
+              text: 'NEW',
+              color: 'success'
+            }
           }
         ]
       },

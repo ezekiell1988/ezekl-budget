@@ -13,6 +13,7 @@ from .auth import router as auth_router, get_current_user
 from .accounting_account import router as accounting_account_router
 from .whatsapp import router as whatsapp_router
 from .ai import router as ai_router
+from .copilot import router as copilot_router
 
 # Importar routers CRM
 from app.api.crm import cases_router, accounts_router, contacts_router, system_router
@@ -26,6 +27,7 @@ router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 router.include_router(accounting_account_router, prefix="/accounting-accounts", tags=["accounting-accounts"])
 router.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
 router.include_router(ai_router, prefix="/ai", tags=["ai"])
+router.include_router(copilot_router, tags=["copilot"])
 
 # Incluir routers CRM con prefijo /crm
 router.include_router(cases_router, prefix="/crm", tags=["CRM"])

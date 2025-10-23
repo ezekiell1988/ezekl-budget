@@ -30,8 +30,8 @@
             <div class="avatar-text">{{ getUserInitials(currentUser) }}</div>
           </ion-avatar>
           <ion-label>
-            <h2 class="profile-name">{{ currentUser.nameLogin }}</h2>
-            <p class="profile-code">{{ currentUser.codeLogin }}</p>
+            <h2 class="ion-text-wrap" style="font-size: 18px; font-weight: 600; margin: 0 0 4px;">{{ currentUser.nameLogin }}</h2>
+            <p class="ion-text-wrap" style="font-size: 14px; margin: 0 0 8px;">{{ currentUser.codeLogin }}</p>
             <ion-chip color="success" size="small" class="profile-status">
               <ion-icon name="checkmark-circle" slot="start"></ion-icon>
               <ion-label>Conectado</ion-label>
@@ -131,7 +131,7 @@
           aria-hidden="true">
         </ion-icon>
         <ion-label [color]="item.enabled ? '' : 'medium'">
-          <h3 class="menu-item-title">{{ item.title }}</h3>
+          <h3 class="ion-text-wrap" style="font-size: 16px; font-weight: 500; margin: 0;">{{ item.title }}</h3>
         </ion-label>
         @if (item.badge) {
         <ion-badge [color]="item.badge.color" slot="end" size="small" [attr.aria-label]="'Insignia: ' + item.badge.text">

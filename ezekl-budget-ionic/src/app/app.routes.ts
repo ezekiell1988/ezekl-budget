@@ -37,6 +37,13 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta demo-copilot - chat con agente de Copilot Studio
+  {
+    path: 'demo-copilot',
+    loadComponent: () => import('./demo-copilot/demo-copilot.page').then( m => m.DemoCopilotPage),
+    canActivate: [AuthGuard]
+  },
+
   // Ruta accounting-accounts - protegida, requiere autenticación
   {
     path: 'accounting-accounts',

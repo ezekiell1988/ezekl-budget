@@ -58,6 +58,7 @@ import {
   closeCircle
 } from 'ionicons/icons';
 import { Preferences } from '@capacitor/preferences';
+import { environment } from '../../environments/environment';
 
 import { AuthService } from '../services/auth.service';
 import {
@@ -369,11 +370,7 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
 
         try {
           // Llamar al endpoint verify-token para obtener los datos completos del usuario
-          const backendUrl = window.location.hostname === 'localhost'
-            ? 'http://localhost:8001'
-            : 'https://budget.ezekl.com';
-
-          const response = await fetch(`${backendUrl}/api/auth/verify-token`, {
+          const response = await fetch(`${environment.apiUrl}/api/auth/verify-token`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${cleanToken}`,
@@ -666,12 +663,7 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
    * Llama al endpoint de asociación Microsoft
    */
   private async associateMicrosoft(codeLogin: string, codeLoginMicrosoft: string): Promise<any> {
-    // Determinar URL del backend según el entorno
-    const backendUrl = window.location.hostname === 'localhost'
-      ? 'http://localhost:8001'
-      : 'https://budget.ezekl.com';
-
-    const url = `${backendUrl}/api/auth/microsoft/associate`;
+    const url = `${environment.apiUrl}/api/auth/microsoft/associate`;
 
     const body = {
       codeLogin: codeLogin,
