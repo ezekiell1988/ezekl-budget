@@ -84,6 +84,11 @@ jobs:
           WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
           WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }}
           WHATSAPP_API_VERSION=v24.0
+          COPILOT_ENVIRONMENT_ID=${{ secrets.COPILOT_ENVIRONMENT_ID }}
+          COPILOT_SCHEMA_NAME=${{ secrets.COPILOT_SCHEMA_NAME }}
+          COPILOT_TENANT_ID=${{ secrets.COPILOT_TENANT_ID }}
+          COPILOT_AGENT_APP_ID=${{ secrets.COPILOT_AGENT_APP_ID }}
+          COPILOT_CLIENT_SECRET=${{ secrets.COPILOT_CLIENT_SECRET }}
           REDIS_HOST=localhost
           REDIS_PORT=6379
           REDIS_DB=0
