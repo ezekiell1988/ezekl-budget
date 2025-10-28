@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     crm_d365_base_url: Optional[str] = None
     crm_api_version: str = "v9.0"
     
+    # Configuración de SharePoint Online
+    sharepoint_tenant_id: Optional[str] = None    # Tenant ID de Azure AD (puede ser el mismo que CRM)
+    sharepoint_client_id: Optional[str] = None    # Client ID de Azure AD (puede ser el mismo que CRM)
+    sharepoint_client_secret: Optional[str] = None # Client Secret de Azure AD (puede ser el mismo que CRM)
+    sharepoint_site_url: Optional[str] = None      # URL completa del sitio de SharePoint (ej: https://itqs.sharepoint.com/sites/budgets)
+    sharepoint_site_id: Optional[str] = None       # ID del sitio de SharePoint (opcional si se usa site_url)
+    
     # Configuración de autenticación JWE (debe ser exactamente 32 bytes)
     jwe_secret_key: str = "ezekl-budget-2024-jwe-secret-32b"  # Exactamente 32 bytes
     

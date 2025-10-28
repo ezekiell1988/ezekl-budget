@@ -1,3 +1,4 @@
+tests/
 # Environment variables
 .env
 .env.local
