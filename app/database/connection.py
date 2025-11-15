@@ -81,32 +81,50 @@ class AsyncDatabaseManager:
                     
                     await cursor.execute(query, json_string)
                     
-                    # Obtener el resultado
-                    row = await cursor.fetchone()
-                    
-                    if row is None:
-                        logger.warning(f"No se obtuvieron resultados del SP: {procedure_name}")
-                        return {"error": "No se obtuvieron resultados del stored procedure"}
-                    
-                    # La columna debe llamarse 'json'
-                    json_result = row.json if hasattr(row, 'json') else row[0]
-                    
-                    if json_result is None:
-                        logger.warning(f"El SP {procedure_name} devolvió NULL")
-                        return {"error": "El stored procedure devolvió NULL"}
-                    
-                    # Parsear el JSON de respuesta
-                    result = json.loads(json_result)
-                    
-                    return result
+                    # Para stored procedures que no retornan datos (UPDATE, DELETE, INSERT sin OUTPUT)
+                    # intentamos obtener el resultado, pero si no hay, es normal
+                    try:
+                        row = await cursor.fetchone()
+                        
+                        # Si no hay resultado, el SP fue exitoso pero no retorna datos
+                        if row is None:
+                            logger.info(f"SP {procedure_name} ejecutado exitosamente sin datos de retorno")
+                            return {"success": True}
+                        
+                        # La columna debe llamarse 'json'
+                        json_result = row.json if hasattr(row, 'json') else row[0]
+                        
+                        if json_result is None:
+                            logger.info(f"El SP {procedure_name} ejecutado exitosamente sin datos de retorno")
+                            return {"success": True}
+                        
+                        # Parsear el JSON de respuesta
+                        result = json.loads(json_result)
+                        return result
+                        
+                    except Exception as fetch_error:
+                        # Si el error es porque no hay resultados, está bien
+                        if "No results" in str(fetch_error) or "Previous SQL was not a query" in str(fetch_error):
+                            logger.info(f"SP {procedure_name} ejecutado exitosamente (no retorna datos)")
+                            return {"success": True}
+                        else:
+                            # Si es otro tipo de error, re-lanzarlo
+                            raise fetch_error
                     
         except json.JSONDecodeError as e:
             logger.error(f"Error al parsear JSON en SP {procedure_name}: {str(e)}")
             raise Exception(f"Error al parsear JSON de respuesta: {str(e)}")
         
-        except (pyodbc.Error, aioodbc.Error) as e:
+        except pyodbc.Error as e:
             logger.error(f"Error de base de datos en SP {procedure_name}: {str(e)}")
-            raise Exception(f"Error de base de datos: {str(e)}")
+            # Si es un RAISERROR, extraer el mensaje
+            error_message = str(e)
+            if "No se encontró la compañía" in error_message:
+                raise Exception(f"Compañía no encontrada: {error_message}")
+            elif "duplicate" in error_message.lower() or "unique" in error_message.lower():
+                raise Exception(f"Código duplicado: {error_message}")
+            else:
+                raise Exception(f"Error de base de datos: {error_message}")
         
         except Exception as e:
             logger.error(f"Error inesperado en SP {procedure_name}: {str(e)}")

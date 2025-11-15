@@ -11,6 +11,7 @@ from app.models.responses import CredentialsResponse, RealtimeCredentialsRespons
 from .email import router as email_router
 from .auth import router as auth_router, get_current_user
 from .accounting_account import router as accounting_account_router
+from .company import router as company_router
 from .whatsapp import router as whatsapp_router
 from .ai import router as ai_router
 from .copilot import router as copilot_router
@@ -22,18 +23,19 @@ from app.api.crm import cases_router, accounts_router, contacts_router, system_r
 router = APIRouter()
 
 # Incluir routers de módulos específicos
-router.include_router(email_router, prefix="/email", tags=["email"])
-router.include_router(auth_router, prefix="/auth", tags=["authentication"])
-router.include_router(accounting_account_router, prefix="/accounting-accounts", tags=["accounting-accounts"])
+router.include_router(email_router, prefix="/email", tags=["correo"])
+router.include_router(auth_router, prefix="/auth", tags=["autenticación"])
+router.include_router(accounting_account_router, prefix="/accounting-accounts", tags=["cuentas-contables"])
+router.include_router(company_router, prefix="/companies", tags=["compañías"])
 router.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
-router.include_router(ai_router, prefix="/ai", tags=["ai"])
-router.include_router(copilot_router, tags=["copilot"])
+router.include_router(ai_router, prefix="/ai", tags=["inteligencia-artificial"])
+router.include_router(copilot_router, tags=["asistente-ia"])
 
 # Incluir routers CRM con prefijo /crm
-router.include_router(cases_router, prefix="/crm", tags=["CRM"])
-router.include_router(accounts_router, prefix="/crm", tags=["CRM"])  
-router.include_router(contacts_router, prefix="/crm", tags=["CRM"])
-router.include_router(system_router, prefix="/crm", tags=["CRM"])
+router.include_router(cases_router, prefix="/crm", tags=["CRM - Casos"])
+router.include_router(accounts_router, prefix="/crm", tags=["CRM - Cuentas"])  
+router.include_router(contacts_router, prefix="/crm", tags=["CRM - Contactos"])
+router.include_router(system_router, prefix="/crm", tags=["CRM - Sistema"])
 
 
 @router.get(
@@ -256,6 +258,6 @@ async def health_check():
 # Y luego importar todos en este __init__.py:
 # from .auth import router as auth_router
 # from .budget import router as budget_router  
-# router.include_router(auth_router, prefix="/auth", tags=["auth"])
-# router.include_router(budget_router, prefix="/budget", tags=["budget"])
+# router.include_router(auth_router, prefix="/auth", tags=["autenticación"])
+# router.include_router(budget_router, prefix="/budget", tags=["presupuestos"])
 

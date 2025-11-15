@@ -10,10 +10,12 @@ import {
   IonButton,
   IonIcon,
   IonSearchbar,
+  IonSelect,
+  IonSelectOption,
   MenuController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { menu, notifications, search, ellipsisVertical, close } from 'ionicons/icons';
+import { menu, notifications, search, ellipsisVertical, close, listOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-header',
@@ -30,6 +32,8 @@ import { menu, notifications, search, ellipsisVertical, close } from 'ionicons/i
     IonButton,
     IonIcon,
     IonSearchbar,
+    IonSelect,
+    IonSelectOption,
   ],
 })
 export class AppHeaderComponent {
@@ -39,13 +43,22 @@ export class AppHeaderComponent {
   @Input() color: string = 'primary';
   @Input() showSearch: boolean = false; // Nueva propiedad para controlar si se muestra el search
   @Input() searchPlaceholder: string = 'Buscar...';
+  @Input() showSort: boolean = false; // Nueva propiedad para controlar si se muestra el sort
+  @Input() sortOptions: Array<{value: string, label: string}> = [];
+  @Input() currentSort: string = '';
+  @Input() sortInterfaceOptions: any = {
+    header: 'Ordenar por',
+    subHeader: 'Selecciona el criterio de ordenamiento'
+  };
 
   @Output() searchChange = new EventEmitter<string>();
   @Output() searchToggle = new EventEmitter<boolean>();
+  @Output() sortChange = new EventEmitter<string>();
   @Output() notificationsClick = new EventEmitter<void>();
   @Output() moreClick = new EventEmitter<void>();
 
   @ViewChild(IonSearchbar) searchbar!: IonSearchbar;
+  @ViewChild('sortSelect') sortSelect!: IonSelect;
 
   searchText: string = '';
   isSearchActive: boolean = false;
@@ -58,6 +71,7 @@ export class AppHeaderComponent {
       search,
       ellipsisVertical,
       close,
+      listOutline,
     });
   }
 
@@ -115,5 +129,21 @@ export class AppHeaderComponent {
    */
   onMoreClick() {
     this.moreClick.emit();
+  }
+
+  /**
+   * Cambio de ordenamiento
+   */
+  onSortChange(event: any) {
+    this.sortChange.emit(event.detail.value);
+  }
+
+  /**
+   * Abrir el selector de ordenamiento
+   */
+  async openSortSelect() {
+    if (this.sortSelect) {
+      await this.sortSelect.open();
+    }
   }
 }

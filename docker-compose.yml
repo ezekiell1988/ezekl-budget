@@ -16,6 +16,8 @@ services:
       - PORT=${PORT:-8001}
     env_file:
       - .env
+    depends_on:
+      - redis
     restart: unless-stopped
     networks:
       - app-network
@@ -25,6 +27,25 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Redis para cache y sesiones
+  redis:
+    image: redis:7.2-alpine
+    container_name: ezekl-budget-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # Nginx como reverse proxy (opcional pero recomendado para producción)
   nginx:
@@ -38,6 +59,7 @@ services:
       - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       - ezekl-budget
+      - redis
     restart: unless-stopped
     networks:
       - app-network
@@ -48,3 +70,4 @@ networks:
 
 volumes:
   app-data:
+  redis-data:

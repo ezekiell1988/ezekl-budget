@@ -1,0 +1,214 @@
+<app-header
+  title="Compañías"
+  [showMenu]="true"
+  [showActions]="true"
+  [showSearch]="true"
+  searchPlaceholder="Buscar compañías por nombre o código..."
+  (searchChange)="onHeaderSearch($event)"
+  (searchToggle)="onHeaderSearchToggle($event)">
+</app-header>
+
+<ion-content>
+
+  <!-- Pull to refresh -->
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content
+      pulling-text="Desliza para actualizar"
+      refreshing-text="Actualizando compañías...">
+    </ion-refresher-content>
+  </ion-refresher>
+
+  <ion-grid fixed>
+    <!-- Filtro de estado -->
+    <ion-item lines="none" class="ion-margin-bottom">
+      <ion-label>Incluir inactivas:</ion-label>
+      <ion-toggle
+        [(ngModel)]="includeInactive"
+        (ionChange)="onIncludeInactiveFilter($event)"
+        color="primary"
+        slot="end">
+      </ion-toggle>
+    </ion-item>
+
+  <!-- Lista de compañías -->
+  @if (!isLoading || companies.length > 0) {
+  <div>
+
+    <!-- Compañías encontradas -->
+    @if (companies.length > 0) {
+    <ion-list>
+      @for (company of companies; track company.idCompany) {
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>{{ company.nameCompany }}</ion-card-title>
+          <div class="ion-justify-content-end ion-margin-top" style="display: flex; gap: 8px;">
+            <ion-chip [color]="getActiveStatusColor(company.active)">
+              <ion-icon name="business-outline"></ion-icon>
+              <ion-label>{{ getActiveStatusText(company.active) }}</ion-label>
+            </ion-chip>
+          </div>
+        </ion-card-header>
+
+        <ion-card-content>
+          @if (company.codeCompany) {
+          <p class="ion-text-wrap ion-margin-bottom" color="medium">
+            <strong>Código:</strong> {{ company.codeCompany }}
+          </p>
+          }
+
+          @if (company.descriptionCompany) {
+          <p class="ion-text-wrap ion-margin-bottom" color="medium">
+            <strong>Descripción:</strong> {{ company.descriptionCompany | slice:0:100 }}{{ company.descriptionCompany && company.descriptionCompany.length > 100 ? '...' : '' }}
+          </p>
+          }
+
+          <!-- Botones de acción -->
+          <ion-buttons class="ion-margin-top">
+            <ion-button fill="clear" size="small" (click)="openViewModal(company)">
+              <ion-icon name="eye-outline" slot="start"></ion-icon>
+              Ver
+            </ion-button>
+            <ion-button fill="clear" size="small" (click)="openEditModal(company)">
+              <ion-icon name="create-outline" slot="start"></ion-icon>
+              Editar
+            </ion-button>
+            <ion-button fill="clear" size="small" color="danger" (click)="deleteCompany(company)">
+              <ion-icon name="trash-outline" slot="start"></ion-icon>
+              Eliminar
+            </ion-button>
+          </ion-buttons>
+        </ion-card-content>
+      </ion-card>
+      }
+    </ion-list>
+
+    <!-- Infinite scroll -->
+    <ion-infinite-scroll (ionInfinite)="onLoadMore($event)" [disabled]="!hasNextPage">
+      <ion-infinite-scroll-content loading-text="Cargando más compañías...">
+      </ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+    }
+
+  </div>
+  }
+
+  <!-- Estado de carga inicial - Skeleton -->
+  @if (isLoading && companies.length === 0) {
+  <ion-list class="ion-padding">
+    @for (item of [1,2,3,4,5]; track item) {
+    <ion-card>
+      <ion-card-header>
+        <ion-skeleton-text animated style="width: 70%; height: 24px; margin-bottom: 8px;"></ion-skeleton-text>
+        <div class="ion-justify-content-end ion-margin-top" style="display: flex; gap: 8px;">
+          <ion-skeleton-text animated style="width: 80px; height: 20px; border-radius: 12px;"></ion-skeleton-text>
+        </div>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="ion-margin-bottom">
+          <ion-skeleton-text animated style="width: 60%; margin-bottom: 4px;"></ion-skeleton-text>
+        </div>
+
+        <div class="ion-margin-bottom">
+          <ion-skeleton-text animated style="width: 40%; height: 16px; margin-bottom: 4px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 35%; height: 16px; margin-bottom: 16px;"></ion-skeleton-text>
+        </div>
+
+        <div class="ion-margin-top" style="display: flex; gap: 8px;">
+          <ion-skeleton-text animated style="width: 50px; height: 32px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 60px; height: 32px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 70px; height: 32px;"></ion-skeleton-text>
+        </div>
+      </ion-card-content>
+    </ion-card>
+    }
+  </ion-list>
+  }
+
+  <!-- Estado vacío -->
+  @if (!isLoading && companies.length === 0) {
+  <div class="ion-padding ion-text-center" style="margin-top: 64px;">
+    <ion-icon name="business-outline" size="large" color="medium"></ion-icon>
+    <h3 class="ion-margin-top" style="color: var(--ion-color-medium);">No hay compañías</h3>
+    <p class="ion-margin-bottom" style="color: var(--ion-color-medium);">
+      No se encontraron compañías que coincidan con los filtros aplicados.
+    </p>
+    <ion-button fill="outline" (click)="clearFilters()">
+      <ion-icon name="filter-outline" slot="start"></ion-icon>
+      Limpiar Filtros
+    </ion-button>
+  </div>
+  }
+  </ion-grid>
+
+  <!-- Botón flotante para agregar compañía -->
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button (click)="openCreateModal()" [disabled]="isLoading">
+      <ion-icon name="add"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+</ion-content>
+
+<!-- MODAL VER COMPAÑÍA -->
+<ion-modal [isOpen]="isViewModalOpen" (willDismiss)="closeViewModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Detalles de la Compañía</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeViewModal()">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    @if (selectedCompany) {
+    <ion-content class="ion-padding">
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>{{ selectedCompany.nameCompany }}</ion-card-title>
+          <div class="ion-justify-content-end ion-margin-top" style="display: flex; gap: 8px;">
+            <ion-chip [color]="getActiveStatusColor(selectedCompany.active)">
+              <ion-icon name="business-outline"></ion-icon>
+              <ion-label>{{ getActiveStatusText(selectedCompany.active) }}</ion-label>
+            </ion-chip>
+          </div>
+        </ion-card-header>
+
+        <ion-card-content>
+          <ion-list>
+            <ion-item>
+              <ion-label>
+                <h3>Nombre de la Compañía</h3>
+                <p>{{ selectedCompany.nameCompany || 'No especificado' }}</p>
+              </ion-label>
+            </ion-item>
+
+            <ion-item>
+              <ion-label>
+                <h3>Código de la Compañía</h3>
+                <p>{{ selectedCompany.codeCompany || 'No especificado' }}</p>
+              </ion-label>
+            </ion-item>
+
+            <ion-item>
+              <ion-label>
+                <h3>Descripción</h3>
+                <p>{{ selectedCompany.descriptionCompany || 'No especificado' }}</p>
+              </ion-label>
+            </ion-item>
+
+            <ion-item>
+              <ion-label>
+                <h3>Estado</h3>
+                <p>{{ getActiveStatusText(selectedCompany.active) }}</p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+    </ion-content>
+    }
+  </ng-template>
+</ion-modal>

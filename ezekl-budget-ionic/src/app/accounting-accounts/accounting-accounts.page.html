@@ -1,144 +1,276 @@
-<app-header title="Cuentas Contables"></app-header>
+<app-header
+  title="Cuentas Contables"
+  [showMenu]="true"
+  [showActions]="true"
+  [showSearch]="true"
+  searchPlaceholder="Buscar cuentas contables por nombre o código..."
+  [showSort]="true"
+  [sortOptions]="sortOptions"
+  [currentSort]="currentSort"
+  [sortInterfaceOptions]="{
+    header: 'Ordenar cuentas contables por',
+    subHeader: 'Selecciona el criterio de ordenamiento'
+  }"
+  (searchChange)="onHeaderSearch($event)"
+  (searchToggle)="onHeaderSearchToggle($event)"
+  (sortChange)="onSortChange($event)">
+</app-header>
 
-<ion-content [fullscreen]="true">
-  <!-- Refresher para pull-to-refresh -->
+<ion-content>
+
+  <!-- Pull to refresh -->
   <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
     <ion-refresher-content
-      pullingText="Arrastra para actualizar..."
-      refreshingText="Actualizando...">
+      pulling-text="Desliza para actualizar"
+      refreshing-text="Actualizando cuentas...">
     </ion-refresher-content>
   </ion-refresher>
 
   <ion-grid fixed>
-    <!-- Header condensado -->
-    <ion-header collapse="condense">
-      <ion-toolbar>
-        <ion-title size="large">Catálogo de Cuentas</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <!-- Filtro de estado -->
+    <ion-item lines="none" class="ion-margin-bottom">
+      <ion-label>Incluir inactivas:</ion-label>
+      <ion-toggle
+        [(ngModel)]="includeInactive"
+        (ionChange)="onIncludeInactiveChange($event)"
+        color="primary"
+        slot="end">
+      </ion-toggle>
+    </ion-item>
 
-    <!-- Barra de búsqueda -->
-    <ion-searchbar
-      [(ngModel)]="searchTerm"
-      (ionInput)="onSearchChange($event)"
-      (ionClear)="onSearchClear()"
-      placeholder="Buscar cuentas contables..."
-      debounce="500"
-      show-clear-button="focus">
-    </ion-searchbar>
+  <!-- Lista de cuentas contables -->
+  @if (!isLoading || accounts.length > 0) {
+  <div>
 
-    <!-- Información de resultados -->
-    @if (pagination) {
-      <div class="ion-padding-horizontal ion-padding-bottom">
-        <ion-text color="medium">
-          <small>
-            Mostrando {{ accounts.length }} de {{ pagination.totalItems }} cuentas
-            @if (searchTerm) {
-              <span> • Búsqueda: "{{ searchTerm }}"</span>
+    <!-- Cuentas encontradas -->
+    @if (accounts.length > 0) {
+    <!-- Cards principales con acordeones anidados -->
+    @for (account of accounts; track account.idAccountingAccount) {
+      <ion-card class="ion-margin-bottom">
+        <ion-card-header>
+          <ion-card-title class="ion-text-wrap">
+            <div class="ion-align-items-center ion-justify-content-start">
+              <ion-icon
+                [name]="hasChildren(account) ? 'folder-outline' : 'calculator-outline'"
+                [color]="hasChildren(account) ? 'warning' : 'primary'"
+                size="large"
+                class="ion-margin-end">
+              </ion-icon>
+              <div class="ion-text-start">
+                <h2 class="ion-no-margin">{{ account.nameAccountingAccount }}</h2>
+                <p class="ion-color-medium ion-no-margin ion-margin-top">
+                  {{ account.codeAccountingAccount }}
+                </p>
+              </div>
+            </div>
+          </ion-card-title>
+
+          <div class="ion-justify-content-end ion-margin-top">
+            <div class="ion-flex-wrap ion-justify-content-end" style="display: flex; gap: 8px;">
+            <ion-chip [color]="account.active ? 'success' : 'medium'">
+              <ion-icon [name]="account.active ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+              <ion-label>{{ account.active ? 'Activa' : 'Inactiva' }}</ion-label>
+            </ion-chip>
+            @if (hasChildren(account)) {
+              <ion-chip color="warning">
+                <ion-icon name="folder"></ion-icon>
+                <ion-label>{{ account.children?.length || 0 }} subcuentas</ion-label>
+              </ion-chip>
             }
-          </small>
-        </ion-text>
-      </div>
-    }
+            </div>
+          </div>
+        </ion-card-header>
 
-    <!-- Lista de cuentas contables -->
-    @if (!isInitialLoading) {
-      <ion-list class="ion-no-padding">
-        @for (account of accounts; track account.idAccountingAccount) {
-          <ion-item button (click)="onAccountClick(account)" lines="full">
+        <ion-card-content>
+          <!-- Información básica de la cuenta -->
+          <ion-item lines="none" class="ion-no-padding ion-margin-bottom">
             <ion-label class="ion-text-wrap">
-              <h2 class="ion-no-margin ion-margin-bottom">{{ account.nameAccountingAccount }}</h2>
-              <p class="ion-no-margin">
-                <ion-text color="primary">
-                  <strong>{{ account.codeAccountingAccount }}</strong>
-                </ion-text>
-                <ion-text color="medium">
-                  <small> • ID: {{ account.idAccountingAccount }}</small>
-                </ion-text>
-              </p>
+              <div class="ion-text-start">
+                <div class="ion-margin-bottom">
+                  <p class="ion-color-medium ion-no-margin ion-text-uppercase" style="font-size: 12px; font-weight: 600;">ID</p>
+                  <p class="ion-no-margin" style="font-weight: 500;">{{ account.idAccountingAccount }}</p>
+                </div>
+                @if (account.idAccountingAccountFather) {
+                  <div>
+                    <p class="ion-color-medium ion-no-margin ion-text-uppercase" style="font-size: 12px; font-weight: 600;">Cuenta Padre</p>
+                    <p class="ion-no-margin" style="font-weight: 500;">{{ account.idAccountingAccountFather }}</p>
+                  </div>
+                }
+              </div>
             </ion-label>
           </ion-item>
-        }
-      </ion-list>
-    }
 
-    <!-- Skeleton loading para carga inicial -->
-    @if (isInitialLoading) {
-      <ion-list class="ion-no-padding">
-        @for (item of skeletonItems; track $index) {
-          <ion-item lines="full">
-            <ion-label>
-              <h2 class="ion-no-margin ion-margin-bottom">
-                <ion-skeleton-text [animated]="true" style="width: 70%;"></ion-skeleton-text>
-              </h2>
-              <p class="ion-no-margin">
-                <ion-skeleton-text [animated]="true" style="width: 40%;"></ion-skeleton-text>
-              </p>
-            </ion-label>
-          </ion-item>
-        }
-      </ion-list>
-    }
+          @if (hasChildren(account)) {
+            <ion-accordion-group [multiple]="true" expand="inset" class="ion-margin-top">
+              <ion-accordion value="subcuentas" toggleIcon="chevron-down">
+                <ion-item slot="header" color="light" lines="none">
+                  <ion-icon name="list-outline" slot="start" color="primary"></ion-icon>
+                  <ion-label>
+                    <h3>Subcuentas ({{ account.children?.length || 0 }})</h3>
+                    <p>Ver cuentas anidadas</p>
+                  </ion-label>
+                </ion-item>
 
-    <!-- Estado vacío -->
-    @if (!isInitialLoading && accounts.length === 0 && !error) {
-      <ion-card class="ion-no-margin ion-margin-top">
-        <ion-card-content class="ion-text-center ion-padding">
-          <ion-icon
-            name="document-text-outline"
-            color="medium"
-            style="font-size: 4rem; margin-bottom: 1rem;">
-          </ion-icon>
-          <h2 class="ion-no-margin ion-margin-bottom">No se encontraron cuentas</h2>
-          @if (searchTerm) {
-            <p class="ion-text-wrap" style="color: var(--ion-color-medium); line-height: 1.5;">
-              No hay cuentas que coincidan con "{{ searchTerm }}"
-            </p>
+                <div slot="content">
+                  <!-- Template recursivo para subcuentas -->
+                  <ng-container [ngTemplateOutlet]="subAccountTemplate" [ngTemplateOutletContext]="{ accounts: account.children, level: 1 }"></ng-container>
+                </div>
+              </ion-accordion>
+            </ion-accordion-group>
           }
-          @if (!searchTerm) {
-            <p class="ion-text-wrap" style="color: var(--ion-color-medium); line-height: 1.5;">
-              No hay cuentas contables disponibles
-            </p>
-          }
-          <ion-button fill="clear" (click)="retryLoad()" class="ion-margin-top">
-            <ion-icon name="refresh" slot="start"></ion-icon>
-            Reintentar
-          </ion-button>
+
+          <!-- Botones de acción -->
+          <ion-buttons class="ion-margin-top">
+            <ion-button fill="clear" size="small" (click)="onEditAccount(account, $event)">
+              <ion-icon name="create-outline" slot="start"></ion-icon>
+              Editar
+            </ion-button>
+            @if (account.active) {
+              <ion-button fill="clear" size="small" color="danger" (click)="onDeleteAccount(account, $event)">
+                <ion-icon name="trash-outline" slot="start"></ion-icon>
+                Eliminar
+              </ion-button>
+            }
+            @if (hasChildren(account)) {
+              <ion-button fill="clear" size="small" color="secondary" (click)="onManageChildren(account, $event)">
+                <ion-icon name="git-branch-outline" slot="start"></ion-icon>
+                Gestionar
+              </ion-button>
+            }
+          </ion-buttons>
         </ion-card-content>
       </ion-card>
     }
 
-    <!-- Estado de error -->
-    @if (error) {
-      <ion-card class="ion-no-margin ion-margin-top" color="danger">
-        <ion-card-content class="ion-text-center ion-padding">
-          <ion-icon
-            name="alert-circle-outline"
-            color="light"
-            style="font-size: 4rem; margin-bottom: 1rem;">
-          </ion-icon>
-          <h2 class="ion-no-margin ion-margin-bottom" style="color: white;">Error al cargar cuentas</h2>
-          <p class="ion-text-wrap" style="color: rgba(255, 255, 255, 0.8); line-height: 1.5;">
-            {{ error }}
-          </p>
-          <ion-button fill="outline" color="light" (click)="retryLoad()" class="ion-margin-top">
-            <ion-icon name="refresh" slot="start"></ion-icon>
-            Reintentar
-          </ion-button>
-        </ion-card-content>
-      </ion-card>
-    }
+    <!-- Template recursivo para subcuentas anidadas -->
+    <ng-template #subAccountTemplate let-accounts="accounts" let-level="level">
+      @for (subAccount of accounts; track subAccount.idAccountingAccount) {
+        <ion-card>
+          <ion-card-content>
+            <!-- Indicador de nivel jerárquico con iconos -->
+            <div class="ion-text-start ion-margin-bottom">
+              @for (i of getHierarchyIndicators(level); track i) {
+                <ion-icon name="chevron-forward" color="medium" size="small"></ion-icon>
+              }
+              <ion-chip color="tertiary" size="small">
+                <ion-label>Nivel {{ level }}</ion-label>
+              </ion-chip>
+            </div>
+
+            <div class="ion-text-wrap">
+              <ion-icon
+                [name]="hasChildren(subAccount) ? 'folder-outline' : 'document-outline'"
+                [color]="hasChildren(subAccount) ? 'warning' : 'medium'"
+                class="ion-margin-end">
+              </ion-icon>
+
+              <h4 class="ion-no-margin ion-display-inline">{{ subAccount.nameAccountingAccount }}</h4>
+
+              <ion-chip [color]="subAccount.active ? 'success' : 'medium'" size="small" class="ion-margin-start">
+                <ion-label>{{ subAccount.active ? 'Activa' : 'Inactiva' }}</ion-label>
+              </ion-chip>
+            </div>
+
+            <ion-item lines="none" class="ion-no-padding ion-margin-top">
+              <ion-label class="ion-text-wrap">
+                <p class="ion-color-medium ion-no-margin">
+                  <strong>Código:</strong> {{ subAccount.codeAccountingAccount }} |
+                  <strong>ID:</strong> {{ subAccount.idAccountingAccount }}
+                </p>
+              </ion-label>
+            </ion-item>
+
+            <!-- Acordeón anidado para subcuentas de subcuentas -->
+            @if (hasChildren(subAccount)) {
+              <ion-accordion-group [multiple]="true" expand="inset" class="ion-margin-top">
+                <ion-accordion [value]="'sub-' + subAccount.idAccountingAccount" toggleIcon="chevron-down">
+                  <ion-item slot="header" color="medium" lines="none">
+                    <ion-icon name="chevron-forward-outline" slot="start" color="dark"></ion-icon>
+                    <ion-label>
+                      <h4>Subcuentas ({{ subAccount.children?.length || 0 }})</h4>
+                    </ion-label>
+                  </ion-item>
+
+                  <div slot="content">
+                    <!-- Recursión para el siguiente nivel -->
+                    <ng-container [ngTemplateOutlet]="subAccountTemplate" [ngTemplateOutletContext]="{ accounts: subAccount.children, level: level + 1 }"></ng-container>
+                  </div>
+                </ion-accordion>
+              </ion-accordion-group>
+            }
+
+            <!-- Botones de acción para subcuentas -->
+            <ion-buttons class="ion-margin-top ion-justify-content-start">
+              <ion-button fill="clear" size="small" (click)="onEditAccount(subAccount, $event)">
+                <ion-icon name="create-outline" slot="start"></ion-icon>
+                Editar
+              </ion-button>
+              @if (subAccount.active) {
+                <ion-button fill="clear" size="small" color="danger" (click)="onDeleteAccount(subAccount, $event)">
+                  <ion-icon name="trash-outline" slot="start"></ion-icon>
+                  Eliminar
+                </ion-button>
+              }
+            </ion-buttons>
+          </ion-card-content>
+        </ion-card>
+      }
+    </ng-template>
 
     <!-- Infinite scroll -->
-    <ion-infinite-scroll
-      threshold="100px"
-      (ionInfinite)="loadMoreData($event)"
-      [disabled]="!pagination?.hasNextPage || isLoading">
-      <ion-infinite-scroll-content
-        loadingText="Cargando más cuentas..."
-        loadingSpinner="bubbles">
+    <ion-infinite-scroll (ionInfinite)="loadMoreData($event)" [disabled]="!pagination?.hasNextPage">
+      <ion-infinite-scroll-content loading-text="Cargando más cuentas...">
       </ion-infinite-scroll-content>
     </ion-infinite-scroll>
+    }
+
+  </div>
+  }
+
+  <!-- Estado de carga inicial - Skeleton -->
+  @if (isLoading && accounts.length === 0) {
+  <ion-list class="ion-padding">
+    @for (item of [1,2,3,4,5]; track item) {
+    <ion-card>
+      <ion-card-header>
+        <ion-skeleton-text animated class="ion-margin-bottom" style="width: 70%; height: 24px;"></ion-skeleton-text>
+        <div class="ion-justify-content-end">
+          <ion-skeleton-text animated style="width: 80px; height: 20px; border-radius: 12px;"></ion-skeleton-text>
+        </div>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="ion-margin-top ion-justify-content-start ion-flex-wrap" style="display: flex; gap: 8px;">
+          <ion-skeleton-text animated style="width: 50px; height: 32px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 60px; height: 32px;"></ion-skeleton-text>
+          <ion-skeleton-text animated style="width: 70px; height: 32px;"></ion-skeleton-text>
+        </div>
+      </ion-card-content>
+    </ion-card>
+    }
+  </ion-list>
+  }
+
+  <!-- Estado vacío -->
+  @if (!isLoading && accounts.length === 0) {
+  <div class="ion-padding ion-text-center ion-margin-top">
+    <ion-icon name="calculator-outline" size="large" color="medium"></ion-icon>
+    <h3 class="ion-margin-top ion-color-medium">No hay cuentas contables</h3>
+    <p class="ion-margin-bottom ion-color-medium">
+      No se encontraron cuentas contables que coincidan con los filtros aplicados.
+    </p>
+    <ion-button fill="outline" (click)="retryLoad()">
+      <ion-icon name="filter-outline" slot="start"></ion-icon>
+      Limpiar Filtros
+    </ion-button>
+  </div>
+  }
   </ion-grid>
+
+  <!-- Botón flotante para agregar cuenta -->
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button (click)="onCreateAccount()" [disabled]="isLoading">
+      <ion-icon name="add"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
 
 </ion-content>

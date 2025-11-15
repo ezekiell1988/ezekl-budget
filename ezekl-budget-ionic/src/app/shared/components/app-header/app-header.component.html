@@ -20,12 +20,23 @@
         <ion-icon name="search" slot="icon-only" color="light"></ion-icon>
       </ion-button>
       }
-      <ion-button fill="clear" (click)="onNotificationsClick()">
-        <ion-icon name="notifications" slot="icon-only" color="light"></ion-icon>
+      @if (showSort && sortOptions.length > 0) {
+      <ion-button fill="clear" (click)="openSortSelect()">
+        <ion-icon name="list-outline" slot="icon-only" color="light"></ion-icon>
       </ion-button>
-      <ion-button fill="clear" (click)="onMoreClick()">
-        <ion-icon name="ellipsis-vertical" slot="icon-only" color="light"></ion-icon>
-      </ion-button>
+      <ion-select
+        #sortSelect
+        [value]="currentSort"
+        (ionChange)="onSortChange($event)"
+        interface="popover"
+        placeholder="Ordenar por"
+        [interfaceOptions]="sortInterfaceOptions"
+        style="display: none;">
+        @for (option of sortOptions; track option.value) {
+        <ion-select-option [value]="option.value">{{ option.label }}</ion-select-option>
+        }
+      </ion-select>
+      }
     </ion-buttons>
     }
   </ion-toolbar>

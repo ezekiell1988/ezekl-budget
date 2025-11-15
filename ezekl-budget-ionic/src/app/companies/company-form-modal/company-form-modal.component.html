@@ -1,0 +1,80 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>{{ isEditMode ? 'Editar Compañía' : 'Nueva Compañía' }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()" fill="clear" color="light">
+        <ion-icon name="close-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <form [formGroup]="companyForm" (ngSubmit)="onSubmit()">
+    <!-- Campo código/cédula -->
+    <ion-input
+      formControlName="codeCompany"
+      label="Código/Cédula"
+      labelPlacement="floating"
+      placeholder="Ingrese el código o cédula empresarial"
+      maxlength="20"
+      [clearInput]="true"
+      helperText="Código único de identificación"
+      [errorText]="getCodeErrorText()"
+      class="ion-margin-bottom">
+    </ion-input>
+
+    <!-- Campo nombre -->
+    <ion-input
+      formControlName="nameCompany"
+      label="Nombre de la Compañía"
+      labelPlacement="floating"
+      placeholder="Ingrese el nombre de la compañía"
+      maxlength="100"
+      [clearInput]="true"
+      helperText="Nombre completo de la empresa"
+      [errorText]="getNameErrorText()"
+      class="ion-margin-bottom">
+    </ion-input>
+
+    <!-- Campo descripción -->
+    <ion-textarea
+      formControlName="descriptionCompany"
+      label="Descripción"
+      labelPlacement="floating"
+      placeholder="Ingrese una descripción de la compañía"
+      maxlength="500"
+      rows="3"
+      helperText="Breve descripción de la actividad empresarial"
+      [errorText]="getDescriptionErrorText()"
+      class="ion-margin-bottom">
+    </ion-textarea>
+
+    <!-- Botones de acción -->
+    <div class="ion-margin-top" style="display: flex; flex-direction: column; gap: 12px; padding: 16px 0;">
+      <ion-button
+        expand="full"
+        type="submit"
+        [disabled]="companyForm.invalid || isLoading"
+        color="primary">
+        @if (isLoading) {
+          <ion-spinner name="crescent" slot="start"></ion-spinner>
+          {{ isEditMode ? 'Actualizando...' : 'Creando...' }}
+        } @else {
+          <ion-icon name="save-outline" slot="start"></ion-icon>
+          {{ isEditMode ? 'Actualizar Compañía' : 'Crear Compañía' }}
+        }
+      </ion-button>
+
+      <ion-button
+        expand="full"
+        fill="outline"
+        color="medium"
+        (click)="dismiss()"
+        [disabled]="isLoading">
+        <ion-icon name="close-outline" slot="start"></ion-icon>
+        Cancelar
+      </ion-button>
+    </div>
+  </form>
+</ion-content>

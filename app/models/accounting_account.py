@@ -4,12 +4,12 @@ Define las estructuras de datos para requests y responses de cuentas contables.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Union
 
 
 class AccountingAccount(BaseModel):
     """
-    Modelo que representa una cuenta contable individual.
+    Modelo que representa una cuenta contable individual con estructura jerárquica.
     """
     
     idAccountingAccount: int = Field(
@@ -17,16 +17,32 @@ class AccountingAccount(BaseModel):
         examples=[1, 2, 100]
     )
     
+    idAccountingAccountFather: Optional[int] = Field(
+        default=None,
+        description="ID de la cuenta contable padre (None para cuentas raíz)",
+        examples=[1, 2, None]
+    )
+    
     codeAccountingAccount: str = Field(
         description="Código de la cuenta contable",
         max_length=50,
-        examples=["1001", "2001", "4001"]
+        examples=["001", "001-001", "001-001-001"]
     )
     
     nameAccountingAccount: str = Field(
         description="Nombre descriptivo de la cuenta contable",
         max_length=255,
-        examples=["Efectivo en Caja", "Cuentas por Cobrar", "Ingresos por Ventas"]
+        examples=["Activo", "Caja General", "Caja General 2"]
+    )
+    
+    active: bool = Field(
+        description="Indica si la cuenta está activa",
+        examples=[True, False]
+    )
+    
+    children: Optional[List['AccountingAccount']] = Field(
+        default=None,
+        description="Lista de cuentas contables hijas (estructura recursiva)"
     )
 
     class Config:
@@ -34,16 +50,32 @@ class AccountingAccount(BaseModel):
         json_schema_extra = {
             "example": {
                 "idAccountingAccount": 1,
-                "codeAccountingAccount": "1001",
-                "nameAccountingAccount": "Efectivo en Caja"
+                "idAccountingAccountFather": None,
+                "codeAccountingAccount": "001",
+                "nameAccountingAccount": "Activo",
+                "active": True,
+                "children": [
+                    {
+                        "idAccountingAccount": 8,
+                        "idAccountingAccountFather": 1,
+                        "codeAccountingAccount": "001-001",
+                        "nameAccountingAccount": "Caja General",
+                        "active": True,
+                        "children": []
+                    }
+                ]
             }
         }
+
+
+# Necesario para referencias recursivas
+AccountingAccount.model_rebuild()
 
 
 class AccountingAccountRequest(BaseModel):
     """
     Modelo para request de obtención de cuentas contables paginadas.
-    Corresponde al parámetro JSON del stored procedure spAccountingAccount.
+    Corresponde al parámetro JSON del stored procedure spAccountingAccountGet.
     """
     
     search: Optional[str] = Field(
@@ -55,12 +87,14 @@ class AccountingAccountRequest(BaseModel):
     
     sort: Optional[Literal[
         "idAccountingAccount_asc",
+        "idAccountingAccountFather_asc",
+        "idAccountingAccountFather_desc", 
         "codeAccountingAccount_asc", 
         "codeAccountingAccount_desc",
         "nameAccountingAccount_asc",
         "nameAccountingAccount_desc"
     ]] = Field(
-        default="codeAccountingAccount_asc",
+        default="nameAccountingAccount_asc",
         description="Campo y dirección de ordenamiento"
     )
     
@@ -79,6 +113,11 @@ class AccountingAccountRequest(BaseModel):
         examples=[10, 25, 50]
     )
     
+    includeInactive: Optional[bool] = Field(
+        default=False,
+        description="Si es True, incluye cuentas inactivas en los resultados"
+    )
+    
     noQuery: Optional[bool] = Field(
         default=False,
         description="Si es True, no ejecuta la consulta (solo para pruebas)"
@@ -91,34 +130,68 @@ class AccountingAccountRequest(BaseModel):
                 "search": "caja",
                 "sort": "nameAccountingAccount_asc",
                 "page": 1,
-                "itemPerPage": 20
+                "itemPerPage": 20,
+                "includeInactive": False
             }
         }
 
 
 class AccountingAccountResponse(BaseModel):
     """
-    Modelo de respuesta para cuentas contables paginadas.
+    Modelo de respuesta para cuentas contables paginadas con estructura jerárquica.
     Corresponde a la estructura JSON devuelta por el stored procedure.
     """
     
     total: int = Field(
         description="Total de registros que coinciden con el filtro",
-        examples=[0, 50, 250]
+        examples=[0, 6, 250]
     )
     
     data: List[AccountingAccount] = Field(
-        description="Lista de cuentas contables para la página actual",
+        description="Lista de cuentas contables con estructura jerárquica",
         examples=[[
             {
                 "idAccountingAccount": 1,
-                "codeAccountingAccount": "1001",
-                "nameAccountingAccount": "Efectivo en Caja"
+                "idAccountingAccountFather": None,
+                "codeAccountingAccount": "001",
+                "nameAccountingAccount": "Activo",
+                "active": True,
+                "children": [
+                    {
+                        "idAccountingAccount": 8,
+                        "idAccountingAccountFather": 1,
+                        "codeAccountingAccount": "001-001",
+                        "nameAccountingAccount": "Caja General",
+                        "active": True,
+                        "children": [
+                            {
+                                "idAccountingAccount": 9,
+                                "idAccountingAccountFather": 8,
+                                "codeAccountingAccount": "001-001-001",
+                                "nameAccountingAccount": "Caja General 2",
+                                "active": True,
+                                "children": [
+                                    {
+                                        "idAccountingAccount": 10,
+                                        "idAccountingAccountFather": 9,
+                                        "codeAccountingAccount": "001-001-001-001",
+                                        "nameAccountingAccount": "Caja General 3",
+                                        "active": True,
+                                        "children": None
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
             },
             {
-                "idAccountingAccount": 2,
-                "codeAccountingAccount": "1002", 
-                "nameAccountingAccount": "Banco Cuenta Corriente"
+                "idAccountingAccount": 3,
+                "idAccountingAccountFather": None,
+                "codeAccountingAccount": "003",
+                "nameAccountingAccount": "Capital",
+                "active": True,
+                "children": None
             }
         ]]
     )
@@ -127,19 +200,121 @@ class AccountingAccountResponse(BaseModel):
         """Configuración del modelo Pydantic."""
         json_schema_extra = {
             "example": {
-                "total": 2,
+                "total": 6,
                 "data": [
                     {
                         "idAccountingAccount": 1,
-                        "codeAccountingAccount": "1001",
-                        "nameAccountingAccount": "Efectivo en Caja"
+                        "idAccountingAccountFather": None,
+                        "codeAccountingAccount": "001",
+                        "nameAccountingAccount": "Activo",
+                        "active": True,
+                        "children": [
+                            {
+                                "idAccountingAccount": 8,
+                                "idAccountingAccountFather": 1,
+                                "codeAccountingAccount": "001-001",
+                                "nameAccountingAccount": "Caja General",
+                                "active": True,
+                                "children": []
+                            }
+                        ]
                     },
                     {
                         "idAccountingAccount": 2,
-                        "codeAccountingAccount": "1002",
-                        "nameAccountingAccount": "Banco Cuenta Corriente"
+                        "idAccountingAccountFather": None,
+                        "codeAccountingAccount": "002",
+                        "nameAccountingAccount": "Pasivo",
+                        "active": True,
+                        "children": None
                     }
                 ]
+            }
+        }
+
+
+class AccountingAccountCreateRequest(BaseModel):
+    """
+    Modelo para request de creación de cuenta contable.
+    """
+    
+    idAccountingAccountFather: Optional[int] = Field(
+        default=None,
+        description="ID de la cuenta contable padre (None para cuentas raíz)",
+        examples=[1, 2, None]
+    )
+    
+    codeAccountingAccount: str = Field(
+        description="Código de la cuenta contable",
+        max_length=50,
+        examples=["001-001-001", "002-001"]
+    )
+    
+    nameAccountingAccount: str = Field(
+        description="Nombre descriptivo de la cuenta contable",
+        max_length=255,
+        examples=["Caja Chica", "Banco Nacional"]
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "idAccountingAccountFather": 8,
+                "codeAccountingAccount": "001-001-002",
+                "nameAccountingAccount": "Caja Chica"
+            }
+        }
+
+
+class AccountingAccountUpdateRequest(BaseModel):
+    """
+    Modelo para request de actualización de cuenta contable.
+    """
+    
+    idAccountingAccountFather: Optional[int] = Field(
+        default=None,
+        description="ID de la cuenta contable padre (opcional para actualización parcial)",
+        examples=[1, 2, None]
+    )
+    
+    codeAccountingAccount: Optional[str] = Field(
+        default=None,
+        description="Código de la cuenta contable (opcional para actualización parcial)",
+        max_length=50,
+        examples=["001-001-001", "002-001"]
+    )
+    
+    nameAccountingAccount: Optional[str] = Field(
+        default=None,
+        description="Nombre descriptivo de la cuenta contable (opcional para actualización parcial)",
+        max_length=255,
+        examples=["Caja Principal", "Banco Central"]
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "nameAccountingAccount": "Caja Principal Actualizada"
+            }
+        }
+
+
+class AccountingAccountCreateResponse(BaseModel):
+    """
+    Modelo de respuesta para creación de cuenta contable.
+    """
+    
+    idAccountingAccount: int = Field(
+        description="ID de la cuenta contable creada",
+        examples=[1, 25, 100]
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "idAccountingAccount": 25
             }
         }
 

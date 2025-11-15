@@ -51,6 +51,13 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta companies - protegida, requiere autenticación
+  {
+    path: 'companies',
+    loadComponent: () => import('./companies/companies.page').then( m => m.CompaniesPage),
+    canActivate: [AuthGuard]
+  },
+
   // Ruta CRM - protegida, con sub-rutas para tabs
   {
     path: 'crm',

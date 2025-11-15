@@ -78,7 +78,7 @@ export class MeService {
           {
             id: 'crm',
             title: 'Dynamics 365 CRM',
-            icon: 'business-outline',
+            icon: 'people-outline',
             route: '/crm',
             enabled: true,
             color: 'primary',
@@ -92,6 +92,14 @@ export class MeService {
             title: 'Cuentas Contables',
             icon: 'book-outline',
             route: '/accounting-accounts',
+            enabled: true,
+            color: 'primary'
+          },
+          {
+            id: 'companies',
+            title: 'Compañías',
+            icon: 'business-outline',
+            route: '/companies',
             enabled: true,
             color: 'primary'
           },

@@ -7,12 +7,16 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, throwError, BehaviorSubject } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 // Interfaces para el servicio
 export interface AccountingAccount {
   idAccountingAccount: number;
+  idAccountingAccountFather?: number;
   codeAccountingAccount: string;
   nameAccountingAccount: string;
+  active: boolean;
+  children?: AccountingAccount[];
 }
 
 export interface AccountingAccountResponse {
@@ -22,9 +26,26 @@ export interface AccountingAccountResponse {
 
 export interface AccountingAccountParams {
   search?: string;
-  sort?: 'idAccountingAccount_asc' | 'codeAccountingAccount_asc' | 'codeAccountingAccount_desc' | 'nameAccountingAccount_asc' | 'nameAccountingAccount_desc';
+  sort?: 'idAccountingAccount_asc' | 'idAccountingAccountFather_asc' | 'idAccountingAccountFather_desc' | 'codeAccountingAccount_asc' | 'codeAccountingAccount_desc' | 'nameAccountingAccount_asc' | 'nameAccountingAccount_desc';
   page?: number;
   itemPerPage?: number;
+  includeInactive?: boolean;
+}
+
+export interface AccountingAccountCreateRequest {
+  idAccountingAccountFather?: number;
+  codeAccountingAccount: string;
+  nameAccountingAccount: string;
+}
+
+export interface AccountingAccountUpdateRequest {
+  idAccountingAccountFather?: number;
+  codeAccountingAccount?: string;
+  nameAccountingAccount?: string;
+}
+
+export interface AccountingAccountCreateResponse {
+  idAccountingAccount: number;
 }
 
 export interface PaginationState {
@@ -40,7 +61,7 @@ export interface PaginationState {
   providedIn: 'root'
 })
 export class AccountingAccountService {
-  private readonly API_BASE = '/api/accounting-accounts';
+  private readonly API_BASE: string;
 
   // Estado de la lista actual
   private accounts$ = new BehaviorSubject<AccountingAccount[]>([]);
@@ -55,7 +76,12 @@ export class AccountingAccountService {
   private loading$ = new BehaviorSubject<boolean>(false);
   private error$ = new BehaviorSubject<string | null>(null);
 
-  constructor(private http: HttpClient) {}
+  // Estado actual de filtros (para infinite scroll)
+  private currentFilters: AccountingAccountParams = {};
+
+  constructor(private http: HttpClient) {
+    this.API_BASE = `${environment.apiUrl}/api/accounting-accounts`;
+  }
 
   // Observables públicos para los componentes
   get accounts(): Observable<AccountingAccount[]> {
@@ -95,6 +121,9 @@ export class AccountingAccountService {
     if (params.itemPerPage) {
       httpParams = httpParams.set('itemPerPage', params.itemPerPage.toString());
     }
+    if (params.includeInactive !== undefined) {
+      httpParams = httpParams.set('includeInactive', params.includeInactive.toString());
+    }
 
     return this.http.get<AccountingAccountResponse>(this.API_BASE, { params: httpParams })
       .pipe(
@@ -125,6 +154,11 @@ export class AccountingAccountService {
    * Carga datos y actualiza el estado local (para uso con infinite scroll)
    */
   loadAccountingAccounts(params: AccountingAccountParams = {}, append: boolean = false): Observable<AccountingAccount[]> {
+    // Guardar filtros actuales para infinite scroll
+    if (!append) {
+      this.currentFilters = { ...params };
+    }
+
     return this.getAccountingAccounts(params).pipe(
       map(response => {
         if (append) {
@@ -166,6 +200,7 @@ export class AccountingAccountService {
     }
 
     const params: AccountingAccountParams = {
+      ...this.currentFilters, // Usar los filtros actuales
       page: currentPagination.currentPage + 1,
       itemPerPage: currentPagination.itemsPerPage
     };
@@ -176,11 +211,12 @@ export class AccountingAccountService {
   /**
    * Refresca la lista actual (pull to refresh)
    */
-  refreshAccounts(currentSearch?: string): Observable<AccountingAccount[]> {
+  refreshAccounts(currentSearch?: string, includeInactive: boolean = false): Observable<AccountingAccount[]> {
     const params: AccountingAccountParams = {
       search: currentSearch,
       page: 1,
-      itemPerPage: this.pagination$.value.itemsPerPage
+      itemPerPage: this.pagination$.value.itemsPerPage,
+      includeInactive: includeInactive
     };
 
     return this.loadAccountingAccounts(params, false);
@@ -203,7 +239,251 @@ export class AccountingAccountService {
     this.setLoading(false);
   }
 
-  // Métodos privados para gestión de estado
+  /**
+   * Crea una nueva cuenta contable
+   */
+  createAccountingAccount(accountData: AccountingAccountCreateRequest): Observable<AccountingAccountCreateResponse> {
+    this.setLoading(true);
+    this.setError(null);
+
+    return this.http.post<AccountingAccountCreateResponse>(this.API_BASE, accountData)
+      .pipe(
+        catchError(this.handleError.bind(this)),
+        tap(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Actualiza una cuenta contable existente
+   */
+  updateAccountingAccount(id: number, accountData: AccountingAccountUpdateRequest): Observable<{ message: string }> {
+    this.setLoading(true);
+    this.setError(null);
+
+    return this.http.put<{ message: string }>(`${this.API_BASE}/${id}`, accountData)
+      .pipe(
+        catchError(this.handleError.bind(this)),
+        tap(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Elimina una cuenta contable
+   */
+  deleteAccountingAccount(id: number): Observable<{ message: string }> {
+    this.setLoading(true);
+    this.setError(null);
+
+    return this.http.delete<{ message: string }>(`${this.API_BASE}/${id}`)
+      .pipe(
+        catchError(this.handleError.bind(this)),
+        tap(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Crea una cuenta contable con actualización optimista del estado local
+   */
+  createAccountingAccountOptimistic(accountData: AccountingAccountCreateRequest): Observable<{
+    success: boolean;
+    account?: AccountingAccount;
+    error?: string;
+  }> {
+    return this.createAccountingAccount(accountData).pipe(
+      map(response => {
+        // Crear el objeto de cuenta contable para el estado local
+        const newAccount: AccountingAccount = {
+          idAccountingAccount: response.idAccountingAccount,
+          idAccountingAccountFather: accountData.idAccountingAccountFather,
+          codeAccountingAccount: accountData.codeAccountingAccount,
+          nameAccountingAccount: accountData.nameAccountingAccount,
+          active: true,
+          children: []
+        };
+
+        // Agregar al estado local
+        const currentAccounts = this.accounts$.value;
+        this.accounts$.next([...currentAccounts, newAccount]);
+
+        // Actualizar el total en paginación
+        const currentPagination = this.pagination$.value;
+        this.pagination$.next({
+          ...currentPagination,
+          totalItems: currentPagination.totalItems + 1
+        });
+
+        return {
+          success: true,
+          account: newAccount
+        };
+      }),
+      catchError(error => {
+        // En caso de error, no modificar el estado local
+        return throwError(() => ({
+          success: false,
+          error: error.message
+        }));
+      })
+    );
+  }
+
+  /**
+   * Actualiza una cuenta contable con actualización optimista del estado local
+   */
+  updateAccountingAccountOptimistic(id: number, accountData: AccountingAccountUpdateRequest): Observable<{
+    success: boolean;
+    account?: AccountingAccount;
+    error?: string;
+  }> {
+    // Guardar estado anterior para rollback
+    const currentAccounts = this.accounts$.value;
+
+    // Función para buscar y actualizar recursivamente
+    const findAndUpdateRecursive = (accounts: AccountingAccount[], targetId: number): { found: boolean; updated?: AccountingAccount } => {
+      for (let i = 0; i < accounts.length; i++) {
+        if (accounts[i].idAccountingAccount === targetId) {
+          const originalAccount = { ...accounts[i] };
+          const updatedAccount: AccountingAccount = {
+            ...originalAccount,
+            ...(accountData.idAccountingAccountFather !== undefined && { idAccountingAccountFather: accountData.idAccountingAccountFather }),
+            ...(accountData.codeAccountingAccount && { codeAccountingAccount: accountData.codeAccountingAccount }),
+            ...(accountData.nameAccountingAccount && { nameAccountingAccount: accountData.nameAccountingAccount })
+          };
+          accounts[i] = updatedAccount;
+          return { found: true, updated: updatedAccount };
+        }
+
+        if (accounts[i].children && accounts[i].children && accounts[i].children!.length > 0) {
+          const result = findAndUpdateRecursive(accounts[i].children!, targetId);
+          if (result.found) {
+            return result;
+          }
+        }
+      }
+      return { found: false };
+    };
+
+    // Crear copia profunda para actualización optimista
+    const optimisticAccounts = JSON.parse(JSON.stringify(currentAccounts));
+    const updateResult = findAndUpdateRecursive(optimisticAccounts, id);
+
+    if (!updateResult.found) {
+      // Si no se encuentra en el estado local, intentar llamar al API directamente
+      return this.updateAccountingAccount(id, accountData).pipe(
+        map(() => ({
+          success: true,
+          account: undefined // No tenemos la cuenta actualizada localmente
+        })),
+        catchError(error => {
+          return throwError(() => ({
+            success: false,
+            error: error.message
+          }));
+        })
+      );
+    }
+
+    // Actualizar optimísticamente
+    this.accounts$.next(optimisticAccounts);
+
+    return this.updateAccountingAccount(id, accountData).pipe(
+      map(() => ({
+        success: true,
+        account: updateResult.updated
+      })),
+      catchError(error => {
+        // Rollback en caso de error
+        this.accounts$.next(currentAccounts);
+
+        return throwError(() => ({
+          success: false,
+          error: error.message
+        }));
+      })
+    );
+  }  /**
+   * Elimina una cuenta contable con actualización optimista del estado local
+   */
+  deleteAccountingAccountOptimistic(id: number): Observable<{
+    success: boolean;
+    error?: string;
+  }> {
+    // Guardar estado anterior para rollback
+    const currentAccounts = this.accounts$.value;
+
+    // Buscar la cuenta recursivamente en la estructura jerárquica
+    const findAccountRecursive = (accounts: AccountingAccount[], targetId: number): { found: boolean; account?: AccountingAccount } => {
+      for (const account of accounts) {
+        if (account.idAccountingAccount === targetId) {
+          return { found: true, account };
+        }
+        if (account.children && account.children.length > 0) {
+          const result = findAccountRecursive(account.children, targetId);
+          if (result.found) {
+            return result;
+          }
+        }
+      }
+      return { found: false };
+    };
+
+    const searchResult = findAccountRecursive(currentAccounts, id);
+
+    if (!searchResult.found) {
+      // Si no se encuentra en el estado local, intentar llamar al API directamente
+      return this.deleteAccountingAccount(id).pipe(
+        map(() => ({
+          success: true
+        })),
+        catchError(error => {
+          return throwError(() => ({
+            success: false,
+            error: error.message
+          }));
+        })
+      );
+    }
+
+    // Función para eliminar recursivamente de la estructura jerárquica
+    const removeAccountRecursive = (accounts: AccountingAccount[], targetId: number): AccountingAccount[] => {
+      return accounts.filter(account => {
+        if (account.idAccountingAccount === targetId) {
+          return false; // Eliminar esta cuenta
+        }
+        if (account.children && account.children.length > 0) {
+          account.children = removeAccountRecursive(account.children, targetId);
+        }
+        return true;
+      });
+    };
+
+    // Eliminar optimísticamente
+    const optimisticAccounts = removeAccountRecursive([...currentAccounts], id);
+    this.accounts$.next(optimisticAccounts);
+
+    // Actualizar el total en paginación
+    const currentPagination = this.pagination$.value;
+    this.pagination$.next({
+      ...currentPagination,
+      totalItems: Math.max(0, currentPagination.totalItems - 1)
+    });
+
+    return this.deleteAccountingAccount(id).pipe(
+      map(() => ({
+        success: true
+      })),
+      catchError(error => {
+        // Rollback en caso de error
+        this.accounts$.next(currentAccounts);
+        this.pagination$.next(currentPagination);
+
+        return throwError(() => ({
+          success: false,
+          error: error.message
+        }));
+      })
+    );
+  }  // Métodos privados para gestión de estado
   private updatePaginationState(response: AccountingAccountResponse, params: AccountingAccountParams): void {
     const currentPage = params.page || 1;
     const itemsPerPage = params.itemPerPage || 20;

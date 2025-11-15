@@ -1,54 +1,61 @@
-/**
- * Página de Cuentas Contables
- * Muestra una lista paginada de cuentas contables con funcionalidades de:
- * - Búsqueda en tiempo real
- * - Pull to refresh
- * - Infinite scroll
- * - Skeleton loading
- * - Manejo de errores
- */
-
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent,
-  IonHeader,
-  IonTitle,
-  IonToolbar,
   IonGrid,
-  // IonRow, // No usado
-  // IonCol, // No usado
-  IonSearchbar,
   IonList,
-  IonItem,
-  IonLabel,
-  IonIcon,
-  IonText,
-  IonButton,
   IonCard,
   IonCardContent,
+  IonCardTitle,
+  IonCardHeader,
   IonRefresher,
   IonRefresherContent,
   IonInfiniteScroll,
   IonInfiniteScrollContent,
   IonSkeletonText,
+  IonChip,
+  IonLabel,
+  IonIcon,
+  IonButton,
+  IonButtons,
+  IonAccordion,
+  IonAccordionGroup,
+  IonItem,
+  IonFab,
+  IonFabButton,
+  IonToggle,
   RefresherCustomEvent,
   InfiniteScrollCustomEvent,
-  SearchbarCustomEvent,
-  ModalController
+  ModalController,
+  AlertController,
+  ToastController
 } from '@ionic/angular/standalone';
+
 import { addIcons } from 'ionicons';
 import {
-  documentTextOutline,
-  alertCircleOutline,
-  refresh,
+  calculatorOutline,
+  filterOutline,
+  chevronDown,
+  folderOutline,
+  listOutline,
+  createOutline,
+  trashOutline,
+  gitBranchOutline,
+  chevronForwardOutline,
+  checkmarkCircle,
+  closeCircle,
+  folder,
+  documentOutline,
+  add,
   chevronForward
 } from 'ionicons/icons';
+
 import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
-import { AccountDetailModalComponent } from './account-detail-modal/account-detail-modal.component';
-import { AccountingAccountService, AccountingAccount, PaginationState } from '../services/accounting-account';
-import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
+import { AccountingAccount, AccountingAccountService, PaginationState } from '../services/accounting-account';
+import { AccountFormModalComponent } from './account-form-modal/account-form-modal.component';
+import { Subject } from 'rxjs';
+import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
   selector: 'app-accounting-accounts',
@@ -58,79 +65,130 @@ import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
   imports: [
     CommonModule,
     FormsModule,
+    AppHeaderComponent,
     IonContent,
-    IonHeader,
-    IonTitle,
-    IonToolbar,
     IonGrid,
-    // IonRow, // No usado en template
-    // IonCol, // No usado en template
-    IonSearchbar,
-    IonList,
-    IonItem,
-    IonLabel,
-    IonIcon,
-    IonText,
-    IonButton,
     IonCard,
+    IonCardHeader,
+    IonCardTitle,
     IonCardContent,
+    IonList,
+    IonSkeletonText,
     IonRefresher,
     IonRefresherContent,
     IonInfiniteScroll,
     IonInfiniteScrollContent,
-    IonSkeletonText,
-    AppHeaderComponent
+    IonChip,
+    IonLabel,
+    IonIcon,
+    IonButton,
+    IonButtons,
+    IonAccordion,
+    IonAccordionGroup,
+    IonItem,
+    IonFab,
+    IonFabButton,
+    IonToggle
   ]
 })
 export class AccountingAccountsPage implements OnInit, OnDestroy {
+  // Servicios
+  private accountService = inject(AccountingAccountService);
+  private modalCtrl = inject(ModalController);
+  private alertController = inject(AlertController);
+  private toastController = inject(ToastController);
+  private destroy$ = new Subject<void>();
+
   // Estado de datos
   accounts: AccountingAccount[] = [];
   pagination: PaginationState | null = null;
   isLoading = false;
-  isInitialLoading = true;
-  error: string | null = null;
   searchTerm = '';
+  includeInactive = true; // Por defecto incluir inactivas
 
-  // Configuración de UI
-  skeletonItems = Array(8).fill(null); // 8 skeleton items para loading
+  // Ordenamiento
+  currentSort: 'idAccountingAccount_asc' | 'idAccountingAccountFather_asc' | 'idAccountingAccountFather_desc' | 'codeAccountingAccount_asc' | 'codeAccountingAccount_desc' | 'nameAccountingAccount_asc' | 'nameAccountingAccount_desc' = 'nameAccountingAccount_asc';
+  sortOptions = [
+    { value: 'nameAccountingAccount_asc', label: 'Nombre (A-Z)' },
+    { value: 'nameAccountingAccount_desc', label: 'Nombre (Z-A)' },
+    { value: 'codeAccountingAccount_asc', label: 'Código (A-Z)' },
+    { value: 'codeAccountingAccount_desc', label: 'Código (Z-A)' },
+    { value: 'idAccountingAccount_asc', label: 'ID (Menor a Mayor)' },
+    { value: 'idAccountingAccountFather_asc', label: 'Padre ID (Menor a Mayor)' },
+    { value: 'idAccountingAccountFather_desc', label: 'Padre ID (Mayor a Menor)' }
+  ];
 
   // Subject para búsqueda con debounce
   private searchSubject = new Subject<string>();
-  private destroy$ = new Subject<void>();
 
-  constructor(
-    private accountService: AccountingAccountService,
-    private modalCtrl: ModalController
-  ) {
+  constructor() {
     // Registrar iconos
     addIcons({
-      documentTextOutline,
-      alertCircleOutline,
-      refresh,
+      folder,
+      listOutline,
+      createOutline,
+      trashOutline,
+      gitBranchOutline,
+      chevronForwardOutline,
+      calculatorOutline,
+      filterOutline,
+      chevronDown,
+      folderOutline,
+      checkmarkCircle,
+      closeCircle,
+      documentOutline,
+      add,
       chevronForward
     });
-
-    this.setupSearchDebounce();
   }
 
   ngOnInit() {
-    this.subscribeToServiceState();
+    this.setupSearch();
+    this.subscribeToService();
     this.loadInitialData();
   }
 
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-    this.accountService.clearState();
+  }
+
+  /**
+   * Determina si una cuenta tiene hijos
+   */
+  hasChildren(account: AccountingAccount): boolean {
+    return !!(account.children && account.children.length > 0);
+  }
+
+  /**
+   * Obtiene indicadores visuales para mostrar el nivel de jerarquía
+   */
+  getHierarchyIndicators(level: number): number[] {
+    return Array.from({length: level}, (_, i) => i);
+  }
+
+  /**
+   * Obtiene el valor único del acordeón para una cuenta
+   */
+  getAccordionValue(account: AccountingAccount): string {
+    return `account-${account.idAccountingAccount}`;
+  }
+
+  /**
+   * Maneja la expansión/colapso de acordeones
+   */
+  onAccordionChange(event: any): void {
+    // Aquí se puede agregar lógica adicional si es necesaria
+    // como cargar datos dinámicamente al expandir
   }
 
   /**
    * Configura el debounce para las búsquedas
    */
-  private setupSearchDebounce(): void {
+  private setupSearch(): void {
     this.searchSubject
       .pipe(
-        debounceTime(500),
+        debounceTime(300),
         distinctUntilChanged(),
         takeUntil(this.destroy$)
       )
@@ -142,33 +200,23 @@ export class AccountingAccountsPage implements OnInit, OnDestroy {
   /**
    * Se suscribe al estado del servicio
    */
-  private subscribeToServiceState(): void {
-    // Suscribirse a las cuentas
+  private subscribeToService(): void {
     this.accountService.accounts
       .pipe(takeUntil(this.destroy$))
       .subscribe(accounts => {
         this.accounts = accounts;
       });
 
-    // Suscribirse a la paginación
     this.accountService.pagination
       .pipe(takeUntil(this.destroy$))
       .subscribe(pagination => {
         this.pagination = pagination;
       });
 
-    // Suscribirse al estado de loading
     this.accountService.loading
       .pipe(takeUntil(this.destroy$))
       .subscribe(loading => {
         this.isLoading = loading;
-      });
-
-    // Suscribirse a errores
-    this.accountService.error
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(error => {
-        this.error = error;
       });
   }
 
@@ -176,60 +224,67 @@ export class AccountingAccountsPage implements OnInit, OnDestroy {
    * Carga los datos iniciales
    */
   private loadInitialData(): void {
-    this.isInitialLoading = true;
-
-    this.accountService.loadAccountingAccounts()
-      .subscribe({
-        next: () => {
-          this.isInitialLoading = false;
-        },
-        error: (error) => {
-          this.isInitialLoading = false;
-          console.error('Error cargando datos iniciales:', error);
-        }
-      });
+    this.accountService.loadAccountingAccounts({
+      page: 1,
+      itemPerPage: 20,
+      sort: this.currentSort,
+      includeInactive: this.includeInactive
+    }).pipe(takeUntil(this.destroy$)).subscribe();
   }
 
   /**
-   * Maneja el cambio en el campo de búsqueda
+   * Maneja el cambio en el campo de búsqueda del header
    */
-  onSearchChange(event: SearchbarCustomEvent): void {
-    const searchTerm = event.detail.value || '';
+  onHeaderSearch(searchTerm: string): void {
     this.searchTerm = searchTerm;
     this.searchSubject.next(searchTerm);
   }
 
   /**
-   * Maneja la limpieza del campo de búsqueda
+   * Maneja el toggle del search en el header
    */
-  onSearchClear(): void {
-    this.searchTerm = '';
-    this.performSearch('');
+  onHeaderSearchToggle(event: any): void {
+    // Implementar si es necesario
+  }
+
+  /**
+   * Maneja el cambio de ordenamiento desde el header
+   */
+  onSortChange(sortValue: string): void {
+    this.currentSort = sortValue as any;
+    this.accountService.loadAccountingAccounts({
+      page: 1,
+      itemPerPage: 20,
+      sort: this.currentSort,
+      search: this.searchTerm,
+      includeInactive: this.includeInactive
+    }).pipe(takeUntil(this.destroy$)).subscribe();
   }
 
   /**
    * Realiza la búsqueda con el término especificado
    */
   private performSearch(searchTerm: string): void {
-    this.accountService.searchAccounts(searchTerm, true)
-      .subscribe({
-        error: (error) => {
-          console.error('Error en búsqueda:', error);
-        }
-      });
+    this.accountService.loadAccountingAccounts({
+      page: 1,
+      itemPerPage: 20,
+      search: searchTerm,
+      sort: this.currentSort,
+      includeInactive: this.includeInactive
+    }).pipe(takeUntil(this.destroy$)).subscribe();
   }
 
   /**
    * Maneja el pull-to-refresh
    */
   handleRefresh(event: RefresherCustomEvent): void {
-    this.accountService.refreshAccounts(this.searchTerm)
+    this.accountService.refreshAccounts(this.searchTerm, this.includeInactive)
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
           event.target.complete();
         },
-        error: (error) => {
-          console.error('Error en refresh:', error);
+        error: () => {
           event.target.complete();
         }
       });
@@ -240,45 +295,186 @@ export class AccountingAccountsPage implements OnInit, OnDestroy {
    */
   loadMoreData(event: InfiniteScrollCustomEvent): void {
     this.accountService.loadNextPage()
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
           event.target.complete();
         },
-        error: (error) => {
-          console.error('Error cargando más datos:', error);
+        error: () => {
           event.target.complete();
         }
       });
   }
 
   /**
-   * Maneja el click en una cuenta contable
-   * Abre un modal con los detalles de la cuenta
+   * Reintenta la carga de datos
    */
-  async onAccountClick(account: AccountingAccount): Promise<void> {
-    console.log('Cuenta seleccionada:', account);
+  retryLoad(): void {
+    this.searchTerm = '';
+    this.accountService.loadAccountingAccounts({
+      page: 1,
+      itemPerPage: 20,
+      sort: this.currentSort,
+      includeInactive: this.includeInactive
+    }).pipe(takeUntil(this.destroy$)).subscribe();
+  }
 
+  /**
+   * Maneja la gestión de subcuentas
+   */
+  onManageChildren(account: AccountingAccount, event: Event): void {
+    event.stopPropagation(); // Prevenir la propagación del evento
+    // TODO: Implementar la navegación a la gestión de subcuentas
+    console.log('Gestionar subcuentas de:', account);
+  }
+
+  /**
+   * Maneja la creación de una nueva cuenta contable
+   */
+  async onCreateAccount(): Promise<void> {
     const modal = await this.modalCtrl.create({
-      component: AccountDetailModalComponent,
+      component: AccountFormModalComponent,
       componentProps: {
-        account: account
-      },
-      breakpoints: [0, 0.5, 0.75, 1],
-      initialBreakpoint: 0.75
+        availableParentAccounts: this.getFlattenedAccounts()
+      }
+    });
+
+    modal.onDidDismiss().then((result) => {
+      if (result.data && result.data.action === 'created') {
+        // Recargar datos para reflejar la nueva cuenta
+        this.loadInitialData();
+      }
     });
 
     await modal.present();
   }
 
   /**
-   * Reintenta la carga de datos
+   * Maneja la edición de una cuenta contable
    */
-  retryLoad(): void {
-    this.error = null;
-    if (this.searchTerm) {
-      this.performSearch(this.searchTerm);
-    } else {
-      this.loadInitialData();
+  async onEditAccount(account: AccountingAccount, event: Event): Promise<void> {
+    event.stopPropagation(); // Prevenir la propagación del evento
+
+    const modal = await this.modalCtrl.create({
+      component: AccountFormModalComponent,
+      componentProps: {
+        account: account,
+        availableParentAccounts: this.getFlattenedAccounts().filter(acc => acc.idAccountingAccount !== account.idAccountingAccount)
+      }
+    });
+
+    modal.onDidDismiss().then((result) => {
+      if (result.data && result.data.action === 'updated') {
+        // Recargar datos para reflejar los cambios
+        this.loadInitialData();
+      }
+    });
+
+    await modal.present();
+  }
+
+  /**
+   * Maneja la eliminación de una cuenta contable
+   */
+  async onDeleteAccount(account: AccountingAccount, event: Event): Promise<void> {
+    event.stopPropagation(); // Prevenir la propagación del evento
+
+    const hasChildren = account.children && account.children.length > 0;
+
+    const alert = await this.alertController.create({
+      header: 'Confirmar Eliminación',
+      message: hasChildren
+        ? `¿Está seguro que desea eliminar la cuenta "${account.nameAccountingAccount}"? Esta cuenta tiene ${account.children!.length} subcuenta(s) dependiente(s) que también serán afectadas.`
+        : `¿Está seguro que desea eliminar la cuenta "${account.nameAccountingAccount}"? Esta acción no se puede deshacer.`,
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel'
+        },
+        {
+          text: 'Eliminar',
+          role: 'destructive',
+          handler: () => {
+            this.performDelete(account);
+          }
+        }
+      ]
+    });
+
+    await alert.present();
+  }
+
+  /**
+   * Ejecuta la eliminación de la cuenta contable
+   */
+  private async performDelete(account: AccountingAccount): Promise<void> {
+    try {
+      const result = await this.accountService.deleteAccountingAccountOptimistic(account.idAccountingAccount).toPromise();
+
+      if (result && result.success) {
+        const toast = await this.toastController.create({
+          message: `Cuenta contable "${account.nameAccountingAccount}" eliminada exitosamente`,
+          duration: 3000,
+          color: 'success',
+          position: 'top'
+        });
+        await toast.present();
+
+        // No necesitamos recargar porque el servicio ya actualizó el estado optimísticamente
+      }
+
+    } catch (error: any) {
+      console.error('Error eliminando cuenta contable:', error);
+
+      let errorMessage = 'Error al eliminar la cuenta contable';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+
+      const toast = await this.toastController.create({
+        message: errorMessage,
+        duration: 5000,
+        color: 'danger',
+        position: 'top'
+      });
+      await toast.present();
+
+      // El rollback ya se hizo automáticamente en el servicio
     }
+  }
+
+  /**
+   * Obtiene una lista plana de todas las cuentas contables para usar como opciones padre
+   */
+  private getFlattenedAccounts(): AccountingAccount[] {
+    const flattenAccounts = (accounts: AccountingAccount[]): AccountingAccount[] => {
+      let result: AccountingAccount[] = [];
+
+      accounts.forEach(account => {
+        result.push(account);
+        if (account.children && account.children.length > 0) {
+          result = result.concat(flattenAccounts(account.children));
+        }
+      });
+
+      return result;
+    };
+
+    return flattenAccounts(this.accounts);
+  }
+
+  /**
+   * Maneja el cambio en el toggle de incluir inactivas
+   */
+  onIncludeInactiveChange(event: any): void {
+    this.includeInactive = event.detail.checked;
+    // Recargar datos con el nuevo filtro
+    this.accountService.loadAccountingAccounts({
+      page: 1,
+      itemPerPage: 20,
+      sort: this.currentSort,
+      search: this.searchTerm,
+      includeInactive: this.includeInactive
+    }).pipe(takeUntil(this.destroy$)).subscribe();
   }
 }
