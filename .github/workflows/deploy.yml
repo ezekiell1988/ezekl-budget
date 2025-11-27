@@ -39,6 +39,8 @@ jobs:
           if [ -d "$PROJECT_PATH" ]; then
             echo "📁 Actualizando repositorio existente con reset completo..."
             cd $PROJECT_PATH
+            # Actualizar URL del remote para incluir token
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
             git fetch origin
             git reset --hard origin/main
             git clean -fd
@@ -46,7 +48,7 @@ jobs:
           else
             echo "📥 Clonando repositorio..."
             cd /home/azureuser/projects
-            git clone https://github.com/${{ github.repository }}.git $PROJECT_NAME
+            git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git $PROJECT_NAME
             cd $PROJECT_PATH
           fi
           
