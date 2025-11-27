@@ -122,10 +122,14 @@ jobs:
             sudo systemctl start redis-server
             echo "✅ Redis instalado y configurado"
           else
-            echo "✅ Redis ya está instalado"
-            # Asegurar que Redis esté corriendo
-            sudo systemctl start redis-server || true
-            sudo systemctl status redis-server --no-pager
+            # Verificar estado de Redis de forma silenciosa
+            if sudo systemctl is-active --quiet redis-server; then
+              echo "✅ Redis ya está instalado y corriendo"
+            else
+              echo "⚠️ Redis instalado pero detenido. Iniciando..."
+              sudo systemctl start redis-server
+              echo "✅ Redis iniciado"
+            fi
           fi
           
           # Determinar comando docker (sudo o no)
@@ -138,17 +142,17 @@ jobs:
             DOCKER_CMD="sudo docker"
           fi
 
-          # Detener contenedor anterior si existe
+          # Detener contenedor anterior si existe (silenciando errores si no existe)
           echo "🛑 Deteniendo contenedor anterior..."
-          $DOCKER_CMD stop $PROJECT_NAME || true
-          $DOCKER_CMD rm $PROJECT_NAME || true
+          $DOCKER_CMD stop $PROJECT_NAME >/dev/null 2>&1 || true
+          $DOCKER_CMD rm $PROJECT_NAME >/dev/null 2>&1 || true
           
-          # Limpiar completamente imágenes Docker para forzar rebuild
+          # Limpiar completamente imágenes Docker para forzar rebuild (silenciando errores)
           echo "🧹 Limpieza completa de imágenes Docker..."
-          $DOCKER_CMD rmi $PROJECT_NAME-image || true
-          $DOCKER_CMD rmi $PROJECT_NAME || true
-          $DOCKER_CMD image prune -af
-          $DOCKER_CMD builder prune -af || true
+          $DOCKER_CMD rmi $PROJECT_NAME-image >/dev/null 2>&1 || true
+          $DOCKER_CMD rmi $PROJECT_NAME >/dev/null 2>&1 || true
+          $DOCKER_CMD image prune -af >/dev/null 2>&1
+          $DOCKER_CMD builder prune -af >/dev/null 2>&1 || true
           
           # Verificar si Node.js está instalado, si no, instalarlo
           echo "📦 Verificando Node.js..."
@@ -167,7 +171,7 @@ jobs:
           # Navegar al proyecto Ionic y construir
           echo "🔨 Construyendo frontend Ionic..."
           cd ezekl-budget-ionic
-          npm ci
+          npm ci --loglevel error
           ionic build --prod
           cd ..
           

@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
 # Establecer directorio de trabajo
 WORKDIR /app
 
+# Evitar advertencia de pip corriendo como root
+ENV PIP_ROOT_USER_ACTION=ignore
+
 # Copiar archivos de dependencias de Python
 COPY requirements.txt .
 
