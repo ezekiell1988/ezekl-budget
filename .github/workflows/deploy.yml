@@ -36,7 +36,7 @@ jobs:
           mkdir -p /home/azureuser/projects
           
           # Clonar o actualizar repositorio con limpieza completa
-          if [ -d "$PROJECT_PATH" ]; then
+          if [ -d "$PROJECT_PATH/.git" ]; then
             echo "📁 Actualizando repositorio existente con reset completo..."
             cd $PROJECT_PATH
             # Actualizar URL del remote para incluir token
@@ -46,7 +46,9 @@ jobs:
             git clean -fd
             echo "✅ Repositorio actualizado a commit: $(git rev-parse --short HEAD)"
           else
-            echo "📥 Clonando repositorio..."
+            echo "📥 Clonando repositorio (limpiando directorio previo si existe)..."
+            rm -rf $PROJECT_PATH
+            mkdir -p /home/azureuser/projects
             cd /home/azureuser/projects
             git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git $PROJECT_NAME
             cd $PROJECT_PATH
@@ -98,6 +100,18 @@ jobs:
           REDIS_DECODE_RESPONSES=true
           EOF
           
+          # Verificar e instalar Docker si no está instalado
+          echo "📦 Verificando Docker..."
+          if ! command -v docker &> /dev/null; then
+            echo "📥 Instalando Docker..."
+            curl -fsSL https://get.docker.com -o get-docker.sh
+            sudo sh get-docker.sh
+            sudo usermod -aG docker $USER
+            echo "✅ Docker instalado"
+          else
+            echo "✅ Docker ya está instalado"
+          fi
+
           # Verificar e instalar Redis si no está instalado
           echo "📦 Verificando Redis..."
           if ! command -v redis-server &> /dev/null; then
@@ -114,17 +128,27 @@ jobs:
             sudo systemctl status redis-server --no-pager
           fi
           
+          # Determinar comando docker (sudo o no)
+          if docker ps >/dev/null 2>&1; then
+            DOCKER_CMD="docker"
+          elif sudo docker ps >/dev/null 2>&1; then
+            DOCKER_CMD="sudo docker"
+          else
+            # Fallback si acabamos de instalar y el grupo no se ha actualizado en la sesión
+            DOCKER_CMD="sudo docker"
+          fi
+
           # Detener contenedor anterior si existe
           echo "🛑 Deteniendo contenedor anterior..."
-          docker stop $PROJECT_NAME || true
-          docker rm $PROJECT_NAME || true
+          $DOCKER_CMD stop $PROJECT_NAME || true
+          $DOCKER_CMD rm $PROJECT_NAME || true
           
           # Limpiar completamente imágenes Docker para forzar rebuild
           echo "🧹 Limpieza completa de imágenes Docker..."
-          docker rmi $PROJECT_NAME-image || true
-          docker rmi $PROJECT_NAME || true
-          docker image prune -af
-          docker builder prune -af || true
+          $DOCKER_CMD rmi $PROJECT_NAME-image || true
+          $DOCKER_CMD rmi $PROJECT_NAME || true
+          $DOCKER_CMD image prune -af
+          $DOCKER_CMD builder prune -af || true
           
           # Verificar si Node.js está instalado, si no, instalarlo
           echo "📦 Verificando Node.js..."
@@ -149,14 +173,14 @@ jobs:
           
           # Construir imagen Docker desde cero con Microsoft ODBC Driver 18
           echo "🔨 Construyendo imagen Docker para FastAPI + ODBC (build completo)..."
-          docker build --no-cache -t $PROJECT_NAME-image .
+          $DOCKER_CMD build --no-cache -t $PROJECT_NAME-image .
           
           # Verificar que los drivers ODBC estén instalados en la imagen
           echo "🔍 Verificando instalación de drivers ODBC..."
-          docker run --rm $PROJECT_NAME-image odbcinst -q -d || echo "⚠️ Warning: No se pudieron verificar drivers ODBC"
+          $DOCKER_CMD run --rm $PROJECT_NAME-image odbcinst -q -d || echo "⚠️ Warning: No se pudieron verificar drivers ODBC"
           
           echo "▶️  Ejecutando contenedor con network host para acceso a BD..."
-          docker run -d \
+          $DOCKER_CMD run -d \
             --name $PROJECT_NAME \
             --restart unless-stopped \
             --network host \
@@ -167,7 +191,7 @@ jobs:
           echo "✅ Verificando deployment..."
           sleep 15
           
-          if docker ps | grep -q $PROJECT_NAME; then
+          if $DOCKER_CMD ps | grep -q $PROJECT_NAME; then
             echo "🎉 Contenedor iniciado correctamente!"
             
             # Verificar health check
@@ -188,15 +212,15 @@ jobs:
             if [ $i -eq 5 ]; then
               echo "⚠️  Warning: Health check falló, pero contenedor está corriendo"
               echo "📋 Logs del contenedor:"
-              docker logs $PROJECT_NAME --tail 20
+              $DOCKER_CMD logs $PROJECT_NAME --tail 20
             fi
           else
             echo "❌ Error en deployment - contenedor no está corriendo"
             echo "📋 Logs del contenedor:"
-            docker logs $PROJECT_NAME --tail 50
+            $DOCKER_CMD logs $PROJECT_NAME --tail 50
             exit 1
           fi
           
           # Mostrar estado final
           echo "📊 Contenedores activos:"
-          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          $DOCKER_CMD ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
