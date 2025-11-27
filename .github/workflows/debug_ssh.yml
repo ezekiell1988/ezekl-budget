@@ -1,0 +1,21 @@
+name: Debug SSH Connection
+
+on: workflow_dispatch
+
+jobs:
+  debug-ssh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test SSH Connection
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          debug: true
+          script: |
+            echo "✅ Conexión SSH exitosa!"
+            echo "Usuario: $(whoami)"
+            echo "Directorio: $(pwd)"
+            ls -la /home/azureuser
