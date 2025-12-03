@@ -201,10 +201,10 @@ jobs:
             # Verificar health check
             echo "🔍 Verificando health check..."
             for i in {1..5}; do
-              if curl -f -s http://localhost:$DEPLOY_PORT/api/health > /dev/null 2>&1; then
+              if curl -f -s http://localhost:$DEPLOY_PORT/api/v1/health > /dev/null 2>&1; then
                 echo "✅ Health check exitoso - API y base de datos funcionando!"
                 echo "🌐 Aplicación disponible en: https://budget.ezekl.com"
-                echo "📊 API Health: https://budget.ezekl.com/api/health"
+                echo "📊 API Health: https://budget.ezekl.com/api/v1/health"
                 echo "📚 API Docs: https://budget.ezekl.com/docs"
                 break
               else
