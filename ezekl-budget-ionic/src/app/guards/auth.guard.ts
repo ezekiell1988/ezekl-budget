@@ -4,7 +4,7 @@
  */
 
 import { Injectable, inject } from '@angular/core';
-import { CanActivate, Router } from '@angular/router';
+import { CanActivate, Router, ActivatedRouteSnapshot } from '@angular/router';
 import { Observable, from, of } from 'rxjs';
 import { map, take, switchMap, catchError } from 'rxjs/operators';
 
@@ -59,8 +59,24 @@ export class GuestGuard implements CanActivate {
   /**
    * Guard para rutas de invitado (solo accesibles si NO está autenticado)
    * Redirige a /home si ya está autenticado
+   * EXCEPTO cuando hay parámetros de callback de Microsoft
    */
-  canActivate(): Observable<boolean> {
+  canActivate(route: ActivatedRouteSnapshot): Observable<boolean> {
+    // Obtener query parameters
+    const queryParams = route.queryParams;
+
+    // Verificar si hay parámetros de callback de Microsoft
+    const hasMicrosoftCallback =
+      queryParams['token'] ||
+      queryParams['microsoft_pending'] === 'true' ||
+      queryParams['microsoft_error'];
+
+    // Si hay callback de Microsoft, SIEMPRE permitir acceso sin verificar autenticación
+    if (hasMicrosoftCallback) {
+      console.log('GuestGuard: Callback de Microsoft detectado - Permitiendo acceso sin verificar autenticación');
+      return of(true);
+    }
+
     // Esperar a que termine la inicialización del servicio
     return from(this.authService.ensureInitialized()).pipe(
       switchMap(() => {

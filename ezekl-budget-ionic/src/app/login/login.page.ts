@@ -15,7 +15,7 @@ import {
 } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, Observable } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { takeUntil, take } from 'rxjs/operators';
 import {
   IonContent,
   IonCard,
@@ -190,16 +190,31 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   }
 
   ngOnInit() {
-    // Verificar si ya está autenticado
-    if (this.authService.isAuthenticated) {
-      this.router.navigate(['/home']);
-      return;
-    }
+    console.log('🔄 LoginPage ngOnInit - Iniciando');
 
-    // Verificar si hay token de Microsoft en los parámetros de URL (callback de Microsoft)
-    this.checkForMicrosoftCallback();
+    // Verificar si hay parámetros de callback PRIMERO (antes de cualquier verificación de autenticación)
+    this.route.queryParams.pipe(take(1)).subscribe(params => {
+      const hasCallbackParams = params['token'] || params['microsoft_pending'] === 'true' || params['microsoft_error'];
 
-    // Resetear wizard al entrar
+      if (hasCallbackParams) {
+        console.log('🎯 Parámetros de callback detectados - Procesando callback PRIMERO');
+        // Procesar callback de Microsoft ANTES de verificar autenticación
+        this.checkForMicrosoftCallback();
+        return;
+      }
+
+      // Si NO hay parámetros de callback, verificar si ya está autenticado
+      console.log('🔍 Sin parámetros de callback - Verificando autenticación previa');
+      if (this.authService.isAuthenticated) {
+        console.log('✅ Usuario ya autenticado - Redirigiendo a home');
+        this.router.navigate(['/home']);
+        return;
+      }
+
+      console.log('🏁 Usuario no autenticado - Mostrando página de login');
+    });
+
+    // Resetear wizard al entrar (solo si no hay callback)
     this.authService.resetWizard();
 
     // Suscribirse a cambios del wizard para sincronizar currentStep
@@ -217,6 +232,7 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
       .pipe(takeUntil(this.destroy$))
       .subscribe((state) => {
         if (state.isAuthenticated) {
+          console.log('🎉 Cambio de estado detectado - Usuario autenticado');
           this.showSuccessToast('¡Bienvenido!');
           // Usar un pequeño delay para evitar conflictos con guards
           setTimeout(() => {
@@ -257,24 +273,15 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
   private async checkForMicrosoftCallback() {
     console.log('🔍 Verificando parámetros de URL usando Angular ActivatedRoute');
 
-    // Usar Angular ActivatedRoute para obtener query parameters
-    let systemToken: string | null = null; // Renombrado: es un token del sistema, no de Microsoft
-    let microsoftSuccess: string | null = null;
-    let microsoftError: string | null = null;
-    let microsoftPending: string | null = null;
-    let codeLoginMicrosoft: string | null = null;
-    let displayName: string | null = null;
-    let email: string | null = null;
-
-    // Suscribirse a los query parameters
-    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
-      systemToken = params['token'] || null; // Token del sistema para login directo
-      microsoftSuccess = params['microsoft_success'] || null;
-      microsoftError = params['microsoft_error'] || null;
-      microsoftPending = params['microsoft_pending'] || null;
-      codeLoginMicrosoft = params['codeLoginMicrosoft'] || null;
-      displayName = params['displayName'] || null;
-      email = params['email'] || null;
+    // Usar take(1) para procesar los parámetros una sola vez y evitar loops
+    this.route.queryParams.pipe(take(1)).subscribe(params => {
+      const systemToken = params['token'] || null; // Token del sistema para login directo
+      const microsoftSuccess = params['microsoft_success'] || null;
+      const microsoftError = params['microsoft_error'] || null;
+      const microsoftPending = params['microsoft_pending'] || null;
+      const codeLoginMicrosoft = params['codeLoginMicrosoft'] || null;
+      const displayName = params['displayName'] || null;
+      const email = params['email'] || null;
 
       console.log('📋 Query parameters detectados:', {
         microsoftPending,
@@ -290,12 +297,16 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
       if (microsoftPending === 'true') {
         console.log('🎯 microsoft_pending=true detectado - Mostrando componente de asociación');
         console.log('📄 URL completa:', window.location.href);
+      } else if (systemToken) {
+        console.log('🔑 Token del sistema detectado - Procesando autenticación');
       } else {
-        console.log('🏠 microsoft_pending NO detectado - Mostrando componente normal de login');
+        console.log('🏠 Sin parámetros especiales - Mostrando componente normal de login');
       }
 
       // Procesar los parámetros si están presentes
-      this.processCallbackParameters(systemToken, microsoftSuccess, microsoftError, microsoftPending, codeLoginMicrosoft, displayName, email);
+      if (systemToken || microsoftError || microsoftPending === 'true') {
+        this.processCallbackParameters(systemToken, microsoftSuccess, microsoftError, microsoftPending, codeLoginMicrosoft, displayName, email);
+      }
     });
   }
 
@@ -311,20 +322,18 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
     displayName: string | null,
     email: string | null
   ) {
+    console.log('🔄 Iniciando procesamiento de callback de Microsoft');
 
     // Manejar errores de Microsoft
     if (microsoftError) {
-      console.error('Error de autenticación con Microsoft:', microsoftError);
+      console.error('❌ Error de autenticación con Microsoft:', microsoftError);
       this.showErrorToast('Error en la autenticación con Microsoft');
-      // Limpiar URL
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
-      return;
-    }
-
-    // Manejar errores de Microsoft
-    if (microsoftError) {
-      console.error('Error de autenticación con Microsoft:', microsoftError);
-      this.showErrorToast('Error en la autenticación con Microsoft');
+      // Limpiar URL usando Angular router
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: {},
+        replaceUrl: true
+      });
       return;
     }
 
@@ -349,51 +358,57 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
 
     // Manejar token exitoso de Microsoft (usuario ya asociado)
     if (systemToken && microsoftSuccess === 'true') {
+      console.log('🔑 Procesando token de sistema para usuario Microsoft asociado');
+      console.log('🔍 Token recibido longitud:', systemToken.length);
+
+      // Limpiar el token de formato bytes si es necesario
+      let cleanToken = systemToken;
+      if (cleanToken.startsWith("b'") && cleanToken.endsWith("'")) {
+        cleanToken = cleanToken.slice(2, -1); // Remover b' y '
+        console.log('🧹 Token limpiado de formato bytes');
+      }
+
       try {
-        console.log('🔑 Procesando token de sistema para usuario Microsoft asociado');
-        console.log('🔍 Token recibido longitud:', systemToken.length);
-
-        // Limpiar el token de formato bytes si es necesario
-        let cleanToken = systemToken;
-        if (cleanToken.startsWith("b'") && cleanToken.endsWith("'")) {
-          cleanToken = cleanToken.slice(2, -1); // Remover b' y '
-          console.log('🧹 Token limpiado de formato bytes');
-        }
-
-        // IMPORTANTE: Limpiar parámetros de URL INMEDIATAMENTE para evitar reprocessamiento
-        console.log('🧹 Limpiando parámetros de URL para evitar loops');
-        const cleanUrl = window.location.pathname + window.location.hash.split('?')[0];
-        window.history.replaceState({}, document.title, cleanUrl);
-
         // Usar el token para obtener información completa del usuario
-        console.log('� Verificando token con el servidor para obtener datos del usuario...');
+        console.log('🔍 Verificando token con el servidor para obtener datos del usuario...');
 
-        try {
-          // Usar el método del servicio de autenticación
-          await this.authService.verifyMicrosoftToken(cleanToken);
+        // Usar el método del servicio de autenticación
+        await this.authService.verifyMicrosoftToken(cleanToken);
+
+        console.log('✅ Token verificado exitosamente');
+        console.log('🔐 Estado de autenticación:', this.authService.isAuthenticated);
+        console.log('👤 Usuario actual:', this.authService.currentUser?.name);
+
+        // Verificar que se autenticó correctamente
+        if (this.authService.isAuthenticated) {
+          console.log('✅ Usuario autenticado exitosamente vía Microsoft');
 
           // Mostrar mensaje de éxito
-          this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
+          await this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
 
-          // Verificar que se autenticó correctamente
-          if (this.authService.isAuthenticated) {
-            console.log('✅ Usuario autenticado exitosamente vía Microsoft');
-            setTimeout(() => {
-              this.router.navigate(['/home']);
-            }, 500);
-          } else {
-            console.error('❌ AuthService no detectó autenticación tras verificación');
-            this.showErrorToast('Error procesando autenticación');
-          }
+          // IMPORTANTE: Limpiar parámetros de URL y redirigir en una sola operación
+          console.log('🚀 Redirigiendo a /home con replaceUrl');
+          await this.router.navigate(['/home'], {
+            replaceUrl: true,
+            queryParams: {} // Limpiar query params
+          });
 
-        } catch (error) {
-          console.error('💥 Error verificando token con servidor:', error);
-          this.showErrorToast('Error validando autenticación con Microsoft');
+          console.log('✅ Navegación completada');
+        } else {
+          console.error('❌ AuthService no detectó autenticación tras verificación');
+          this.showErrorToast('Error procesando autenticación');
         }
 
       } catch (error) {
-        console.error('💥 Error procesando autenticación de Microsoft:', error);
-        this.showErrorToast('Error procesando autenticación de Microsoft');
+        console.error('💥 Error verificando token con servidor:', error);
+        this.showErrorToast('Error validando autenticación con Microsoft');
+
+        // Limpiar URL en caso de error
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: {},
+          replaceUrl: true
+        });
       }
     }
   }

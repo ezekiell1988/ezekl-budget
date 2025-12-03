@@ -6,6 +6,7 @@ Ejecuta el build del frontend y luego inicia el servidor backend.
 import subprocess
 import sys
 import os
+import platform
 
 
 def main():
@@ -17,12 +18,20 @@ def main():
     # Rutas
     chat_bot_dir = os.path.join(base_dir, "ezekl-budget-ionic")
     venv_dir = os.path.join(base_dir, ".venv")
-    python_executable = os.path.join(venv_dir, "bin", "python")
+    
+    # Detectar sistema operativo y usar la ruta correcta del ejecutable de Python
+    is_windows = platform.system() == "Windows"
+    if is_windows:
+        python_executable = os.path.join(venv_dir, "Scripts", "python.exe")
+        python_command = "python"  # En Windows se usa 'python'
+    else:
+        python_executable = os.path.join(venv_dir, "bin", "python")
+        python_command = "python3"  # En Linux/Mac se usa 'python3'
     
     # Verificar que existe el entorno virtual
     if not os.path.exists(python_executable):
         print("❌ Error: No se encontró el entorno virtual en .venv", file=sys.stderr)
-        print("Por favor, crea el entorno virtual con: python3 -m venv .venv", file=sys.stderr)
+        print(f"Por favor, crea el entorno virtual con: {python_command} -m venv .venv", file=sys.stderr)
         sys.exit(1)
     
     print("=" * 60)
@@ -42,10 +51,10 @@ def main():
         print("✅ Build del frontend completado exitosamente")
     except subprocess.CalledProcessError as e:
         print(f"❌ Error durante el build del frontend: {e}", file=sys.stderr)
-        sys.exit(1)
+        print("⚠️  Continuando sin build del frontend...", file=sys.stderr)
     except FileNotFoundError:
-        print("❌ Error: npm no está instalado o no se encuentra en el PATH", file=sys.stderr)
-        sys.exit(1)
+        print("⚠️  npm no está instalado o no se encuentra en el PATH", file=sys.stderr)
+        print("⚠️  Continuando sin build del frontend...", file=sys.stderr)
     
     # Paso 2: Iniciar el servidor backend
     print("\n🐍 Iniciando el servidor backend...")
