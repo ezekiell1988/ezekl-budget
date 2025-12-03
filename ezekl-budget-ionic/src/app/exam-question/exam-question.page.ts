@@ -38,8 +38,7 @@ import {
   alertCircle,
   refresh,
   chevronUp,
-  chevronDown
-} from 'ionicons/icons';
+  chevronDown, timeOutline } from 'ionicons/icons';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { ExamQuestionService } from '../services';
@@ -103,6 +102,7 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   // Estados
   loading = false;
   loadingPdf = false;
+  loadingSpecificQuestion = false; // Skeleton para carga de pregunta específica
   hasMore = true;
   showAlert = false;
   alertMessage = '';
@@ -125,17 +125,7 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     private examQuestionService: ExamQuestionService,
     private router: Router
   ) {
-    addIcons({
-      refresh,
-      documentText,
-      chevronUp,
-      chevronDown,
-      checkmarkCircle,
-      alertCircle,
-      arrowBack,
-      arrowForward,
-      search,
-    });
+    addIcons({refresh,documentText,chevronUp,chevronDown,timeOutline,checkmarkCircle,alertCircle,arrowBack,arrowForward,search,});
   }
 
   ngOnInit() {
@@ -173,7 +163,7 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     // Restaurar estado después de que la vista se haya inicializado
     // Usar setTimeout para evitar ExpressionChangedAfterItHasBeenCheckedError
     setTimeout(() => {
-      this.restoreState();
+      this.restoreStateExam();
     }, 0);
   }
 
@@ -196,11 +186,14 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
    */
   async onExamSelected(event: any) {
     const examId = event.detail.value;
+    const previousExam = this.selectedExam;
     this.selectedExam = this.availablePdfs.find(pdf => pdf.id === examId) || null;
 
     if (this.selectedExam) {
-      // Guardar estado
-      this.saveState();
+      // Limpiar estado guardado del examen anterior
+      if (previousExam && previousExam.id !== this.selectedExam.id) {
+        localStorage.removeItem(`exam_state_${previousExam.id}`);
+      }
 
       // Cargar el PDF
       this.loadPdf(this.selectedExam.path);
@@ -210,8 +203,12 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
         itemPerPage: 20,
         sort: 'numberQuestion_asc'
       }).pipe(takeUntil(this.destroy$)).subscribe({
-        next: () => {
+        next: async () => {
           this.currentQuestionIndex = this.questions.length > 0 ? 0 : -1;
+
+          // Restaurar estado si existe
+          await this.restoreStatePosition();
+
           // Iniciar carga en background de preguntas
           this.startBackgroundQuestionsLoading();
         },
@@ -681,15 +678,25 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // Limpiar estado guardado en localStorage
+    localStorage.removeItem(`exam_state_${this.selectedExam.id}`);
+
+    // Resetear estado local
+    this.questions = [];
+    this.currentQuestionIndex = -1;
+    this.hasMore = true;
+
     this.examQuestionService.refreshQuestions(this.selectedExam.id, {
       itemPerPage: 20,
       sort: 'numberQuestion_asc'
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         event.target.complete();
+        this.showInfo('Datos actualizados');
       },
       error: () => {
         event.target.complete();
+        this.showError('Error al actualizar los datos');
       }
     });
   }
@@ -737,73 +744,129 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   private saveState() {
     if (!this.selectedExam) return;
 
+    // Guardar el número de pregunta en lugar del índice
+    const currentQuestion = this.questions[this.currentQuestionIndex];
+
     const state = {
       examId: this.selectedExam.id,
       pdfPage: this.currentPdfPage,
-      questionIndex: this.currentQuestionIndex,
+      questionNumber: currentQuestion?.numberQuestion || null,
       timestamp: Date.now()
     };
 
-    localStorage.setItem('exam-question-state', JSON.stringify(state));
+    localStorage.setItem(`exam_state_${this.selectedExam.id}`, JSON.stringify(state));
   }
 
   /**
    * Restaurar estado guardado desde localStorage
    */
-  private async restoreState() {
-    const savedState = localStorage.getItem('exam-question-state');
+  private async restoreStateExam() {
+    // Buscar el último examen usado
+    for (const pdf of this.availablePdfs) {
+      const savedState = localStorage.getItem(`exam_state_${pdf.id}`);
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+
+          // Solo restaurar si el timestamp es menor a 24 horas
+          const hoursSinceLastVisit = (Date.now() - state.timestamp) / (1000 * 60 * 60);
+          if (hoursSinceLastVisit > 24) {
+            localStorage.removeItem(`exam_state_${pdf.id}`);
+            continue;
+          }
+
+          // Restaurar el examen
+          this.selectedExam = pdf;
+
+          // Cargar el PDF
+          await this.loadPdf(this.selectedExam.path);
+
+          // Cargar las primeras preguntas
+          this.examQuestionService.refreshQuestions(this.selectedExam.id, {
+            itemPerPage: 20,
+            sort: 'numberQuestion_asc'
+          }).pipe(takeUntil(this.destroy$)).subscribe({
+            next: async () => {
+              // Restaurar posición
+              await this.restoreStatePosition();
+
+              // Iniciar carga en background
+              this.startBackgroundQuestionsLoading();
+            }
+          });
+
+          // Solo restaurar el primer examen encontrado
+          break;
+        } catch (error) {
+          console.error('Error al restaurar estado del examen:', error);
+          localStorage.removeItem(`exam_state_${pdf.id}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Restaurar posición (página PDF y pregunta)
+   */
+  private async restoreStatePosition() {
+    if (!this.selectedExam) return;
+
+    const savedState = localStorage.getItem(`exam_state_${this.selectedExam.id}`);
     if (!savedState) return;
 
     try {
       const state = JSON.parse(savedState);
 
-      // Solo restaurar si el timestamp es menor a 24 horas
-      const hoursSinceLastVisit = (Date.now() - state.timestamp) / (1000 * 60 * 60);
-      if (hoursSinceLastVisit > 24) {
-        localStorage.removeItem('exam-question-state');
+      // Verificar que sea el mismo examen
+      if (state.examId !== this.selectedExam.id) {
         return;
       }
 
-      // Restaurar examen seleccionado
-      this.selectedExam = this.availablePdfs.find(pdf => pdf.id === state.examId) || null;
+      // Esperar a que se carguen las preguntas iniciales
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      if (this.selectedExam) {
-        // Cargar PDF
-        await this.loadPdf(this.selectedExam.path);
+      // Restaurar página del PDF
+      if (state.pdfPage && state.pdfPage > 0 && state.pdfPage <= this.totalPages) {
+        await this.goToPage(state.pdfPage);
+      }
 
-        // Cargar preguntas iniciales
-        this.examQuestionService.refreshQuestions(this.selectedExam.id, {
-          itemPerPage: 20,
-          sort: 'numberQuestion_asc'
-        }).pipe(takeUntil(this.destroy$)).subscribe({
-          next: async () => {
-            // Esperar a que el DOM se actualice
-            await new Promise(resolve => setTimeout(resolve, 500));
+      // Restaurar pregunta seleccionada por número de pregunta
+      if (state.questionNumber) {
+        // Buscar la pregunta en las cargadas
+        const questionIndex = this.questions.findIndex(q => q.numberQuestion === state.questionNumber);
 
-            // Restaurar página del PDF
-            if (state.pdfPage && state.pdfPage > 0 && state.pdfPage <= this.totalPages) {
-              await this.goToPage(state.pdfPage);
-            }
+        if (questionIndex >= 0) {
+          // La pregunta ya está cargada
+          this.currentQuestionIndex = questionIndex;
+          this.scrollToCurrentQuestion();
+          console.log(`✅ Estado restaurado: Pregunta ${state.questionNumber} en página ${state.pdfPage}`);
+        } else {
+          // La pregunta no está cargada, mostrar skeleton y cargarla
+          console.log(`📥 Pregunta ${state.questionNumber} no está cargada, cargando...`);
+          this.loadingSpecificQuestion = true;
 
-            // Restaurar pregunta seleccionada
-            if (state.questionIndex >= 0 && state.questionIndex < this.questions.length) {
-              this.currentQuestionIndex = state.questionIndex;
-              this.scrollToCurrentQuestion();
-            }
+          await this.loadQuestionByNumber(state.questionNumber);
 
-            this.showInfo('Estado restaurado correctamente');
-          },
-          error: () => {
-            this.showError('Error al restaurar el estado');
+          // Después de cargar, buscar de nuevo y hacer scroll
+          await new Promise(resolve => setTimeout(resolve, 300)); // Esperar a que el DOM se actualice
+
+          const newIndex = this.questions.findIndex(q => q.numberQuestion === state.questionNumber);
+          if (newIndex >= 0) {
+            this.currentQuestionIndex = newIndex;
+            this.loadingSpecificQuestion = false;
+
+            // Esperar a que se quite el skeleton antes de hacer scroll
+            await new Promise(resolve => setTimeout(resolve, 100));
+            this.scrollToCurrentQuestion();
+            console.log(`✅ Estado restaurado: Pregunta ${state.questionNumber} cargada y navegada`);
+          } else {
+            this.loadingSpecificQuestion = false;
+            console.warn(`⚠️ No se pudo encontrar la pregunta ${state.questionNumber} después de cargar`);
           }
-        });
-
-        // Iniciar carga en background
-        this.startBackgroundQuestionsLoading();
+        }
       }
     } catch (error) {
-      console.error('Error al restaurar estado:', error);
-      localStorage.removeItem('exam-question-state');
+      console.error('Error al restaurar posición:', error);
     }
   }
 
@@ -861,16 +924,35 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       this.currentQuestionIndex = index;
       this.scrollToCurrentQuestion();
     } else {
-      // La pregunta no está cargada aún
-      this.showInfo(`Pregunta ${questionNumber} no encontrada. Cargando más preguntas...`);
+      // La pregunta no está cargada aún, mostrar skeleton
+      this.loadingSpecificQuestion = true;
 
       // Intentar cargar más preguntas hasta encontrarla
-      this.loadQuestionByNumber(questionNumber);
+      this.loadQuestionByNumber(questionNumber).then(() => {
+        // Después de cargar, buscar de nuevo y hacer scroll
+        setTimeout(() => {
+          const newIndex = this.questions.findIndex(q => q.numberQuestion === questionNumber);
+          if (newIndex >= 0) {
+            this.currentQuestionIndex = newIndex;
+            this.loadingSpecificQuestion = false;
+
+            // Esperar a que se quite el skeleton antes de hacer scroll
+            setTimeout(() => {
+              this.scrollToCurrentQuestion();
+            }, 100);
+          } else {
+            this.loadingSpecificQuestion = false;
+            this.showError(`No se pudo cargar la pregunta ${questionNumber}`);
+          }
+        }, 300);
+      });
     }
   }
 
   /**
    * Cargar preguntas hasta encontrar una específica
+   * NOTA: El servicio mantiene las preguntas ordenadas por numberQuestion
+   * y elimina duplicados automáticamente, por lo que el orden siempre es correcto.
    */
   async loadQuestionByNumber(questionNumber: number) {
     if (!this.selectedExam) return;

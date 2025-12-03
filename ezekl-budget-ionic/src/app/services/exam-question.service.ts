@@ -84,10 +84,25 @@ export class ExamQuestionService {
 
     return this.getExamQuestions(idExam, { ...params, page }).pipe(
       tap(response => {
-        const currentQuestions = append ? this.questions$.value : [];
-        const newQuestions = [...currentQuestions, ...response.data];
+        let updatedQuestions: ExamQuestion[];
 
-        this.questions$.next(newQuestions);
+        if (append) {
+          // Combinar preguntas existentes con las nuevas, eliminando duplicados
+          const currentQuestions = this.questions$.value;
+          const existingNumbers = new Set(currentQuestions.map(q => q.numberQuestion));
+
+          // Agregar solo preguntas que no existen
+          const newUniqueQuestions = response.data.filter(q => !existingNumbers.has(q.numberQuestion));
+          updatedQuestions = [...currentQuestions, ...newUniqueQuestions];
+
+          // Ordenar por numberQuestion
+          updatedQuestions.sort((a, b) => a.numberQuestion - b.numberQuestion);
+        } else {
+          // Si no es append, reemplazar todas las preguntas
+          updatedQuestions = response.data;
+        }
+
+        this.questions$.next(updatedQuestions);
         this.currentPage$.next(page);
 
         // Verificar si hay más páginas

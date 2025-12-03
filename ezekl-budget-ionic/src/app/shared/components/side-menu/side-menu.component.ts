@@ -22,6 +22,7 @@ import {
   ToastController,
   MenuController,
 } from '@ionic/angular/standalone';
+import { TokenExpiryPipe } from '../../pipes';
 import { addIcons } from 'ionicons';
 import {
   person,
@@ -74,6 +75,7 @@ import { Observable } from 'rxjs';
     IonCardContent,
     IonChip,
     IonBadge,
+    TokenExpiryPipe,
   ],
 })
 export class SideMenuComponent implements OnInit {
@@ -138,23 +140,6 @@ export class SideMenuComponent implements OnInit {
       return names[0][0] + names[1][0];
     }
     return user.nameLogin[0] || '?';
-  }
-
-  /**
-   * Formatear tiempo de expiración del token
-   */
-  formatTokenExpiry(expiresAt?: Date): string {
-    if (!expiresAt) return 'Desconocido';
-
-    const now = new Date();
-    const diff = expiresAt.getTime() - now.getTime();
-
-    if (diff <= 0) return 'Expirado';
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    return `${hours}h ${minutes}m`;
   }
 
   /**

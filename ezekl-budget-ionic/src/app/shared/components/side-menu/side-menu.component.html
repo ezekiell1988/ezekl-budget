@@ -89,7 +89,7 @@
         <ion-icon name="pulse" slot="start" color="warning"></ion-icon>
         <ion-label>
           <h3>Token expira en</h3>
-          <p>{{ formatTokenExpiry(authState.expiresAt) }}</p>
+          <p>{{ authState.expiresAt | tokenExpiry }}</p>
         </ion-label>
         <ion-badge color="warning" slot="end">Auto</ion-badge>
       </ion-item>

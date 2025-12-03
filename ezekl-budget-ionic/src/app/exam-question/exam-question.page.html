@@ -115,8 +115,41 @@
           <ion-refresher-content></ion-refresher-content>
         </ion-refresher>
 
-        <!-- Skeleton mientras carga preguntas -->
-        @if (loading && questions.length === 0) {
+        <!-- Skeleton mientras carga pregunta específica -->
+        @if (loadingSpecificQuestion) {
+        <ion-card color="light" style="margin: 16px;">
+          <ion-card-content>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+              <ion-icon name="time-outline" size="large" color="primary"></ion-icon>
+              <div style="flex: 1;">
+                <h3 style="margin: 0 0 4px 0; font-weight: 600;">Cargando pregunta...</h3>
+                <p style="margin: 0; font-size: 14px; color: var(--ion-color-medium);">
+                  Buscando y cargando la pregunta solicitada
+                </p>
+              </div>
+            </div>
+            <ion-list lines="full">
+              @for (item of [1,2,3]; track item) {
+              <ion-item>
+                <ion-label>
+                  <h3>
+                    <ion-skeleton-text [animated]="true" style="width: 30%;"></ion-skeleton-text>
+                  </h3>
+                  <p>
+                    <ion-skeleton-text [animated]="true" style="width: 90%;"></ion-skeleton-text>
+                    <ion-skeleton-text [animated]="true" style="width: 80%;"></ion-skeleton-text>
+                  </p>
+                  <ion-skeleton-text [animated]="true" style="width: 50%;"></ion-skeleton-text>
+                </ion-label>
+              </ion-item>
+              }
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+        }
+
+        <!-- Skeleton mientras carga preguntas iniciales -->
+        @if (loading && questions.length === 0 && !loadingSpecificQuestion) {
         <ion-list lines="full">
           @for (item of [1,2,3,4,5]; track item) {
           <ion-item>
@@ -136,7 +169,7 @@
         }
 
         <!-- Lista de preguntas -->
-        @if (!loading || questions.length > 0) {
+        @if ((!loading || questions.length > 0) && !loadingSpecificQuestion) {
         <ion-list lines="full">
           @for (question of questions; track question.numberQuestion) {
           <ion-item [id]="'question-' + question.numberQuestion" button (click)="onQuestionClick(question)"
@@ -175,7 +208,7 @@
         }
 
         <!-- Sin preguntas -->
-        @if (!loading && questions.length === 0) {
+        @if (!loading && questions.length === 0 && !loadingSpecificQuestion) {
         <div class="ion-padding ion-text-center" style="height: 100%; display: flex; flex-direction: column; justify-content: center;">
           <ion-icon name="alert-circle" size="large" color="warning"></ion-icon>
           <h3 class="ion-margin-top">No hay preguntas</h3>
