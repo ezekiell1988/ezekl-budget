@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -86,7 +86,7 @@ const AVAILABLE_PDFS: ExamPdf[] = [
     IonSkeletonText,
   ],
 })
-export class ExamQuestionPage implements OnInit, OnDestroy {
+export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('pdfContainer') pdfContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('questionsList') questionsList!: ElementRef<HTMLDivElement>;
   @ViewChild(IonInfiniteScroll) infiniteScroll?: IonInfiniteScroll;
@@ -169,6 +169,14 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
       });
   }
 
+  ngAfterViewInit() {
+    // Restaurar estado después de que la vista se haya inicializado
+    // Usar setTimeout para evitar ExpressionChangedAfterItHasBeenCheckedError
+    setTimeout(() => {
+      this.restoreState();
+    }, 0);
+  }
+
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
@@ -191,6 +199,9 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
     this.selectedExam = this.availablePdfs.find(pdf => pdf.id === examId) || null;
 
     if (this.selectedExam) {
+      // Guardar estado
+      this.saveState();
+
       // Cargar el PDF
       this.loadPdf(this.selectedExam.path);
 
@@ -541,6 +552,7 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
 
       pageElement.scrollIntoView({ behavior: behavior as ScrollBehavior, block: 'start' });
       this.currentPdfPage = page;
+      this.saveState();
     }
   }
 
@@ -611,6 +623,9 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
    * Click en una pregunta - navegar al PDF
    */
   async onQuestionClick(question: ExamQuestion) {
+    this.currentQuestionIndex = this.questions.findIndex(q => q.numberQuestion === question.numberQuestion);
+    this.saveState();
+
     if (question.startPage) {
       await this.goToPage(question.startPage);
       this.showInfo(`Navegando a la página ${question.startPage}`);
@@ -717,12 +732,89 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
   }
 
   /**
+   * Guardar estado actual en localStorage
+   */
+  private saveState() {
+    if (!this.selectedExam) return;
+
+    const state = {
+      examId: this.selectedExam.id,
+      pdfPage: this.currentPdfPage,
+      questionIndex: this.currentQuestionIndex,
+      timestamp: Date.now()
+    };
+
+    localStorage.setItem('exam-question-state', JSON.stringify(state));
+  }
+
+  /**
+   * Restaurar estado guardado desde localStorage
+   */
+  private async restoreState() {
+    const savedState = localStorage.getItem('exam-question-state');
+    if (!savedState) return;
+
+    try {
+      const state = JSON.parse(savedState);
+
+      // Solo restaurar si el timestamp es menor a 24 horas
+      const hoursSinceLastVisit = (Date.now() - state.timestamp) / (1000 * 60 * 60);
+      if (hoursSinceLastVisit > 24) {
+        localStorage.removeItem('exam-question-state');
+        return;
+      }
+
+      // Restaurar examen seleccionado
+      this.selectedExam = this.availablePdfs.find(pdf => pdf.id === state.examId) || null;
+
+      if (this.selectedExam) {
+        // Cargar PDF
+        await this.loadPdf(this.selectedExam.path);
+
+        // Cargar preguntas iniciales
+        this.examQuestionService.refreshQuestions(this.selectedExam.id, {
+          itemPerPage: 20,
+          sort: 'numberQuestion_asc'
+        }).pipe(takeUntil(this.destroy$)).subscribe({
+          next: async () => {
+            // Esperar a que el DOM se actualice
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Restaurar página del PDF
+            if (state.pdfPage && state.pdfPage > 0 && state.pdfPage <= this.totalPages) {
+              await this.goToPage(state.pdfPage);
+            }
+
+            // Restaurar pregunta seleccionada
+            if (state.questionIndex >= 0 && state.questionIndex < this.questions.length) {
+              this.currentQuestionIndex = state.questionIndex;
+              this.scrollToCurrentQuestion();
+            }
+
+            this.showInfo('Estado restaurado correctamente');
+          },
+          error: () => {
+            this.showError('Error al restaurar el estado');
+          }
+        });
+
+        // Iniciar carga en background
+        this.startBackgroundQuestionsLoading();
+      }
+    } catch (error) {
+      console.error('Error al restaurar estado:', error);
+      localStorage.removeItem('exam-question-state');
+    }
+  }
+
+  /**
    * Ir a la pregunta anterior
    */
   goToPreviousQuestion() {
     if (this.currentQuestionIndex > 0) {
       this.currentQuestionIndex--;
       this.scrollToCurrentQuestion();
+      this.saveState();
     }
   }
 
@@ -733,6 +825,7 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
     if (this.currentQuestionIndex < this.questions.length - 1) {
       this.currentQuestionIndex++;
       this.scrollToCurrentQuestion();
+      this.saveState();
     }
   }
 
