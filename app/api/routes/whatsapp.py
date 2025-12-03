@@ -231,7 +231,7 @@ async def receive_webhook(
                                     
                                     # Construir URL de autenticación
                                     from app.core.config import settings
-                                    auth_url = f"{settings.effective_url_base}/api/whatsapp/auth/page?token={token}"
+                                    auth_url = f"{settings.effective_url_base}/api/v1/whatsapp/auth/page?token={token}"
                                     
                                     # Enviar mensaje con link de autenticación
                                     auth_message = (
@@ -947,7 +947,7 @@ async def request_auth_token(request: WhatsAppAuthTokenRequest):
         )
 
         # Construir URL de autenticación
-        auth_url = f"{settings.effective_url_base}/api/whatsapp/auth/page?token={token}"
+        auth_url = f"{settings.effective_url_base}/api/v1/whatsapp/auth/page?token={token}"
 
         logger.info(f"🔑 Token de autenticación generado para {request.phone_number}")
 

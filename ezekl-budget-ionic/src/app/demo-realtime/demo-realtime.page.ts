@@ -1,10 +1,10 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AzureOpenAIToolsService } from '../services/azure-openai-tools.service';
 import { AuthService } from '../services/auth.service';
+import { RealtimeCredentialsService } from '../services';
 import {
   // IonHeader, IonTitle no usados - usa AppHeaderComponent
   IonToolbar,
@@ -43,14 +43,7 @@ import {
   stopCircle,
 } from 'ionicons/icons';
 import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
-
-interface RealtimeCredentials {
-  azure_openai_endpoint: string;
-  azure_openai_api_key: string;
-  azure_openai_deployment_name: string;
-  server_os?: string;
-  message: string;
-}
+import { RealtimeCredentials } from '../services';
 
 interface ChatMessage {
   id: string;
@@ -243,7 +236,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
   private userName: string = 'Usuario';
 
   constructor(
-    private http: HttpClient,
+    private realtimeCredentialsService: RealtimeCredentialsService,
     private cdr: ChangeDetectorRef,
     private azureToolsService: AzureOpenAIToolsService,
     private authService: AuthService
@@ -302,7 +295,7 @@ export class DemoRealtimePage implements OnInit, OnDestroy, AfterViewInit {
 
       // Obtener credenciales del backend
       const credentials = await firstValueFrom(
-        this.http.get<RealtimeCredentials>('/api/credentials/realtime')
+        this.realtimeCredentialsService.getRealtimeCredentials()
       );
 
       // Credenciales obtenidas correctamente

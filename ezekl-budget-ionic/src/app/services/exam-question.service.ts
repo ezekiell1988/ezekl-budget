@@ -16,7 +16,7 @@ import {
   providedIn: 'root'
 })
 export class ExamQuestionService {
-  private readonly API_BASE = '/api/exam-questions';
+  private readonly API_BASE = '/api/v1/exam-questions';
 
   // Estado de la lista actual
   private questions$ = new BehaviorSubject<ExamQuestion[]>([]);

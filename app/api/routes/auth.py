@@ -628,7 +628,7 @@ async def microsoft_login():
         params = {
             "client_id": settings.azure_client_id,
             "response_type": "code",
-            "redirect_uri": f"{settings.effective_url_base}/api/auth/microsoft/callback",
+            "redirect_uri": f"{settings.effective_url_base}/api/v1/auth/callback",
             "scope": "openid profile email User.Read",
             "response_mode": "query",
             "state": "security_token_here"  # En producción, usar un token seguro
@@ -650,7 +650,7 @@ async def microsoft_login():
 
 
 @router.get(
-    "/microsoft/callback",
+    "/callback",
     summary="Callback de autenticación con Microsoft",
     description="Procesa la respuesta de Microsoft Azure AD y completa el login"
 )
@@ -753,7 +753,7 @@ async def microsoft_callback(
             "client_secret": settings.azure_client_secret,
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": f"{settings.effective_url_base}/api/auth/microsoft/callback",
+            "redirect_uri": f"{settings.effective_url_base}/api/v1/auth/callback",
             "scope": "openid profile email User.Read"
         }
 

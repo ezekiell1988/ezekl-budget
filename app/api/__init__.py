@@ -12,10 +12,10 @@ from .sharepoint import sharepoint_router
 api_router = APIRouter(prefix="/api")
 
 # Incluir router de routes (endpoints /credentials, /health, etc.)
-api_router.include_router(routes_router)
+api_router.include_router(routes_router, prefix="/v1")
 
 # Incluir router de SharePoint
-api_router.include_router(sharepoint_router)
+api_router.include_router(sharepoint_router, prefix="/v1")
 
 # Router para WebSockets con prefijo /ws (consistente con estructura)
 websockets_router_with_prefix = APIRouter(prefix="/ws")

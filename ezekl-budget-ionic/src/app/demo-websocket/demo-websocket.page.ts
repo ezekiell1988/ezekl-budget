@@ -33,21 +33,14 @@ import {
 } from 'ionicons/icons';
 
 import { AppHeaderComponent } from '../shared/components/app-header/app-header.component';
-import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { WebSocketCredentialsService } from '../services';
 
 interface WebSocketMessage {
   id: string;
   type: string;
   content: string;
   timestamp: string;
-}
-
-interface CredentialsResponse {
-  azure_openai_endpoint: string;
-  azure_openai_deployment_name: string;
-  message: string;
-  server_os?: string;
 }
 
 type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
@@ -102,7 +95,7 @@ export class DemoWebsocketPage implements OnInit, OnDestroy {
     private alertController: AlertController,
     private toastController: ToastController,
     private menuController: MenuController,
-    private http: HttpClient
+    private wsCredentialsService: WebSocketCredentialsService
   ) {
     // Registrar iconos
     addIcons({
@@ -122,9 +115,9 @@ export class DemoWebsocketPage implements OnInit, OnDestroy {
 
   private async loadServerConfigAndConnect(): Promise<void> {
     try {
-      // Obtener configuración del servidor desde /api/credentials/websocket
+      // Obtener configuración del servidor
       const credentials = await firstValueFrom(
-        this.http.get<CredentialsResponse>('/api/credentials/websocket')
+        this.wsCredentialsService.getWebSocketCredentials()
       );
 
       console.log('📋 Configuración del servidor cargada:', {

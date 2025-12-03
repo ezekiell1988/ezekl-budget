@@ -80,7 +80,9 @@ export class AccountingAccountService {
   private currentFilters: AccountingAccountParams = {};
 
   constructor(private http: HttpClient) {
-    this.API_BASE = `${environment.apiUrl}/api/accounting-accounts`;
+    // Usar ruta relativa si apiUrl está vacío (funciona con cualquier puerto)
+    const baseUrl = environment.apiUrl || '';
+    this.API_BASE = baseUrl ? `${baseUrl}/api/v1/accounting-accounts` : '/api/v1/accounting-accounts';
   }
 
   // Observables públicos para los componentes

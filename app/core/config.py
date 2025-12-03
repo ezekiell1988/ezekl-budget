@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Configuraciones de la aplicación cargadas desde variables de entorno."""
     
     # Configuración del servidor
-    port: int = 8001
+    port: int = 8000
     reload: bool = True
     
     # Azure OpenAI Configuration
@@ -97,7 +97,7 @@ class Settings(BaseSettings):
         if self.is_production:
             return "https://budget.ezekl.com"
         else:
-            return "http://localhost:8001"
+            return f"http://localhost:{self.port}"
     
     @property
     def effective_microsoft_authorization_endpoint(self) -> str:
@@ -131,7 +131,7 @@ class Settings(BaseSettings):
         
         # Generar automáticamente basado en la URL base
         # IMPORTANTE: Esta URL debe coincidir exactamente con la registrada en Entra ID
-        return f"{self.effective_url_base}/api/auth/microsoft/callback"
+        return f"{self.effective_url_base}/api/v1/auth/callback"
     
     @property
     def microsoft_logout_endpoint(self) -> str:

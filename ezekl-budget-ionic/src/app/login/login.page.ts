@@ -369,35 +369,8 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
         console.log('� Verificando token con el servidor para obtener datos del usuario...');
 
         try {
-          // Llamar al endpoint verify-token para obtener los datos completos del usuario
-          const response = await fetch(`${environment.apiUrl}/api/auth/verify-token`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${cleanToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (!response.ok) {
-            throw new Error(`Error HTTP ${response.status}`);
-          }
-
-          const verifyData = await response.json();
-          console.log('📋 Datos del usuario obtenidos:', verifyData);
-
-          // Crear objeto LoginResponse completo como lo esperaría processLoginResponse
-          const loginResponse = {
-            success: true,
-            message: 'Autenticación con Microsoft exitosa',
-            accessToken: cleanToken,
-            user: verifyData.user,
-            expiresAt: verifyData.expiresAt
-          };
-
-          console.log('⚡ Procesando respuesta completa con AuthService...');
-
-          // Usar el método processLoginResponse con datos completos
-          await this.authService.processLoginResponse(loginResponse);
+          // Usar el método del servicio de autenticación
+          await this.authService.verifyMicrosoftToken(cleanToken);
 
           // Mostrar mensaje de éxito
           this.showSuccessToast('¡Autenticación con Microsoft exitosa!');
@@ -409,7 +382,7 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
               this.router.navigate(['/home']);
             }, 500);
           } else {
-            console.error('❌ AuthService no detectó autenticación tras processLoginResponse');
+            console.error('❌ AuthService no detectó autenticación tras verificación');
             this.showErrorToast('Error procesando autenticación');
           }
 

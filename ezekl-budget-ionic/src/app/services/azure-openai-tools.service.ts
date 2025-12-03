@@ -34,7 +34,7 @@ export interface ToolExecutionResult {
 })
 export class AzureOpenAIToolsService {
 
-  private apiUrl = '/api'; // Base URL del backend
+  private apiUrl = '/api/v1'; // Base URL del backend
 
   constructor(private http: HttpClient) {}
 

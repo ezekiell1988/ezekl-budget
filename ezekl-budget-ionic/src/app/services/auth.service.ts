@@ -49,9 +49,9 @@ export class AuthService {
 
   constructor(private http: HttpClient) {
     // Configurar URL base del API desde environment
-    this.API_BASE = `${environment.apiUrl}/api/auth`;
-
-    console.log('AuthService: API_BASE configurado como:', this.API_BASE);
+    // Si apiUrl está vacío, usar ruta relativa (funcionará con cualquier puerto)
+    const baseUrl = environment.apiUrl || '';
+    this.API_BASE = baseUrl ? `${baseUrl}/api/v1/auth` : '/api/v1/auth';
 
     // Cargar estado de autenticación al inicializar
     this.initPromise = this.loadAuthState();
@@ -246,6 +246,45 @@ export class AuthService {
         user: undefined,
         error: undefined
       });
+    }
+  }
+
+  /**
+   * Verificar y procesar token de Microsoft OAuth
+   * @param token Token JWE recibido del callback de Microsoft
+   * @returns Promise que resuelve cuando el token es verificado y procesado
+   */
+  async verifyMicrosoftToken(token: string): Promise<void> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<any>(
+          `${this.API_BASE}/verify-token`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        )
+      );
+
+      if (!response?.user) {
+        throw new Error('Respuesta inválida del servidor');
+      }
+
+      // Crear objeto LoginResponse completo
+      const loginResponse: LoginResponse = {
+        success: true,
+        message: 'Autenticación con Microsoft exitosa',
+        accessToken: token,
+        user: response.user,
+        expiresAt: response.expiresAt
+      };
+
+      // Procesar la respuesta de login
+      await this.processLoginResponse(loginResponse);
+    } catch (error) {
+      console.error('Error verificando token de Microsoft:', error);
+      throw error;
     }
   }
 

@@ -59,7 +59,7 @@ export interface PaginationState {
   providedIn: 'root'
 })
 export class CompanyService {
-  private readonly API_BASE = '/api/companies';
+  private readonly API_BASE = '/api/v1/companies';
 
   // Estado de la lista actual
   private companies$ = new BehaviorSubject<Company[]>([]);

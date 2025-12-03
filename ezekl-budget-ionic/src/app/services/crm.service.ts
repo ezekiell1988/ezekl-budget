@@ -37,7 +37,7 @@ import {
 })
 export class CrmService {
   private http = inject(HttpClient);
-  private readonly baseUrl = '/api/crm';
+  private readonly baseUrl = '/api/v1/crm';
 
   constructor() {}
 

@@ -26,9 +26,9 @@ export class AuthInterceptor implements HttpInterceptor {
 
     // Endpoints que NO requieren autenticación
     const publicEndpoints = [
-      '/api/auth/request-token',
-      '/api/auth/login',
-      '/api/health'
+      '/api/v1/auth/request-token',
+      '/api/v1/auth/login',
+      '/api/v1/health'
     ];
 
     // Si es un endpoint público, no agregar token

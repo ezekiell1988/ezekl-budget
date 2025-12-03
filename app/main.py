@@ -5,9 +5,10 @@ Punto de entrada principal que configura la aplicación y monta los módulos API
 
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.config import settings
 from app.api import api_router, websockets_router_with_prefix
 from app.services.email_queue import email_queue
@@ -30,6 +31,49 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
+
+
+class CSPMiddleware(BaseHTTPMiddleware):
+    """Middleware para agregar Content Security Policy headers."""
+    
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Solo agregar CSP en respuestas HTML
+        if isinstance(response, FileResponse) or (
+            hasattr(response, 'media_type') and 
+            response.media_type and 
+            'html' in response.media_type
+        ):
+            # CSP para desarrollo - permite más fuentes para facilitar debugging
+            csp_policy = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+                "https://cdnjs.cloudflare.com "
+                "https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net "
+                "https://*.msauthimages.net https://*.msidentity.com "
+                "https://*.microsoftonline-p.com https://*.microsoftazuread-sso.com "
+                "https://*.azureedge.net https://*.outlook.com https://*.office.com "
+                "https://*.office365.com https://*.microsoft.com https://*.bing.com; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
+                "img-src 'self' data: https: blob:; "
+                "connect-src 'self' ws: wss: "
+                f"http://localhost:{settings.port} http://127.0.0.1:{settings.port} "
+                f"ws://localhost:{settings.port} ws://127.0.0.1:{settings.port} "
+                "https://*.cognitiveservices.azure.com "
+                "https://*.openai.azure.com "
+                "https://*.dynamics.com "
+                "https://*.microsoftonline.com "
+                "https://login.microsoftonline.com; "
+                "frame-ancestors 'self'; "
+                "base-uri 'self'; "
+                "form-action 'self' https://login.microsoftonline.com;"
+            )
+            
+            response.headers['Content-Security-Policy'] = csp_policy
+            
+        return response
 
 
 @asynccontextmanager
@@ -82,15 +126,18 @@ from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:8001",
-        "http://127.0.0.1:8001",
-        "ws://localhost:8001",
-        "ws://127.0.0.1:8001",
+        f"http://localhost:{settings.port}",
+        f"http://127.0.0.1:{settings.port}",
+        f"ws://localhost:{settings.port}",
+        f"ws://127.0.0.1:{settings.port}",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Agregar middleware de CSP
+app.add_middleware(CSPMiddleware)
 
 # 🔧 Configurar módulos de la API (estándar FastAPI)
 app.include_router(api_router)                    # ✅ HTTP endpoints con prefix="/api"
@@ -123,10 +170,9 @@ async def serve_frontend_routes(path: str):
     if not FRONTEND_BUILD_PATH.exists():
         return RedirectResponse(url="/docs")
 
-    # Verificar si es una ruta de API
-    if path.startswith("api/"):
-        return RedirectResponse(url="/docs")
-
+    # NO manejar rutas de API aquí - dejar que FastAPI las procese
+    # Las rutas de API ya están registradas con include_router() antes de este catch-all
+    
     # Verificar si el archivo solicitado existe
     file_path = FRONTEND_BUILD_PATH / path
     if file_path.is_file():

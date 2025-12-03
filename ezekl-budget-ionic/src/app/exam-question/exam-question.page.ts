@@ -28,6 +28,8 @@ import {
   IonRefresherContent,
   IonAlert,
   IonToast,
+  IonChip,
+  IonSkeletonText,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -37,7 +39,9 @@ import {
   checkmarkCircle,
   search,
   alertCircle,
-  refresh
+  refresh,
+  chevronUp,
+  chevronDown
 } from 'ionicons/icons';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -84,6 +88,8 @@ const AVAILABLE_PDFS: ExamPdf[] = [
     IonRefresherContent,
     IonAlert,
     IonToast,
+    IonChip,
+    IonSkeletonText,
   ],
 })
 export class ExamQuestionPage implements OnInit, OnDestroy {
@@ -100,6 +106,7 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
 
   // Estados
   loading = false;
+  loadingPdf = false;
   hasMore = true;
   showAlert = false;
   alertMessage = '';
@@ -108,8 +115,10 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
 
   // PDF.js
   private pdfDoc: any = null;
-  private pageRendering = false;
-  private pageNumPending: number | null = null;
+  private renderedPages: Set<number> = new Set();
+  private pageObserver: IntersectionObserver | null = null;
+  private readonly INITIAL_PAGES_TO_RENDER = 5; // Solo renderizar las primeras 5 páginas
+  private readonly PAGES_PER_BATCH = 3; // Renderizar 3 páginas a la vez cuando se hace scroll
 
   // Lifecycle
   private destroy$ = new Subject<void>();
@@ -119,13 +128,15 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
     private router: Router
   ) {
     addIcons({
+      refresh,
+      documentText,
+      chevronUp,
+      chevronDown,
+      checkmarkCircle,
+      alertCircle,
       arrowBack,
       arrowForward,
-      documentText,
-      checkmarkCircle,
       search,
-      alertCircle,
-      refresh,
     });
   }
 
@@ -154,6 +165,9 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.examQuestionService.clearState();
+    if (this.pageObserver) {
+      this.pageObserver.disconnect();
+    }
   }
 
   /**
@@ -165,13 +179,18 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
 
     if (this.selectedExam) {
       // Cargar el PDF
-      await this.loadPdf(this.selectedExam.path);
+      this.loadPdf(this.selectedExam.path);
 
       // Cargar las primeras preguntas
       this.examQuestionService.refreshQuestions(this.selectedExam.id, {
         itemPerPage: 20,
         sort: 'numberQuestion_asc'
-      }).pipe(takeUntil(this.destroy$)).subscribe();
+      }).pipe(takeUntil(this.destroy$)).subscribe({
+        error: (error) => {
+          console.error('Error cargando preguntas:', error);
+          this.showError('Error al cargar las preguntas');
+        }
+      });
     }
   }
 
@@ -179,10 +198,13 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
    * Cargar PDF usando PDF.js
    */
   async loadPdf(pdfPath: string) {
+    this.loadingPdf = true;
+
     try {
       // Verificar que PDF.js esté disponible
       if (typeof (window as any).pdfjsLib === 'undefined') {
         this.showError('PDF.js no está disponible. Por favor, recarga la página.');
+        this.loadingPdf = false;
         return;
       }
 
@@ -193,90 +215,162 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
       this.pdfDoc = await loadingTask.promise;
       this.totalPages = this.pdfDoc.numPages;
 
-      // Renderizar primera página
-      await this.renderPage(1);
+      // Esperar un tick para asegurar que el DOM esté listo
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Limpiar páginas renderizadas anteriores
+      this.renderedPages.clear();
+
+      // Renderizar todas las páginas
+      await this.renderAllPages();
+
+      // Configurar observer para detectar la página visible
+      this.setupPageObserver();
 
     } catch (error) {
       console.error('Error cargando PDF:', error);
       this.showError('Error al cargar el PDF. Verifica que el archivo existe.');
+    } finally {
+      this.loadingPdf = false;
     }
-  }
-
-  /**
-   * Renderizar una página del PDF
+  }  /**
+   * Renderizar todas las páginas del PDF
    */
-  async renderPage(pageNum: number) {
-    if (this.pageRendering) {
-      this.pageNumPending = pageNum;
+  async renderAllPages() {
+    const container = document.getElementById('pdf-container');
+    console.log('Container encontrado:', container);
+
+    if (!container) {
+      console.error('No se encontró el contenedor pdf-container');
+      this.showError('Error: contenedor PDF no encontrado');
       return;
     }
 
-    this.pageRendering = true;
-    this.currentPdfPage = pageNum;
+    // Limpiar contenedor
+    container.innerHTML = '';
 
-    try {
-      const page = await this.pdfDoc.getPage(pageNum);
-      const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
+    // Calcular escala basada en el ancho del contenedor
+    const containerWidth = this.pdfContainer?.nativeElement?.clientWidth || 800;
 
-      if (!canvas) {
-        this.pageRendering = false;
-        return;
-      }
+    // Crear placeholders para todas las páginas
+    for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
+      const pageWrapper = document.createElement('div');
+      pageWrapper.className = 'pdf-page-wrapper';
+      pageWrapper.id = `pdf-page-${pageNum}`;
+      pageWrapper.setAttribute('data-page-number', pageNum.toString());
+      pageWrapper.setAttribute('data-rendered', 'false');
 
-      const context = canvas.getContext('2d');
-      if (!context) {
-        this.pageRendering = false;
-        return;
-      }
+      // Crear label de número de página
+      const pageLabel = document.createElement('div');
+      pageLabel.className = 'pdf-page-label';
+      pageLabel.textContent = `Página ${pageNum}`;
 
-      // Calcular escala basada en el ancho del contenedor
-      const containerWidth = this.pdfContainer?.nativeElement?.clientWidth || 800;
-      const viewport = page.getViewport({ scale: 1 });
-      const scale = containerWidth / viewport.width;
-      const scaledViewport = page.getViewport({ scale });
+      // Crear placeholder con altura estimada
+      const placeholder = document.createElement('div');
+      placeholder.className = 'pdf-page-placeholder';
+      placeholder.style.height = '1100px'; // Altura estimada de una página A4
 
-      canvas.height = scaledViewport.height;
-      canvas.width = scaledViewport.width;
+      const placeholderContent = document.createElement('div');
+      placeholderContent.className = 'pdf-placeholder-content';
 
-      const renderContext = {
-        canvasContext: context,
-        viewport: scaledViewport,
-      };
+      const spinner = document.createElement('div');
+      spinner.className = 'placeholder-spinner';
+      spinner.innerHTML = '⏳'; // Emoji temporal, se reemplazará al renderizar
 
-      await page.render(renderContext).promise;
+      const text = document.createElement('p');
+      text.textContent = `Cargando página ${pageNum}...`;
 
-      this.pageRendering = false;
+      placeholderContent.appendChild(spinner);
+      placeholderContent.appendChild(text);
+      placeholder.appendChild(placeholderContent);
 
-      // Si hay una página pendiente, renderizarla
-      if (this.pageNumPending !== null) {
-        const pending = this.pageNumPending;
-        this.pageNumPending = null;
-        await this.renderPage(pending);
-      }
+      pageWrapper.appendChild(pageLabel);
+      pageWrapper.appendChild(placeholder);
+      container.appendChild(pageWrapper);
 
-      // Buscar pregunta asociada a esta página
-      this.checkQuestionForCurrentPage();
-
-    } catch (error) {
-      console.error('Error renderizando página:', error);
-      this.pageRendering = false;
+      // Agregar click listener
+      pageWrapper.addEventListener('click', () => this.onPageClick(pageNum));
     }
+
+    // Renderizar TODAS las páginas (no lazy loading)
+    await this.renderPageRange(1, this.totalPages, containerWidth);
+
+    // Configurar observer para detectar página visible
+    this.setupPageObserver();
   }
 
   /**
-   * Navegar a página anterior del PDF
+   * Renderizar un rango de páginas
    */
-  async previousPage() {
-    if (this.currentPdfPage <= 1) return;
-    await this.renderPage(this.currentPdfPage - 1);
-  }
+  async renderPageRange(startPage: number, endPage: number, containerWidth: number) {
+    const maxPage = Math.min(endPage, this.totalPages);
 
-  /**
-   * Navegar a página siguiente del PDF
+    for (let pageNum = startPage; pageNum <= maxPage; pageNum++) {
+      if (this.renderedPages.has(pageNum)) {
+        continue;
+      }
+
+      try {
+        const page = await this.pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1 });
+        const scale = (containerWidth * 0.95) / viewport.width;
+        const scaledViewport = page.getViewport({ scale });
+
+        const pageWrapper = document.getElementById(`pdf-page-${pageNum}`);
+        if (!pageWrapper) {
+          continue;
+        }
+
+        // Crear canvas
+        const canvas = document.createElement('canvas');
+        canvas.className = 'pdf-page-canvas';
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+
+        // Reemplazar placeholder con canvas
+        const placeholder = pageWrapper.querySelector('.pdf-page-placeholder');
+        if (placeholder) {
+          placeholder.replaceWith(canvas);
+        }
+
+        // Renderizar página
+        const context = canvas.getContext('2d');
+        if (context) {
+          await page.render({
+            canvasContext: context,
+            viewport: scaledViewport,
+          }).promise;
+
+          this.renderedPages.add(pageNum);
+          pageWrapper.setAttribute('data-rendered', 'true');
+        }
+
+      } catch (error) {
+        console.error(`Error renderizando página ${pageNum}:`, error);
+      }
+    }
+  }  /**
+   * Configurar observer para detectar la página visible
    */
-  async nextPage() {
-    if (this.currentPdfPage >= this.totalPages) return;
-    await this.renderPage(this.currentPdfPage + 1);
+  setupPageObserver() {
+    const options = {
+      root: document.querySelector('.pdf-viewer'),
+      rootMargin: '0px',
+      threshold: 0.5
+    };
+
+    this.pageObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const pageNum = parseInt(entry.target.getAttribute('data-page-number') || '1');
+          this.currentPdfPage = pageNum;
+        }
+      });
+    }, options);
+
+    // Observar todas las páginas
+    const pages = document.querySelectorAll('.pdf-page-wrapper');
+    pages.forEach(page => this.pageObserver?.observe(page));
   }
 
   /**
@@ -284,29 +378,82 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
    */
   async goToPage(page: number) {
     if (page < 1 || page > this.totalPages) return;
-    await this.renderPage(page);
-  }
 
-  /**
-   * Click en el canvas del PDF - buscar pregunta asociada
-   */
-  async onPdfClick() {
-    const question = this.examQuestionService.findQuestionByPage(this.currentPdfPage);
+    const pageElement = document.getElementById(`pdf-page-${page}`);
+    if (pageElement) {
+      // Calcular la diferencia entre la página actual y la destino
+      const pageDiff = Math.abs(page - this.currentPdfPage);
 
-    if (question) {
-      this.scrollToQuestion(question.numberQuestion);
-      this.showInfo(`Pregunta ${question.numberQuestion} encontrada`);
-    } else {
-      this.showInfo(`No hay pregunta asociada a la página ${this.currentPdfPage}`);
+      // Si el salto es mayor a 10 páginas, hacer scroll instantáneo
+      // Si es menor, usar smooth scroll
+      const behavior = pageDiff > 10 ? 'auto' : 'smooth';
+
+      pageElement.scrollIntoView({ behavior: behavior as ScrollBehavior, block: 'start' });
+      this.currentPdfPage = page;
     }
   }
 
   /**
-   * Verificar si hay pregunta para la página actual
+   * Ir a la página anterior
    */
-  checkQuestionForCurrentPage() {
-    const question = this.examQuestionService.findQuestionByPage(this.currentPdfPage);
-    // Opcionalmente, puedes resaltar la pregunta en la lista
+  goToPreviousPage() {
+    if (this.currentPdfPage > 1) {
+      this.goToPage(this.currentPdfPage - 1);
+    }
+  }
+
+  /**
+   * Ir a la página siguiente
+   */
+  goToNextPage() {
+    if (this.currentPdfPage < this.totalPages) {
+      this.goToPage(this.currentPdfPage + 1);
+    }
+  }
+
+  /**
+   * Manejar cambio en el input de página
+   */
+  onPageInputChange(event: any) {
+    const pageNumber = parseInt(event.target.value);
+    if (!isNaN(pageNumber)) {
+      this.goToPage(pageNumber);
+    }
+  }
+
+  /**
+   * Click en una página del PDF - buscar pregunta asociada
+   */
+  async onPageClick(pageNum: number) {
+    // Buscar pregunta que comience en esta página primero
+    let question = this.questions.find(q => q.startPage === pageNum);
+
+    // Si no hay pregunta que comience aquí, buscar pregunta que contenga esta página
+    // pero priorizar la que tenga startPage más cercano
+    if (!question) {
+      const questionsInPage = this.questions.filter(q =>
+        q.startPage && q.endPage &&
+        pageNum >= q.startPage && pageNum <= q.endPage
+      );
+
+      if (questionsInPage.length > 0) {
+        // Ordenar por proximidad del startPage a la página actual
+        // Preferir preguntas cuyo startPage sea más cercano a pageNum
+        questionsInPage.sort((a, b) => {
+          const diffA = Math.abs((a.startPage || 0) - pageNum);
+          const diffB = Math.abs((b.startPage || 0) - pageNum);
+          return diffA - diffB;
+        });
+        question = questionsInPage[0];
+      }
+    }
+
+    if (question) {
+      this.scrollToQuestion(question.numberQuestion);
+      this.showInfo(`Pregunta ${question.numberQuestion} encontrada en página ${pageNum}`);
+    } else {
+      this.showInfo(`No hay pregunta asociada a la página ${pageNum}`);
+    }
   }
 
   /**
@@ -349,8 +496,13 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
     this.examQuestionService.loadNextPage(this.selectedExam.id, {
       itemPerPage: 20,
       sort: 'numberQuestion_asc'
-    }).pipe(takeUntil(this.destroy$)).subscribe(() => {
-      event.target.complete();
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        event.target.complete();
+      },
+      error: () => {
+        event.target.complete();
+      }
     });
   }
 
@@ -366,8 +518,13 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
     this.examQuestionService.refreshQuestions(this.selectedExam.id, {
       itemPerPage: 20,
       sort: 'numberQuestion_asc'
-    }).pipe(takeUntil(this.destroy$)).subscribe(() => {
-      event.target.complete();
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        event.target.complete();
+      },
+      error: () => {
+        event.target.complete();
+      }
     });
   }
 
