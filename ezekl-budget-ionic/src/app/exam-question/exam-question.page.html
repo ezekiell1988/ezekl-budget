@@ -84,6 +84,32 @@
 
     <!-- Panel derecho: Preguntas (20%) -->
     <div class="questions-panel" #questionsList>
+      <!-- Controles de navegación de preguntas -->
+      <div class="questions-controls">
+        <ion-button size="small" fill="clear" (click)="goToPreviousQuestion()" [disabled]="currentQuestionIndex <= 0 || questions.length === 0">
+          <ion-icon name="chevron-up" slot="icon-only"></ion-icon>
+        </ion-button>
+
+        <div class="question-navigation">
+          <ion-text color="medium">Pregunta</ion-text>
+          <input
+            type="number"
+            class="question-input"
+            [value]="currentQuestionIndex >= 0 && questions.length > 0 ? questions[currentQuestionIndex]?.numberQuestion : ''"
+            (change)="onQuestionInputChange($event)"
+            (keyup.enter)="onQuestionInputChange($event)"
+            min="1"
+            [placeholder]="questions.length > 0 ? '1-' + totalQuestions : ''"
+            [disabled]="questions.length === 0"
+          />
+          <ion-text color="medium">de {{ totalQuestions }}</ion-text>
+        </div>
+
+        <ion-button size="small" fill="clear" (click)="goToNextQuestion()" [disabled]="currentQuestionIndex >= questions.length - 1 || questions.length === 0">
+          <ion-icon name="chevron-down" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+
       <ion-content class="questions-content">
         <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
           <ion-refresher-content></ion-refresher-content>

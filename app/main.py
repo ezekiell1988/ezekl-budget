@@ -110,7 +110,25 @@ async def lifespan(app: FastAPI):
 
 
 # Configurar rutas para archivos estáticos del frontend Ionic
-FRONTEND_BUILD_PATH = Path(__file__).parent.parent / "ezekl-budget-ionic" / "www"
+# Intentar usar la ruta configurada o detectar automáticamente
+if settings.frontend_build_path:
+    FRONTEND_BUILD_PATH = Path(settings.frontend_build_path)
+else:
+    # Detectar automáticamente basado en la ubicación del archivo
+    FRONTEND_BUILD_PATH = Path(__file__).parent.parent / "ezekl-budget-ionic" / "www"
+
+# Log para debugging
+logger.info(f"📁 FRONTEND_BUILD_PATH configurado como: {FRONTEND_BUILD_PATH}")
+logger.info(f"📁 FRONTEND_BUILD_PATH absoluto: {FRONTEND_BUILD_PATH.absolute()}")
+logger.info(f"📁 FRONTEND_BUILD_PATH existe: {FRONTEND_BUILD_PATH.exists()}")
+if FRONTEND_BUILD_PATH.exists():
+    logger.info(f"📄 index.html existe: {(FRONTEND_BUILD_PATH / 'index.html').exists()}")
+    # Listar archivos en el directorio
+    try:
+        files = list(FRONTEND_BUILD_PATH.iterdir())
+        logger.info(f"📂 Archivos en FRONTEND_BUILD_PATH: {[f.name for f in files[:10]]}")
+    except Exception as e:
+        logger.error(f"❌ Error listando archivos: {e}")
 
 # Inicializar la aplicación FastAPI con lifespan
 app = FastAPI(
@@ -153,10 +171,15 @@ if FRONTEND_BUILD_PATH.exists():
 async def serve_frontend():
     """Sirve el frontend de Ionic Angular."""
     index_file = FRONTEND_BUILD_PATH / "index.html"
+    logger.info(f"Intentando servir frontend desde: {index_file}")
+    logger.info(f"FRONTEND_BUILD_PATH existe: {FRONTEND_BUILD_PATH.exists()}")
+    logger.info(f"index.html existe: {index_file.exists()}")
+    
     if index_file.exists():
         return FileResponse(index_file)
     else:
         # Si no existe el build del frontend, redirigir a la documentación de la API
+        logger.warning(f"Frontend no encontrado en {FRONTEND_BUILD_PATH}, redirigiendo a /docs")
         return RedirectResponse(url="/docs")
 
 
@@ -167,7 +190,10 @@ async def serve_frontend_routes(path: str):
     Maneja todas las rutas del frontend para el SPA routing.
     Si el archivo existe, lo sirve; si no, sirve index.html para el routing de Angular.
     """
+    logger.debug(f"Catch-all route: {path}")
+    
     if not FRONTEND_BUILD_PATH.exists():
+        logger.warning(f"FRONTEND_BUILD_PATH no existe: {FRONTEND_BUILD_PATH}")
         return RedirectResponse(url="/docs")
 
     # NO manejar rutas de API aquí - dejar que FastAPI las procese
@@ -176,10 +202,12 @@ async def serve_frontend_routes(path: str):
     # Verificar si el archivo solicitado existe
     file_path = FRONTEND_BUILD_PATH / path
     if file_path.is_file():
+        logger.debug(f"Sirviendo archivo: {file_path}")
         return FileResponse(file_path)
 
     # Para todas las demás rutas, servir index.html (SPA routing)
     index_file = FRONTEND_BUILD_PATH / "index.html"
+    logger.debug(f"Sirviendo index.html para ruta SPA: {path}")
     return FileResponse(index_file)
 
 

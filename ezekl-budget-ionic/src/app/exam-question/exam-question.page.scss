@@ -195,6 +195,61 @@ ion-content {
   box-shadow: var(--ion-box-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
   overflow: hidden;
 
+  .questions-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--ion-padding, 12px 16px);
+    background: var(--ion-color-light);
+    border-bottom: 1px solid var(--ion-border-color, var(--ion-color-step-150));
+    gap: 16px;
+
+    ion-button {
+      --padding-start: 8px;
+      --padding-end: 8px;
+    }
+  }
+
+  .question-navigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .question-input {
+      width: 70px;
+      padding: 6px 8px;
+      text-align: center;
+      border: 1px solid var(--ion-color-medium);
+      border-radius: 4px;
+      background: var(--ion-background-color);
+      color: var(--ion-text-color);
+      font-size: 14px;
+      font-weight: 500;
+
+      &:focus {
+        outline: none;
+        border-color: var(--ion-color-primary);
+        box-shadow: 0 0 0 2px var(--ion-color-primary-tint);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Remove arrows in number input */
+      &::-webkit-outer-spin-button,
+      &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      &[type=number] {
+        -moz-appearance: textfield;
+      }
+    }
+  }
+
   @media (max-width: 768px) {
     flex: 1;
     min-height: 300px;

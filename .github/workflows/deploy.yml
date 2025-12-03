@@ -171,8 +171,33 @@ jobs:
           # Navegar al proyecto Ionic y construir
           echo "🔨 Construyendo frontend Ionic..."
           cd ezekl-budget-ionic
+          
+          # Limpiar build anterior
+          rm -rf www node_modules
+          
+          # Instalar dependencias
+          echo "📦 Instalando dependencias de npm..."
           npm ci --loglevel error
+          
+          # Construir con modo producción
+          echo "🏗️  Ejecutando build de producción..."
           ionic build --prod
+          
+          # Verificar que el build fue exitoso
+          if [ ! -d "www" ]; then
+            echo "❌ ERROR: El directorio www no fue creado!"
+            exit 1
+          fi
+          
+          if [ ! -f "www/index.html" ]; then
+            echo "❌ ERROR: El archivo index.html no existe en www!"
+            exit 1
+          fi
+          
+          echo "✅ Frontend construido exitosamente"
+          echo "📂 Archivos en www:"
+          ls -lah www/ | head -n 10
+          
           cd ..
           
           # Construir imagen Docker desde cero con Microsoft ODBC Driver 18
@@ -182,6 +207,17 @@ jobs:
           # Verificar que los drivers ODBC estén instalados en la imagen
           echo "🔍 Verificando instalación de drivers ODBC..."
           $DOCKER_CMD run --rm $PROJECT_NAME-image odbcinst -q -d || echo "⚠️ Warning: No se pudieron verificar drivers ODBC"
+          
+          # Verificar que el frontend esté en la imagen
+          echo "🔍 Verificando frontend en imagen Docker..."
+          if $DOCKER_CMD run --rm $PROJECT_NAME-image ls /app/ezekl-budget-ionic/www/index.html >/dev/null 2>&1; then
+            echo "✅ Frontend encontrado en la imagen Docker"
+          else
+            echo "❌ ERROR: Frontend NO encontrado en la imagen Docker!"
+            echo "📂 Contenido de /app/ezekl-budget-ionic:"
+            $DOCKER_CMD run --rm $PROJECT_NAME-image ls -la /app/ezekl-budget-ionic/ || echo "Directorio no existe"
+            exit 1
+          fi
           
           echo "▶️  Ejecutando contenedor con network host para acceso a BD..."
           $DOCKER_CMD run -d \

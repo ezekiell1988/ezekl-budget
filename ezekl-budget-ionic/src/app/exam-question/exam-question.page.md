@@ -11,6 +11,9 @@ Una página interactiva para visualizar PDFs de exámenes con preguntas asociada
 - Click en el PDF para buscar pregunta asociada a la página actual
 
 ### ❓ Lista de Preguntas
+- Navegación por preguntas con controles anterior/siguiente
+- Input numérico para ir directamente a una pregunta específica
+- Carga automática de preguntas no cargadas al buscar por número
 - Infinite scroll para carga progresiva de preguntas
 - Pull to refresh para actualizar
 - Mostrar número de pregunta, páginas asociadas
@@ -93,9 +96,14 @@ El servicio consume el endpoint `/api/exam-questions/{idExam}/questions.json` co
 1. Selecciona un examen del dropdown superior
 2. El PDF se carga automáticamente a la izquierda
 3. Las preguntas se cargan a la derecha con scroll infinito
-4. Click en el PDF para buscar pregunta de esa página
-5. Click en una pregunta para ir a su página en el PDF
-6. Usa los botones anterior/siguiente para navegar el PDF
+4. **Navegación del PDF:**
+   - Click en el PDF para buscar pregunta de esa página
+   - Usa los botones anterior/siguiente o el input numérico para navegar páginas
+5. **Navegación de Preguntas:**
+   - Click en una pregunta para ir a su página en el PDF
+   - Usa los botones anterior/siguiente para moverte entre preguntas
+   - Ingresa un número de pregunta para ir directamente a ella
+   - Si la pregunta no está cargada, el sistema la cargará automáticamente
 
 ## Dependencias
 
@@ -115,6 +123,16 @@ Se carga desde CDN en `src/index.html`:
 - Las preguntas deben tener `startPage` y `endPage` para la navegación bidireccional
 - Si una pregunta no tiene páginas asociadas, solo se mostrará en la lista sin navegación al PDF
 - Si una página del PDF no tiene pregunta asociada, se muestra un mensaje informativo
+
+### Navegación de Preguntas
+- Los controles de navegación incluyen botones anterior/siguiente y un input numérico
+- El input muestra el número de la pregunta actual
+- Si introduces un número de pregunta no cargada, el sistema:
+  1. Calcula cuántas páginas de datos necesita cargar
+  2. Carga progresivamente hasta encontrar la pregunta
+  3. Navega automáticamente a ella
+  4. También navega al PDF si la pregunta tiene página asociada
+- El contador muestra "Pregunta X de Y" donde Y es el total de preguntas del examen
 
 ### Performance
 - Infinite scroll carga 20 preguntas a la vez

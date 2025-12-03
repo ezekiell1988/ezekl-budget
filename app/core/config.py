@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     # URL base de la aplicación (frontend y backend en el mismo dominio)
     url_base: Optional[str] = None
     
+    # Ruta al build del frontend (opcional, se detecta automáticamente)
+    frontend_build_path: Optional[str] = None
+    
     # Configuración de Base de Datos SQL Server
     db_host: str
     db_port: int = 1433

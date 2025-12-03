@@ -97,6 +97,8 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
   questions: ExamQuestion[] = [];
   currentPdfPage: number = 1;
   totalPages: number = 0;
+  currentQuestionIndex: number = -1;
+  totalQuestions: number = 0;
 
   // Estados
   loading = false;
@@ -140,6 +142,10 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(questions => {
         this.questions = questions;
+        // Actualizar índice de pregunta actual si hay preguntas
+        if (questions.length > 0 && this.currentQuestionIndex < 0) {
+          this.currentQuestionIndex = 0;
+        }
       });
 
     this.examQuestionService.loading
@@ -180,6 +186,10 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
         itemPerPage: 20,
         sort: 'numberQuestion_asc'
       }).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (response) => {
+          this.totalQuestions = response.total;
+          this.currentQuestionIndex = this.questions.length > 0 ? 0 : -1;
+        },
         error: (error) => {
           console.error('Error cargando preguntas:', error);
           this.showError('Error al cargar las preguntas');
@@ -557,5 +567,120 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
    */
   goBack() {
     this.router.navigate(['/']);
+  }
+
+  /**
+   * Ir a la pregunta anterior
+   */
+  goToPreviousQuestion() {
+    if (this.currentQuestionIndex > 0) {
+      this.currentQuestionIndex--;
+      this.scrollToCurrentQuestion();
+    }
+  }
+
+  /**
+   * Ir a la pregunta siguiente
+   */
+  goToNextQuestion() {
+    if (this.currentQuestionIndex < this.questions.length - 1) {
+      this.currentQuestionIndex++;
+      this.scrollToCurrentQuestion();
+    }
+  }
+
+  /**
+   * Scroll a la pregunta actual
+   */
+  scrollToCurrentQuestion() {
+    if (this.currentQuestionIndex >= 0 && this.currentQuestionIndex < this.questions.length) {
+      const question = this.questions[this.currentQuestionIndex];
+      this.scrollToQuestion(question.numberQuestion);
+
+      // Si la pregunta tiene página, navegar al PDF
+      if (question.startPage) {
+        this.goToPage(question.startPage);
+      }
+    }
+  }
+
+  /**
+   * Manejar cambio en el input de pregunta
+   */
+  onQuestionInputChange(event: any) {
+    const questionNumber = parseInt(event.target.value);
+    if (isNaN(questionNumber) || questionNumber < 1) {
+      return;
+    }
+
+    // Buscar la pregunta por número
+    const index = this.questions.findIndex(q => q.numberQuestion === questionNumber);
+
+    if (index !== -1) {
+      // La pregunta está cargada, navegar a ella
+      this.currentQuestionIndex = index;
+      this.scrollToCurrentQuestion();
+    } else {
+      // La pregunta no está cargada aún
+      this.showInfo(`Pregunta ${questionNumber} no encontrada. Cargando más preguntas...`);
+
+      // Intentar cargar más preguntas hasta encontrarla
+      this.loadQuestionByNumber(questionNumber);
+    }
+  }
+
+  /**
+   * Cargar preguntas hasta encontrar una específica
+   */
+  async loadQuestionByNumber(questionNumber: number) {
+    if (!this.selectedExam) return;
+
+    // Si el número de pregunta está fuera del rango total, mostrar error
+    if (questionNumber > this.totalQuestions) {
+      this.showError(`La pregunta ${questionNumber} no existe. Hay ${this.totalQuestions} preguntas en total.`);
+      return;
+    }
+
+    // Cargar todas las preguntas hasta el número deseado
+    // Calcular cuántas páginas necesitamos cargar
+    const itemsPerPage = 20;
+    const pageNeeded = Math.ceil(questionNumber / itemsPerPage);
+    const currentPage = Math.ceil(this.questions.length / itemsPerPage);
+
+    if (pageNeeded > currentPage && this.hasMore) {
+      // Necesitamos cargar más páginas
+      this.loading = true;
+
+      try {
+        // Cargar múltiples páginas si es necesario
+        for (let page = currentPage + 1; page <= pageNeeded; page++) {
+          await this.examQuestionService.loadNextPage(this.selectedExam.id, {
+            itemPerPage: itemsPerPage,
+            sort: 'numberQuestion_asc'
+          }).toPromise();
+
+          // Verificar si ya encontramos la pregunta
+          const index = this.questions.findIndex(q => q.numberQuestion === questionNumber);
+          if (index !== -1) {
+            this.currentQuestionIndex = index;
+            this.scrollToCurrentQuestion();
+            return;
+          }
+        }
+      } catch (error) {
+        this.showError('Error al cargar más preguntas');
+      } finally {
+        this.loading = false;
+      }
+    }
+
+    // Verificar una vez más si la pregunta está ahora
+    const index = this.questions.findIndex(q => q.numberQuestion === questionNumber);
+    if (index !== -1) {
+      this.currentQuestionIndex = index;
+      this.scrollToCurrentQuestion();
+    } else {
+      this.showError(`No se pudo encontrar la pregunta ${questionNumber}`);
+    }
   }
 }
