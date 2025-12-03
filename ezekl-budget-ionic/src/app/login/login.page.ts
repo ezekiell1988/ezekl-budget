@@ -377,7 +377,7 @@ export class LoginPage implements OnInit, OnDestroy, ViewWillLeave, ViewDidLeave
 
         console.log('✅ Token verificado exitosamente');
         console.log('🔐 Estado de autenticación:', this.authService.isAuthenticated);
-        console.log('👤 Usuario actual:', this.authService.currentUser?.name);
+        console.log('👤 Usuario actual:', this.authService.currentUser?.nameLogin);
 
         // Verificar que se autenticó correctamente
         if (this.authService.isAuthenticated) {
