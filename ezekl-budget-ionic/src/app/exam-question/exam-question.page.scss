@@ -1,0 +1,260 @@
+/**
+ * Estilos para la página de preguntas de examen
+ * Layout split 80/20 con PDF y preguntas
+ */
+
+ion-content {
+  --background: var(--ion-color-light);
+}
+
+// === Empty State ===
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 32px;
+  text-align: center;
+
+  ion-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+  }
+
+  h2, h3 {
+    margin: 8px 0;
+    color: var(--ion-color-dark);
+  }
+
+  p {
+    margin: 4px 0;
+    color: var(--ion-color-medium);
+  }
+}
+
+// === Selector de examen ===
+.exam-selector {
+  width: 100%;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+// === Split Container ===
+.split-container {
+  display: flex;
+  height: 100%;
+  gap: 8px;
+  padding: 8px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+// === Panel PDF (80%) ===
+.pdf-panel {
+  flex: 0 0 80%;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+
+  @media (max-width: 768px) {
+    flex: 1;
+    min-height: 400px;
+  }
+}
+
+.pdf-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--ion-color-light);
+  border-bottom: 1px solid var(--ion-color-light-shade);
+  gap: 8px;
+
+  ion-button {
+    --padding-start: 8px;
+    --padding-end: 8px;
+  }
+
+  .page-info {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ion-color-dark);
+    white-space: nowrap;
+  }
+}
+
+.pdf-viewer {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16px;
+  background: #525659;
+  cursor: pointer;
+
+  canvas {
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// === Panel Preguntas (20%) ===
+.questions-panel {
+  flex: 0 0 20%;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: auto;
+
+  @media (max-width: 768px) {
+    flex: 1;
+    min-height: 300px;
+  }
+}
+
+// === Loading ===
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  gap: 16px;
+
+  ion-spinner {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+// === Question Item ===
+.question-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    --background: var(--ion-color-light);
+  }
+
+  &.highlight {
+    --background: var(--ion-color-primary-tint);
+    animation: highlight-fade 2s ease-out;
+  }
+
+  ion-label {
+    margin: 0;
+
+    h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      strong {
+        color: var(--ion-color-primary);
+      }
+
+      .page-badge {
+        font-size: 12px;
+        font-weight: 400;
+      }
+    }
+
+    .question-text {
+      font-size: 13px;
+      line-height: 1.4;
+      margin: 0 0 8px;
+      color: var(--ion-color-dark);
+    }
+
+    .correct-answer {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 8px;
+      background: var(--ion-color-success-tint);
+      border-radius: 4px;
+
+      ion-icon {
+        font-size: 16px;
+        margin-top: 2px;
+        flex-shrink: 0;
+      }
+
+      ion-text {
+        font-size: 12px;
+        line-height: 1.4;
+
+        strong {
+          display: block;
+          margin-bottom: 2px;
+        }
+      }
+    }
+  }
+}
+
+// === Animations ===
+@keyframes highlight-fade {
+  0% {
+    background-color: var(--ion-color-primary-tint);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+// === Scrollbar (WebKit) ===
+.questions-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.questions-panel::-webkit-scrollbar-track {
+  background: var(--ion-color-light);
+}
+
+.questions-panel::-webkit-scrollbar-thumb {
+  background: var(--ion-color-medium);
+  border-radius: 4px;
+}
+
+.questions-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--ion-color-medium-shade);
+}
+
+.pdf-viewer::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.pdf-viewer::-webkit-scrollbar-track {
+  background: #3a3a3a;
+}
+
+.pdf-viewer::-webkit-scrollbar-thumb {
+  background: #666;
+  border-radius: 6px;
+}
+
+.pdf-viewer::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}

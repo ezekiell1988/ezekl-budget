@@ -58,6 +58,13 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta exam-question - protegida, requiere autenticación
+  {
+    path: 'exam-question',
+    loadComponent: () => import('./exam-question/exam-question.page').then( m => m.ExamQuestionPage),
+    canActivate: [AuthGuard]
+  },
+
   // Ruta CRM - protegida, con sub-rutas para tabs
   {
     path: 'crm',

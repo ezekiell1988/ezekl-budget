@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     
     # Configuración del servidor
     port: int = 8001
+    reload: bool = True
     
     # Azure OpenAI Configuration
     azure_openai_endpoint: str
@@ -157,6 +158,8 @@ class Settings(BaseSettings):
             f"UID={self.db_user};"
             f"PWD={self.db_password};"
             f"TrustServerCertificate={self.db_trust_cert};"
+            f"Connection Timeout=30;"
+            f"Login Timeout=30;"
         )
     
     class Config:

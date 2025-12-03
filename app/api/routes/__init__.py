@@ -15,6 +15,7 @@ from .company import router as company_router
 from .whatsapp import router as whatsapp_router
 from .ai import router as ai_router
 from .copilot import router as copilot_router
+from .exam_question import router as exam_question_router
 
 # Importar routers CRM
 from app.api.crm import cases_router, accounts_router, contacts_router, system_router
@@ -30,6 +31,7 @@ router.include_router(company_router, prefix="/companies", tags=["compañías"])
 router.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
 router.include_router(ai_router, prefix="/ai", tags=["inteligencia-artificial"])
 router.include_router(copilot_router, tags=["asistente-ia"])
+router.include_router(exam_question_router, prefix="/exam-questions", tags=["preguntas-examen"])
 
 # Incluir routers CRM con prefijo /crm
 router.include_router(cases_router, prefix="/crm", tags=["CRM - Casos"])

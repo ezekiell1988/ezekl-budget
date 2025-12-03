@@ -1,0 +1,157 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Exam Questions</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" (click)="handleRefresh($event)">
+        <ion-icon name="refresh" slot="icon-only" color="light"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <!-- Selector de examen -->
+  <ion-toolbar>
+    <ion-select
+      placeholder="Selecciona un examen"
+      [value]="selectedExam?.id"
+      (ionChange)="onExamSelected($event)"
+      interface="popover"
+      class="exam-selector">
+      @for (pdf of availablePdfs; track pdf.id) {
+        <ion-select-option [value]="pdf.id">
+          {{ pdf.displayName }}
+        </ion-select-option>
+      }
+    </ion-select>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <!-- Sin examen seleccionado -->
+  @if (!selectedExam) {
+    <div class="empty-state">
+      <ion-icon name="document-text" size="large" color="medium"></ion-icon>
+      <h2>Selecciona un examen</h2>
+      <p>Elige un PDF del menú superior para comenzar</p>
+    </div>
+  }
+
+  <!-- Con examen seleccionado -->
+  @if (selectedExam) {
+    <div class="split-container">
+      <!-- Panel izquierdo: PDF (80%) -->
+      <div class="pdf-panel" #pdfContainer>
+        <div class="pdf-controls">
+          <ion-button size="small" (click)="previousPage()" [disabled]="currentPdfPage <= 1">
+            <ion-icon name="arrow-back" slot="start"></ion-icon>
+            Anterior
+          </ion-button>
+
+          <ion-text>
+            <span class="page-info">Página {{ currentPdfPage }} de {{ totalPages }}</span>
+          </ion-text>
+
+          <ion-button size="small" (click)="nextPage()" [disabled]="currentPdfPage >= totalPages">
+            Siguiente
+            <ion-icon name="arrow-forward" slot="end"></ion-icon>
+          </ion-button>
+        </div>
+
+        <div class="pdf-viewer" (click)="onPdfClick()">
+          <canvas id="pdf-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Panel derecho: Preguntas (20%) -->
+      <div class="questions-panel" #questionsList>
+        <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+          <ion-refresher-content></ion-refresher-content>
+        </ion-refresher>
+
+        <!-- Loading inicial -->
+        @if (loading && questions.length === 0) {
+          <div class="loading-container">
+            <ion-spinner></ion-spinner>
+            <ion-text color="medium">Cargando preguntas...</ion-text>
+          </div>
+        }
+
+        <!-- Lista de preguntas -->
+        @if (questions.length > 0) {
+          <ion-list lines="full">
+            @for (question of questions; track question.numberQuestion) {
+              <ion-item
+                [id]="'question-' + question.numberQuestion"
+                button
+                (click)="onQuestionClick(question)"
+                class="question-item">
+                <ion-label class="ion-text-wrap">
+                  <h3>
+                    <strong>Q{{ question.numberQuestion }}</strong>
+                    @if (question.startPage) {
+                      <ion-text color="medium" class="page-badge">
+                        (p.{{ question.startPage }}@if (question.endPage && question.endPage !== question.startPage) {-{{ question.endPage }}})
+                      </ion-text>
+                    }
+                  </h3>
+                  <p class="question-text">{{ question.shortQuestion }}</p>
+                  @if (question.correctAnswer) {
+                    <div class="correct-answer">
+                      <ion-icon name="checkmark-circle" color="success"></ion-icon>
+                      <ion-text color="success">
+                        <strong>Respuesta:</strong> {{ question.correctAnswer }}
+                      </ion-text>
+                    </div>
+                  }
+                </ion-label>
+              </ion-item>
+            }
+          </ion-list>
+
+          <!-- Infinite Scroll -->
+          <ion-infinite-scroll
+            threshold="100px"
+            [disabled]="!hasMore"
+            (ionInfinite)="onIonInfinite($event)">
+            <ion-infinite-scroll-content
+              loadingSpinner="bubbles"
+              loadingText="Cargando más preguntas...">
+            </ion-infinite-scroll-content>
+          </ion-infinite-scroll>
+        }
+
+        <!-- Sin preguntas -->
+        @if (!loading && questions.length === 0) {
+          <div class="empty-state">
+            <ion-icon name="alert-circle" size="large" color="warning"></ion-icon>
+            <h3>No hay preguntas</h3>
+            <p>No se encontraron preguntas para este examen</p>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Alert -->
+  @if (showAlert) {
+    <ion-alert
+      [isOpen]="showAlert"
+      [message]="alertMessage"
+      [buttons]="['OK']"
+      (didDismiss)="closeAlert()">
+    </ion-alert>
+  }
+
+  <!-- Toast -->
+  @if (showToast) {
+    <ion-toast
+      [isOpen]="showToast"
+      [message]="toastMessage"
+      [duration]="2000"
+      position="bottom"
+      (didDismiss)="closeToast()">
+    </ion-toast>
+  }
+</ion-content>

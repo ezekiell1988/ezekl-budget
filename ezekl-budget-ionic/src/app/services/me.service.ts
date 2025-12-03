@@ -130,6 +130,18 @@ export class MeService {
               text: 'NEW',
               color: 'success'
             }
+          },
+          {
+            id: 'exam-question',
+            title: 'Exam Questions',
+            icon: 'book-outline',
+            route: '/exam-question',
+            enabled: true,
+            color: 'primary',
+            badge: {
+              text: 'NEW',
+              color: 'success'
+            }
           }
         ]
       },

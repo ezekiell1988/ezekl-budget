@@ -151,7 +151,8 @@ if __name__ == "__main__":
         "ws_ping_interval": 20,
         "ws_ping_timeout": 20,
         "ws_max_size": 16777216,  # 16MB
-        "reload": False,  # Evitar problemas en Windows con reload
+        "reload": settings.reload,  # Configurado desde .env
+        "reload_excludes": ["*.git*", "*.pyc", "__pycache__", "*.log", "ezekl-budget-ionic/*"],  # Excluir archivos que no requieren reload
         "log_level": "info",
     }
     
@@ -166,5 +167,8 @@ if __name__ == "__main__":
         if hasattr(asyncio, 'WindowsSelectorEventLoopPolicy'):
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     
-    
-    uvicorn.run(app, **config_kwargs)
+    # Cuando reload está habilitado, usar string de importación en lugar del objeto app
+    if settings.reload:
+        uvicorn.run("app.main:app", **config_kwargs)
+    else:
+        uvicorn.run(app, **config_kwargs)

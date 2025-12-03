@@ -31,7 +31,7 @@ class AsyncDatabaseManager:
             Exception: Si no se puede establecer la conexión
         """
         try:
-            connection = await aioodbc.connect(dsn=self.connection_string, timeout=10)
+            connection = await aioodbc.connect(dsn=self.connection_string, timeout=30)
             return connection
         except Exception as e:
             logger.error(f"Error al conectar con la base de datos: {str(e)}")
