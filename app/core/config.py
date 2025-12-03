@@ -134,7 +134,7 @@ class Settings(BaseSettings):
         
         # Generar automáticamente basado en la URL base
         # IMPORTANTE: Esta URL debe coincidir exactamente con la registrada en Entra ID
-        return f"{self.effective_url_base}/api/v1/auth/callback"
+        return f"{self.effective_url_base}/api/auth/callback"
     
     @property
     def microsoft_logout_endpoint(self) -> str:
