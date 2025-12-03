@@ -1,42 +1,18 @@
 /**
  * Estilos para la página de preguntas de examen
- * Layout split 80/20 con PDF y preguntas
+ * Usando principalmente clases de Ionic para reducir CSS personalizado
  */
-
-// === Variables personalizadas ===
-:host {
-  --pdf-viewer-bg: #525659;
-  --pdf-page-bg: #ffffff;
-  --panel-gap: 8px;
-  --panel-padding: 8px;
-  --panel-border-radius: 8px;
-  --pdf-panel-width: 80%;
-  --questions-panel-width: 20%;
-
-  @media (max-width: 768px) {
-    --pdf-panel-width: 100%;
-    --questions-panel-width: 100%;
-    --panel-gap: 16px;
-  }
-}
 
 ion-content {
   --background: var(--ion-color-light);
-}
-
-// === Selector de examen ===
-.exam-selector {
-  width: 100%;
-  --padding-start: 16px;
-  --padding-end: 16px;
 }
 
 // === Split Container ===
 .split-container {
   display: flex;
   height: 100%;
-  gap: var(--panel-gap);
-  padding: var(--panel-padding);
+  gap: 8px;
+  padding: 8px;
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -45,12 +21,11 @@ ion-content {
 
 // === Panel PDF ===
 .pdf-panel {
-  flex: 0 0 var(--pdf-panel-width);
+  flex: 0 0 80%;
   display: flex;
   flex-direction: column;
   background: var(--ion-background-color);
-  border-radius: var(--panel-border-radius);
-  box-shadow: var(--ion-box-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -59,27 +34,24 @@ ion-content {
   }
 }
 
-.pdf-controls {
+.pdf-controls,
+.questions-controls {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: var(--ion-padding, 12px 16px);
+  padding: 12px 16px;
   background: var(--ion-color-light);
-  border-bottom: 1px solid var(--ion-border-color, var(--ion-color-step-150));
+  border-bottom: 1px solid var(--ion-color-step-150);
   gap: 16px;
-
-  ion-button {
-    --padding-start: 8px;
-    --padding-end: 8px;
-  }
 }
 
-.page-navigation {
+.page-navigation,
+.question-navigation {
   display: flex;
   align-items: center;
   gap: 8px;
 
-  .page-input {
+  input {
     width: 70px;
     padding: 6px 8px;
     text-align: center;
@@ -88,15 +60,12 @@ ion-content {
     background: var(--ion-background-color);
     color: var(--ion-text-color);
     font-size: 14px;
-    font-weight: 500;
 
     &:focus {
       outline: none;
       border-color: var(--ion-color-primary);
-      box-shadow: 0 0 0 2px var(--ion-color-primary-tint);
     }
 
-    /* Remove arrows in number input */
     &::-webkit-outer-spin-button,
     &::-webkit-inner-spin-button {
       -webkit-appearance: none;
@@ -112,26 +81,8 @@ ion-content {
 .pdf-viewer {
   flex: 1;
   overflow: auto;
-  background: var(--pdf-viewer-bg);
+  background: #525659;
   padding: 16px;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: var(--ion-color-light);
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--ion-color-medium);
-    border-radius: 4px;
-
-    &:hover {
-      background: var(--ion-color-medium-shade);
-    }
-  }
 }
 
 .pdf-container {
@@ -139,7 +90,6 @@ ion-content {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  width: 100%;
 
   &.hidden {
     display: none;
@@ -148,26 +98,15 @@ ion-content {
 
 .pdf-page-wrapper {
   position: relative;
-  background: var(--pdf-page-bg);
+  background: #ffffff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   margin-bottom: 16px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
   }
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.pdf-page-canvas {
-  display: block;
-  width: 100%;
-  height: auto;
 }
 
 .pdf-page-label {
@@ -179,137 +118,32 @@ ion-content {
   padding: 4px 12px;
   border-radius: 4px;
   font-size: 12px;
-  font-weight: 500;
   pointer-events: none;
-  z-index: 10;
   opacity: 0.9;
 }
 
 // === Panel Preguntas ===
 .questions-panel {
-  flex: 0 0 var(--questions-panel-width);
+  flex: 0 0 20%;
   display: flex;
   flex-direction: column;
   background: var(--ion-background-color);
-  border-radius: var(--panel-border-radius);
-  box-shadow: var(--ion-box-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
   overflow: hidden;
-
-  .questions-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: var(--ion-padding, 12px 16px);
-    background: var(--ion-color-light);
-    border-bottom: 1px solid var(--ion-border-color, var(--ion-color-step-150));
-    gap: 16px;
-
-    ion-button {
-      --padding-start: 8px;
-      --padding-end: 8px;
-    }
-  }
-
-  .question-navigation {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .question-input {
-      width: 70px;
-      padding: 6px 8px;
-      text-align: center;
-      border: 1px solid var(--ion-color-medium);
-      border-radius: 4px;
-      background: var(--ion-background-color);
-      color: var(--ion-text-color);
-      font-size: 14px;
-      font-weight: 500;
-
-      &:focus {
-        outline: none;
-        border-color: var(--ion-color-primary);
-        box-shadow: 0 0 0 2px var(--ion-color-primary-tint);
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      /* Remove arrows in number input */
-      &::-webkit-outer-spin-button,
-      &::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-
-      &[type=number] {
-        -moz-appearance: textfield;
-      }
-    }
-  }
 
   @media (max-width: 768px) {
     flex: 1;
     min-height: 300px;
   }
-
-  .questions-content {
-    --background: var(--ion-background-color);
-  }
 }
 
 // === Question Item ===
 .question-item {
-  --padding-start: 16px;
-  --padding-end: 16px;
-  --padding-top: 12px;
-  --padding-bottom: 12px;
-
   &.highlight {
     animation: highlight-fade 2s ease-out;
   }
-
-  h3 {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 0 0 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-
-    .page-badge {
-      font-size: 12px;
-      font-weight: 400;
-    }
-  }
-
-  .question-text {
-    font-size: 13px;
-    line-height: 1.4;
-    margin: 0 0 8px;
-    color: var(--ion-text-color);
-  }
 }
 
-.correct-answer-chip {
-  --height: auto;
-
-  ion-label {
-    white-space: normal;
-    font-size: 12px;
-    line-height: 1.4;
-    padding: 4px 0;
-
-    strong {
-      margin-right: 4px;
-    }
-  }
-}
-
-// === Animations ===
 @keyframes highlight-fade {
   0% {
     background-color: var(--ion-color-primary);

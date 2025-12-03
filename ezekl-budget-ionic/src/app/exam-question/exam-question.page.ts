@@ -159,6 +159,12 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
       .subscribe(hasMore => {
         this.hasMore = hasMore;
       });
+
+    this.examQuestionService.totalItems
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(total => {
+        this.totalQuestions = total;
+      });
   }
 
   ngOnDestroy() {
@@ -186,8 +192,7 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
         itemPerPage: 20,
         sort: 'numberQuestion_asc'
       }).pipe(takeUntil(this.destroy$)).subscribe({
-        next: (response) => {
-          this.totalQuestions = response.total;
+        next: () => {
           this.currentQuestionIndex = this.questions.length > 0 ? 0 : -1;
         },
         error: (error) => {
