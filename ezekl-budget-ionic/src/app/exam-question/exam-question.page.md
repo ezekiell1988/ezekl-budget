@@ -6,15 +6,20 @@ Una página interactiva para visualizar PDFs de exámenes con preguntas asociada
 
 ### 📄 Visualización de PDF
 - Renderizado de PDFs usando PDF.js
+- **Carga progresiva**: Renderiza las primeras 20 páginas inmediatamente para uso rápido
+- **Lazy loading**: Carga páginas adicionales automáticamente al hacer scroll (10 páginas por lote)
+- **Carga en background**: Después de la carga inicial, continúa cargando TODAS las páginas restantes en background sin bloquear la UI
 - Navegación por páginas (anterior/siguiente)
 - Indicador de página actual
 - Click en el PDF para buscar pregunta asociada a la página actual
+- Navegación inteligente que pre-carga páginas cercanas cuando saltas a una página específica
 
 ### ❓ Lista de Preguntas
 - Navegación por preguntas con controles anterior/siguiente
 - Input numérico para ir directamente a una pregunta específica
 - Carga automática de preguntas no cargadas al buscar por número
-- Infinite scroll para carga progresiva de preguntas
+- Infinite scroll para carga progresiva de preguntas (20 por lote)
+- **Carga en background**: Después de la carga inicial, continúa cargando TODAS las preguntas restantes en background
 - Pull to refresh para actualizar
 - Mostrar número de pregunta, páginas asociadas
 - Mostrar pregunta corta y respuesta correcta
@@ -135,9 +140,21 @@ Se carga desde CDN en `src/index.html`:
 - El contador muestra "Pregunta X de Y" donde Y es el total de preguntas del examen
 
 ### Performance
-- Infinite scroll carga 20 preguntas a la vez
-- El PDF se renderiza página por página bajo demanda
-- Se previene renderizado múltiple con flags `pageRendering` y `pageNumPending`
+- **Carga inicial rápida**: Solo renderiza las primeras 20 páginas del PDF para que el usuario pueda empezar a usar la app inmediatamente
+- **Lazy loading con scroll**: Las páginas se cargan automáticamente en lotes de 10 al hacer scroll
+- **Carga en background inteligente**: 
+  - Después de 2 segundos de la carga inicial, comienza a cargar automáticamente TODAS las páginas restantes
+  - Usa `requestIdleCallback` para no interferir con la interacción del usuario
+  - Las páginas se cargan en lotes de 10 durante períodos de inactividad del navegador
+  - Una vez completada, todo el PDF está disponible sin necesidad de scroll
+- **Pre-carga inteligente**: Cuando navegas a una página específica, se pre-cargan 5 páginas antes y después
+- **Infinite scroll de preguntas**: Carga 20 preguntas a la vez con scroll
+- **Carga background de preguntas**: 
+  - Después de 2 segundos, comienza a cargar automáticamente todas las preguntas restantes
+  - Usa `requestIdleCallback` para no bloquear la UI
+  - Carga en lotes de 20 durante períodos de inactividad
+- Intersection Observer con rootMargin de 500px para anticipar la carga de páginas
+- Logs en consola cuando se completa la carga total ("✅ Todas las páginas/preguntas cargadas en background")
 
 ## Mejoras Futuras
 

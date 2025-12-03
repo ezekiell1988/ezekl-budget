@@ -43,11 +43,20 @@ def main():
     print("-" * 60)
     
     try:
-        result = subprocess.run(
-            ["npm", "run", "build", "--prefix", "./ezekl-budget-ionic"],
-            cwd=base_dir,
-            check=True
-        )
+        # En Windows, necesitamos usar shell=True para encontrar npm
+        if is_windows:
+            result = subprocess.run(
+                "npm run build",
+                cwd=chat_bot_dir,
+                shell=True,
+                check=True
+            )
+        else:
+            result = subprocess.run(
+                ["npm", "run", "build"],
+                cwd=chat_bot_dir,
+                check=True
+            )
         print("✅ Build del frontend completado exitosamente")
     except subprocess.CalledProcessError as e:
         print(f"❌ Error durante el build del frontend: {e}", file=sys.stderr)

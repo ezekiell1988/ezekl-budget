@@ -113,8 +113,10 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
   private pdfDoc: any = null;
   private renderedPages: Set<number> = new Set();
   private pageObserver: IntersectionObserver | null = null;
-  private readonly INITIAL_PAGES_TO_RENDER = 5; // Solo renderizar las primeras 5 páginas
-  private readonly PAGES_PER_BATCH = 3; // Renderizar 3 páginas a la vez cuando se hace scroll
+  private readonly INITIAL_PAGES_TO_RENDER = 20; // Renderizar las primeras 20 páginas
+  private readonly PAGES_PER_BATCH = 10; // Renderizar 10 páginas a la vez cuando se hace scroll
+  private isRenderingBatch = false; // Flag para evitar renderizado múltiple
+  private backgroundLoadingInterval: any = null; // Intervalo para carga en background
 
   // Lifecycle
   private destroy$ = new Subject<void>();
@@ -174,6 +176,11 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
     if (this.pageObserver) {
       this.pageObserver.disconnect();
     }
+    // Limpiar intervalo de carga en background
+    if (this.backgroundLoadingInterval) {
+      clearInterval(this.backgroundLoadingInterval);
+      this.backgroundLoadingInterval = null;
+    }
   }
 
   /**
@@ -194,6 +201,8 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
       }).pipe(takeUntil(this.destroy$)).subscribe({
         next: () => {
           this.currentQuestionIndex = this.questions.length > 0 ? 0 : -1;
+          // Iniciar carga en background de preguntas
+          this.startBackgroundQuestionsLoading();
         },
         error: (error) => {
           console.error('Error cargando preguntas:', error);
@@ -233,9 +242,6 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
       // Renderizar todas las páginas
       await this.renderAllPages();
 
-      // Configurar observer para detectar la página visible
-      this.setupPageObserver();
-
     } catch (error) {
       console.error('Error cargando PDF:', error);
       this.showError('Error al cargar el PDF. Verifica que el archivo existe.');
@@ -247,7 +253,6 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
    */
   async renderAllPages() {
     const container = document.getElementById('pdf-container');
-    console.log('Container encontrado:', container);
 
     if (!container) {
       console.error('No se encontró el contenedor pdf-container');
@@ -301,11 +306,14 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
       pageWrapper.addEventListener('click', () => this.onPageClick(pageNum));
     }
 
-    // Renderizar TODAS las páginas (no lazy loading)
-    await this.renderPageRange(1, this.totalPages, containerWidth);
+    // Renderizar solo las primeras páginas inicialmente
+    await this.renderPageRange(1, this.INITIAL_PAGES_TO_RENDER, containerWidth);
 
-    // Configurar observer para detectar página visible
+    // Configurar observer para lazy loading y detección de página visible
     this.setupPageObserver();
+
+    // Iniciar carga en background de las páginas restantes
+    this.startBackgroundPdfLoading();
   }
 
   /**
@@ -340,6 +348,8 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
         const placeholder = pageWrapper.querySelector('.pdf-page-placeholder');
         if (placeholder) {
           placeholder.replaceWith(canvas);
+        } else {
+          pageWrapper.appendChild(canvas);
         }
 
         // Renderizar página
@@ -359,20 +369,28 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
       }
     }
   }  /**
-   * Configurar observer para detectar la página visible
+   * Configurar observer para lazy loading y detectar la página visible
    */
   setupPageObserver() {
     const options = {
       root: document.querySelector('.pdf-viewer'),
-      rootMargin: '0px',
-      threshold: 0.5
+      rootMargin: '500px', // Cargar páginas 500px antes de que sean visibles
+      threshold: 0.1
     };
 
     this.pageObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const pageNum = parseInt(entry.target.getAttribute('data-page-number') || '1');
+      entries.forEach(async entry => {
+        const pageNum = parseInt(entry.target.getAttribute('data-page-number') || '1');
+        const isRendered = entry.target.getAttribute('data-rendered') === 'true';
+
+        // Actualizar página actual si es visible
+        if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
           this.currentPdfPage = pageNum;
+        }
+
+        // Lazy loading: renderizar página si entra en el viewport y no está renderizada
+        if (entry.isIntersecting && !isRendered && !this.isRenderingBatch) {
+          await this.renderNextBatch(pageNum);
         }
       });
     }, options);
@@ -383,6 +401,119 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
   }
 
   /**
+   * Renderizar el siguiente lote de páginas
+   */
+  async renderNextBatch(startPage: number) {
+    if (this.isRenderingBatch) return;
+
+    this.isRenderingBatch = true;
+
+    try {
+      const containerWidth = this.pdfContainer?.nativeElement?.clientWidth || 800;
+      const endPage = Math.min(startPage + this.PAGES_PER_BATCH - 1, this.totalPages);
+
+      // Renderizar páginas que aún no se han renderizado en este rango
+      await this.renderPageRange(startPage, endPage, containerWidth);
+    } finally {
+      this.isRenderingBatch = false;
+    }
+  }
+
+  /**
+   * Iniciar carga en background de todas las páginas restantes del PDF
+   */
+  private async startBackgroundPdfLoading() {
+    // Esperar un poco antes de comenzar la carga en background
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const containerWidth = this.pdfContainer?.nativeElement?.clientWidth || 800;
+    let currentPage = this.INITIAL_PAGES_TO_RENDER + 1;
+
+    // Usar requestIdleCallback si está disponible, sino setTimeout
+    const scheduleWork = (callback: () => void) => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(callback, { timeout: 2000 });
+      } else {
+        setTimeout(callback, 100);
+      }
+    };
+
+    const loadNextBatch = async () => {
+      if (currentPage > this.totalPages) {
+        return;
+      }
+
+      // Renderizar siguiente lote
+      const endPage = Math.min(currentPage + this.PAGES_PER_BATCH - 1, this.totalPages);
+      await this.renderPageRange(currentPage, endPage, containerWidth);
+
+      currentPage = endPage + 1;
+
+      // Programar siguiente lote
+      if (currentPage <= this.totalPages) {
+        scheduleWork(loadNextBatch);
+      }
+    };
+
+    // Iniciar carga en background
+    scheduleWork(loadNextBatch);
+  }
+
+  /**
+   * Iniciar carga en background de todas las preguntas restantes
+   */
+  private startBackgroundQuestionsLoading() {
+    if (!this.selectedExam) return;
+
+    // Esperar un poco antes de comenzar la carga en background
+    setTimeout(() => {
+      this.loadAllQuestionsInBackground();
+    }, 2000);
+  }
+
+  /**
+   * Cargar todas las preguntas en background de forma progresiva
+   */
+  private async loadAllQuestionsInBackground() {
+    if (!this.selectedExam || !this.hasMore) {
+      return;
+    }
+
+    // Usar requestIdleCallback para no bloquear la UI
+    const scheduleWork = (callback: () => void) => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(callback, { timeout: 2000 });
+      } else {
+        setTimeout(callback, 500);
+      }
+    };
+
+    const loadNext = () => {
+      if (!this.selectedExam || !this.hasMore || this.loading) {
+        return;
+      }
+
+      this.examQuestionService.loadNextPage(this.selectedExam.id, {
+        itemPerPage: 20,
+        sort: 'numberQuestion_asc'
+      }).pipe(takeUntil(this.destroy$)).subscribe({
+        next: () => {
+          // Si hay más preguntas, programar siguiente carga
+          if (this.hasMore) {
+            scheduleWork(loadNext);
+          }
+        },
+        error: (error) => {
+          console.error('Error en carga background de preguntas:', error);
+        }
+      });
+    };
+
+    // Iniciar carga
+    scheduleWork(loadNext);
+  }
+
+  /**
    * Ir a una página específica
    */
   async goToPage(page: number) {
@@ -390,6 +521,17 @@ export class ExamQuestionPage implements OnInit, OnDestroy {
 
     const pageElement = document.getElementById(`pdf-page-${page}`);
     if (pageElement) {
+      // Verificar si la página está renderizada
+      const isRendered = pageElement.getAttribute('data-rendered') === 'true';
+
+      // Si no está renderizada, renderizarla junto con páginas cercanas
+      if (!isRendered) {
+        const startPage = Math.max(1, page - 5);
+        const endPage = Math.min(this.totalPages, page + 5);
+        const containerWidth = this.pdfContainer?.nativeElement?.clientWidth || 800;
+        await this.renderPageRange(startPage, endPage, containerWidth);
+      }
+
       // Calcular la diferencia entre la página actual y la destino
       const pageDiff = Math.abs(page - this.currentPdfPage);
 
