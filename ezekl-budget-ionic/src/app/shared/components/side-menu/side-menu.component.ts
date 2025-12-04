@@ -52,6 +52,7 @@ import { AuthService } from '../../../services/auth.service';
 import { MeService, MenuSection, MenuItem } from '../../../services/me.service';
 import { AuthUser, AuthState } from '../../../models/auth.models';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-side-menu',
@@ -82,6 +83,7 @@ export class SideMenuComponent implements OnInit {
   authState$: Observable<AuthState>;
   currentUser: AuthUser | undefined;
   menuSections$: Observable<MenuSection[]>;
+  appVersion = environment.version;
 
   constructor(
     private authService: AuthService,

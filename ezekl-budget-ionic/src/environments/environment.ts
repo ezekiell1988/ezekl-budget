@@ -6,7 +6,8 @@ export const environment = {
   production: false,
   // Usar ruta relativa vacía - funcionará automáticamente con el puerto actual
   // Ejemplos: localhost:8000 -> '', localhost:8001 -> ''
-  apiUrl: ''
+  apiUrl: '',
+  version: '0.0.0'
 };
 
 /*
