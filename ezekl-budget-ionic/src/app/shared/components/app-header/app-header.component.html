@@ -12,6 +12,11 @@
       {{ title }}
     </ion-title>
 
+    <!-- Versión de la app -->
+    <ion-chip slot="end" color="medium" style="margin-right: 8px;">
+      <ion-label>v{{ appVersion }}</ion-label>
+    </ion-chip>
+
     <!-- Botones de acción opcionales -->
     @if (showActions) {
     <ion-buttons slot="end">

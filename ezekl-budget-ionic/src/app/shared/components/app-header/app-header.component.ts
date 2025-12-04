@@ -12,10 +12,12 @@ import {
   IonSearchbar,
   IonSelect,
   IonSelectOption,
-  MenuController,
-} from '@ionic/angular/standalone';
+  IonChip,
+  IonLabel,
+  MenuController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { menu, notifications, search, ellipsisVertical, close, listOutline } from 'ionicons/icons';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-header',
@@ -34,9 +36,12 @@ import { menu, notifications, search, ellipsisVertical, close, listOutline } fro
     IonSearchbar,
     IonSelect,
     IonSelectOption,
+    IonChip,
+    IonLabel,
   ],
 })
 export class AppHeaderComponent {
+  appVersion = environment.version;
   @Input() title: string = 'Ezekl Budget';
   @Input() showMenu: boolean = true;
   @Input() showActions: boolean = false;

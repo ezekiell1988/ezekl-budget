@@ -6,9 +6,10 @@ Una página interactiva para visualizar PDFs de exámenes con preguntas asociada
 
 ### 📄 Visualización de PDF
 - Renderizado de PDFs usando PDF.js
-- **Carga progresiva**: Renderiza las primeras 20 páginas y carga el resto en background
-- **Gestión de memoria (iOS/Safari)**: Libera automáticamente páginas lejanas para evitar que Safari recargue la página
-- **Máximo 30 páginas en memoria**: Solo mantiene ±15 páginas alrededor de la visible
+- **Carga progresiva**: Renderiza las primeras 10 páginas y carga el resto bajo demanda
+- **Gestión de memoria agresiva (iOS/Safari)**: Libera automáticamente páginas lejanas
+- **Máximo 10 páginas en memoria**: Solo mantiene ±5 páginas alrededor de la visible
+- **Scroll sin conflictos**: Usa flag `isScrolling` para evitar interferencias del observer
 - Navegación por páginas (anterior/siguiente)
 - Indicador de página actual
 - Click en el PDF para buscar pregunta asociada a la página actual
@@ -146,7 +147,8 @@ El sistema usa un enfoque híbrido para balancear velocidad y uso de memoria:
 - `questionsReady`: TRUE cuando TODAS las preguntas están cargadas
 - `initialLoadComplete`: TRUE cuando AMBOS están listos
 - `lastVisiblePage`: Última página visible (para gestión de memoria)
-- `MAX_PAGES_IN_MEMORY`: Límite de 30 páginas en memoria (para iOS)
+- `isScrolling`: TRUE durante scroll programático (evita conflictos con observer)
+- `MAX_PAGES_IN_MEMORY`: Límite de 10 páginas en memoria (crítico para iOS)
 
 **Gestión de Memoria (iOS/Safari)**:
 Safari en iOS tiene límites estrictos de memoria (~100-200MB por pestaña). Cuando se excede:
@@ -154,9 +156,11 @@ Safari en iOS tiene límites estrictos de memoria (~100-200MB por pestaña). Cua
 - Al volver, la página se recarga completamente
 
 El sistema evita esto mediante:
-- Limitando las páginas renderizadas en memoria a 30
-- Liberando automáticamente páginas lejanas cuando el usuario hace scroll
+- Limitando las páginas renderizadas en memoria a **solo 10**
+- Liberando automáticamente páginas >5 posiciones de distancia
 - Reemplazando canvas por placeholders ligeros
+- Usando `behavior: 'instant'` en scrollIntoView para evitar animaciones
+- Flag `isScrolling` para que el observer no interfiera durante navegación
 
 **Beneficios**:
 - ✅ No más recargas automáticas en iOS/Safari
@@ -176,13 +180,14 @@ El sistema evita esto mediante:
 - El contador muestra "Pregunta X de Y" donde Y es el total de preguntas del examen
 
 ### Performance
-- **Carga híbrida**: Preguntas al 100% + PDF progresivo para balance óptimo
-- **Gestión de memoria activa**: Solo mantiene ~30 páginas renderizadas en memoria
-- **Liberación automática**: Reemplaza canvas lejanos por placeholders ligeros
+- **Carga híbrida**: Preguntas al 100% + PDF bajo demanda para balance óptimo
+- **Gestión de memoria AGRESIVA**: Solo mantiene ~10 páginas renderizadas en memoria
+- **Liberación automática**: Reemplaza canvas lejanos (>5 páginas) por placeholders
+- **Scroll sin conflictos**: Flag `isScrolling` evita que el observer interfiera
 - **Carga en paralelo**: PDF y preguntas se cargan simultáneamente
 - **Preguntas en lotes grandes**: Carga 100 preguntas por página para eficiencia
-- **IntersectionObserver inteligente**: Carga páginas cercanas y libera lejanas
-- **Optimizado para iOS**: Evita que Safari mate la app por uso excesivo de memoria
+- **IntersectionObserver controlado**: rootMargin reducido a 200px, respeta `isScrolling`
+- **Optimizado para iOS**: Diseñado para evitar que Safari mate la app
 
 ## Mejoras Futuras
 

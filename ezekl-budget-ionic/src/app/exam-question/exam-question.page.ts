@@ -117,12 +117,13 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   private pdfDoc: any = null;
   private renderedPages: Set<number> = new Set();
   private pageObserver: IntersectionObserver | null = null;
-  private readonly INITIAL_PAGES_TO_RENDER = 20; // Renderizar las primeras 20 páginas
-  private readonly PAGES_PER_BATCH = 10; // Renderizar 10 páginas a la vez cuando se hace scroll
-  private readonly MAX_PAGES_IN_MEMORY = 30; // Máximo de páginas renderizadas en memoria (para iOS/Safari)
+  private readonly INITIAL_PAGES_TO_RENDER = 10; // Renderizar solo 10 páginas iniciales (reducido para iOS)
+  private readonly PAGES_PER_BATCH = 5; // Renderizar 5 páginas a la vez
+  private readonly MAX_PAGES_IN_MEMORY = 10; // MÁXIMO 10 páginas en memoria (crítico para iOS/Safari)
   private isRenderingBatch = false; // Flag para evitar renderizado múltiple
   private backgroundLoadingInterval: any = null; // Intervalo para carga en background
   private lastVisiblePage: number = 1; // Última página visible (para gestión de memoria)
+  private isScrolling = false; // Flag para evitar conflictos durante scroll programático
 
   // Lifecycle
   private destroy$ = new Subject<void>();
@@ -653,24 +654,24 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
 
     const options = {
       root: document.querySelector('.pdf-viewer'),
-      rootMargin: '500px', // Cargar páginas 500px antes de que sean visibles
+      rootMargin: '200px', // Reducido de 500px a 200px para menos carga anticipada
       threshold: 0.1
     };
 
     this.pageObserver = new IntersectionObserver((entries) => {
-      // Solo procesar si la carga inicial está completa
-      if (!this.initialLoadComplete) return;
+      // NO procesar si estamos haciendo scroll programático o restaurando
+      if (!this.initialLoadComplete || this.isScrolling || this.isRestoringState) return;
 
       entries.forEach(async entry => {
         const pageNum = parseInt(entry.target.getAttribute('data-page-number') || '1');
         const isRendered = entry.target.getAttribute('data-rendered') === 'true';
 
-        // Actualizar página actual si es visible (solo si no estamos restaurando)
-        if (entry.isIntersecting && entry.intersectionRatio > 0.5 && !this.isRestoringState) {
+        // Actualizar página actual si es visible
+        if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
           this.currentPdfPage = pageNum;
           this.lastVisiblePage = pageNum;
 
-          // Liberar memoria de páginas lejanas (solo en iOS/Safari)
+          // Liberar memoria de páginas lejanas
           this.freeDistantPagesMemory(pageNum);
         }
 
@@ -696,7 +697,7 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
 
     const pagesToKeep = new Set<number>();
 
-    // Mantener páginas cercanas a la actual (±15 páginas)
+    // Mantener solo páginas MUY cercanas a la actual (±5 páginas)
     const keepRadius = Math.floor(this.MAX_PAGES_IN_MEMORY / 2);
     for (let i = currentPage - keepRadius; i <= currentPage + keepRadius; i++) {
       if (i >= 1 && i <= this.totalPages) {
@@ -902,6 +903,9 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   async goToPage(page: number) {
     if (page < 1 || page > this.totalPages) return;
 
+    // Marcar que estamos haciendo scroll programático
+    this.isScrolling = true;
+
     const pageElement = document.getElementById(`pdf-page-${page}`);
     if (pageElement) {
       // Verificar si la página está renderizada
@@ -909,20 +913,31 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
 
       // Si no está renderizada, renderizarla junto con páginas cercanas
       if (!isRendered) {
-        const startPage = Math.max(1, page - 5);
-        const endPage = Math.min(this.totalPages, page + 5);
+        const startPage = Math.max(1, page - 2);
+        const endPage = Math.min(this.totalPages, page + 2);
         const containerWidth = this.pdfContainer?.nativeElement?.clientWidth || 800;
         await this.renderPageRange(startPage, endPage, containerWidth);
       }
 
-      // Scroll simple e instantáneo
-      pageElement.scrollIntoView(true);
+      // Actualizar página actual ANTES del scroll
       this.currentPdfPage = page;
+      this.lastVisiblePage = page;
+
+      // Scroll instantáneo sin animación (evita conflictos en iOS)
+      pageElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+
+      // Liberar memoria de páginas lejanas después del scroll
+      setTimeout(() => {
+        this.freeDistantPagesMemory(page);
+        this.isScrolling = false;
+      }, 100);
 
       // Solo guardar estado si no estamos restaurando
       if (!this.isRestoringState) {
         this.saveState();
       }
+    } else {
+      this.isScrolling = false;
     }
   }
 
