@@ -137,7 +137,15 @@ export class MeService {
             icon: 'book-outline',
             route: '/exam-question',
             enabled: true,
-            color: 'primary',
+            color: 'primary'
+          },
+          {
+            id: 'exam-review',
+            title: 'Repaso Preguntas',
+            icon: 'bookmark-outline',
+            route: '/exam-review',
+            enabled: true,
+            color: 'tertiary',
             badge: {
               text: 'NEW',
               color: 'success'

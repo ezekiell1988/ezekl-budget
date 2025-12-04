@@ -1,0 +1,164 @@
+/**
+ * Estilos para la página de repaso de preguntas
+ */
+
+ion-content {
+  --background: var(--ion-color-light);
+}
+
+// === Empty State ===
+.empty-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 32px;
+
+  ion-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+  }
+
+  h2, h3 {
+    margin: 0 0 8px 0;
+    color: var(--ion-color-dark);
+  }
+
+  p {
+    margin: 0;
+    color: var(--ion-color-medium);
+  }
+}
+
+// === Progress Bar ===
+.progress-bar {
+  padding: 8px 16px;
+
+  .progress-info {
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .progress-track {
+    height: 8px;
+    background: var(--ion-color-step-200);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--ion-color-success);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+}
+
+// === Loading ===
+.loading-container {
+  padding: 16px;
+
+  .loading-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    h3 {
+      margin: 0 0 4px 0;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ion-color-medium);
+    }
+  }
+}
+
+// === Questions Container ===
+.questions-container {
+  padding: 16px;
+  padding-bottom: 100px; // Espacio para navegación flotante
+}
+
+// === Question Card ===
+.question-card {
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &.completed {
+    border-left-color: var(--ion-color-success);
+    background: rgba(var(--ion-color-success-rgb), 0.05);
+  }
+
+  &.current {
+    border-left-color: var(--ion-color-primary);
+    box-shadow: 0 0 0 2px var(--ion-color-primary);
+  }
+
+  .question-header {
+    margin-bottom: 12px;
+  }
+
+  .question-text {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ion-color-dark);
+    margin-bottom: 12px;
+  }
+
+  .answer-section {
+    margin-top: 12px;
+  }
+
+  .answer-chip {
+    --background: rgba(var(--ion-color-success-rgb), 0.15);
+
+    ion-icon {
+      margin-right: 4px;
+    }
+  }
+}
+
+// === Floating Navigation ===
+.floating-nav {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+  background: var(--ion-color-dark);
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+
+  .nav-info {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  ion-button {
+    --padding-start: 8px;
+    --padding-end: 8px;
+    margin: 0;
+  }
+}
+
+// === Exam Selector ===
+.exam-selector {
+  width: 100%;
+  max-width: none;
+}

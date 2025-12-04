@@ -65,6 +65,13 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta exam-review - repaso de preguntas sin PDF
+  {
+    path: 'exam-review',
+    loadComponent: () => import('./exam-review/exam-review.page').then( m => m.ExamReviewPage),
+    canActivate: [AuthGuard]
+  },
+
   // Ruta CRM - protegida, con sub-rutas para tabs
   {
     path: 'crm',
