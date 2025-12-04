@@ -6,20 +6,18 @@ Una página interactiva para visualizar PDFs de exámenes con preguntas asociada
 
 ### 📄 Visualización de PDF
 - Renderizado de PDFs usando PDF.js
-- **Carga progresiva**: Renderiza las primeras 20 páginas inmediatamente para uso rápido
-- **Lazy loading**: Carga páginas adicionales automáticamente al hacer scroll (10 páginas por lote)
-- **Carga en background**: Después de la carga inicial, continúa cargando TODAS las páginas restantes en background sin bloquear la UI
+- **Carga progresiva**: Renderiza las primeras 20 páginas y carga el resto en background
+- **Gestión de memoria (iOS/Safari)**: Libera automáticamente páginas lejanas para evitar que Safari recargue la página
+- **Máximo 30 páginas en memoria**: Solo mantiene ±15 páginas alrededor de la visible
 - Navegación por páginas (anterior/siguiente)
 - Indicador de página actual
 - Click en el PDF para buscar pregunta asociada a la página actual
-- Navegación inteligente que pre-carga páginas cercanas cuando saltas a una página específica
 
 ### ❓ Lista de Preguntas
 - Navegación por preguntas con controles anterior/siguiente
 - Input numérico para ir directamente a una pregunta específica
-- Carga automática de preguntas no cargadas al buscar por número
-- Infinite scroll para carga progresiva de preguntas (20 por lote)
-- **Carga en background**: Después de la carga inicial, continúa cargando TODAS las preguntas restantes en background
+- **Carga completa**: Carga TODAS las preguntas antes de mostrar la interfaz
+- **Skeleton durante carga**: Muestra skeleton hasta que el 100% de las preguntas estén cargadas
 - Pull to refresh para actualizar
 - Mostrar número de pregunta, páginas asociadas
 - Mostrar pregunta corta y respuesta correcta
@@ -133,27 +131,39 @@ Se carga desde CDN en `src/index.html`:
 - El sistema guarda automáticamente el estado (examen, página PDF, número de pregunta) en localStorage
 - Al cargar la página, se restaura el último estado guardado (si tiene menos de 24 horas)
 
-**Arquitectura de Carga Unificada**:
-El sistema usa un flujo de carga unificado controlado por `initialLoadComplete`:
-1. Se muestran **skeletons** en PDF y preguntas hasta que AMBOS estén listos
-2. PDF y preguntas se cargan en **paralelo** para mayor velocidad
-3. Los controles de navegación están **deshabilitados** hasta que todo esté listo
-4. El `IntersectionObserver` solo procesa eventos cuando `initialLoadComplete = true`
-5. Una vez todo listo, se restaura la posición guardada (página PDF y pregunta)
-6. Solo entonces se habilitan los controles y se inicia la carga en background
+**Arquitectura de Carga Híbrida (optimizada para iOS/Safari)**:
+El sistema usa un enfoque híbrido para balancear velocidad y uso de memoria:
+
+1. **Preguntas (100%)**: Se cargan TODAS antes de mostrar la interfaz (son ligeras, solo JSON)
+2. **PDF (progresivo)**: Solo renderiza 20 páginas iniciales, el resto se carga en background
+3. **Gestión de memoria**: Libera automáticamente páginas lejanas (>15 páginas de distancia)
+4. **Skeleton unificado**: Muestra skeleton hasta que PDF inicial + preguntas estén listos
+5. Los controles de navegación están **deshabilitados** hasta que todo esté listo
+6. Una vez listo, se restaura la posición guardada (página PDF y pregunta)
 
 **Estados de Control**:
-- `pdfReady`: TRUE cuando el PDF y sus páginas iniciales están renderizados
-- `questionsReady`: TRUE cuando las preguntas iniciales están cargadas
-- `initialLoadComplete`: TRUE cuando AMBOS están listos (PDF + preguntas)
-- `isRestoringState`: Evita guardar estado durante la restauración
-- `hasRestoredState`: Previene restauraciones múltiples
+- `pdfReady`: TRUE cuando las páginas iniciales del PDF están renderizadas
+- `questionsReady`: TRUE cuando TODAS las preguntas están cargadas
+- `initialLoadComplete`: TRUE cuando AMBOS están listos
+- `lastVisiblePage`: Última página visible (para gestión de memoria)
+- `MAX_PAGES_IN_MEMORY`: Límite de 30 páginas en memoria (para iOS)
+
+**Gestión de Memoria (iOS/Safari)**:
+Safari en iOS tiene límites estrictos de memoria (~100-200MB por pestaña). Cuando se excede:
+- Safari "descarga" la pestaña de memoria
+- Al volver, la página se recarga completamente
+
+El sistema evita esto mediante:
+- Limitando las páginas renderizadas en memoria a 30
+- Liberando automáticamente páginas lejanas cuando el usuario hace scroll
+- Reemplazando canvas por placeholders ligeros
 
 **Beneficios**:
-- Elimina race conditions entre PDF y preguntas
-- Evita bucles de scroll/recarga en iOS/iPad
-- El usuario ve un skeleton claro hasta que todo está listo
-- La restauración de posición es precisa porque ocurre después de la carga completa
+- ✅ No más recargas automáticas en iOS/Safari
+- ✅ Navegación de preguntas instantánea (100% cargadas)
+- ✅ PDF carga rápidamente (solo 20 páginas iniciales)
+- ✅ Uso de memoria controlado
+- ✅ Funciona bien en dispositivos con poca RAM
 
 ### Navegación de Preguntas
 - Los controles de navegación incluyen botones anterior/siguiente y un input numérico
@@ -166,21 +176,13 @@ El sistema usa un flujo de carga unificado controlado por `initialLoadComplete`:
 - El contador muestra "Pregunta X de Y" donde Y es el total de preguntas del examen
 
 ### Performance
-- **Carga inicial rápida**: Solo renderiza las primeras 20 páginas del PDF para que el usuario pueda empezar a usar la app inmediatamente
-- **Lazy loading con scroll**: Las páginas se cargan automáticamente en lotes de 10 al hacer scroll
-- **Carga en background inteligente**: 
-  - Después de 2 segundos de la carga inicial, comienza a cargar automáticamente TODAS las páginas restantes
-  - Usa `requestIdleCallback` para no interferir con la interacción del usuario
-  - Las páginas se cargan en lotes de 10 durante períodos de inactividad del navegador
-  - Una vez completada, todo el PDF está disponible sin necesidad de scroll
-- **Pre-carga inteligente**: Cuando navegas a una página específica, se pre-cargan 5 páginas antes y después
-- **Infinite scroll de preguntas**: Carga 20 preguntas a la vez con scroll
-- **Carga background de preguntas**: 
-  - Después de 2 segundos, comienza a cargar automáticamente todas las preguntas restantes
-  - Usa `requestIdleCallback` para no bloquear la UI
-  - Carga en lotes de 20 durante períodos de inactividad
-- Intersection Observer con rootMargin de 500px para anticipar la carga de páginas
-- Logs en consola cuando se completa la carga total ("✅ Todas las páginas/preguntas cargadas en background")
+- **Carga híbrida**: Preguntas al 100% + PDF progresivo para balance óptimo
+- **Gestión de memoria activa**: Solo mantiene ~30 páginas renderizadas en memoria
+- **Liberación automática**: Reemplaza canvas lejanos por placeholders ligeros
+- **Carga en paralelo**: PDF y preguntas se cargan simultáneamente
+- **Preguntas en lotes grandes**: Carga 100 preguntas por página para eficiencia
+- **IntersectionObserver inteligente**: Carga páginas cercanas y libera lejanas
+- **Optimizado para iOS**: Evita que Safari mate la app por uso excesivo de memoria
 
 ## Mejoras Futuras
 

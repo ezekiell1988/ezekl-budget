@@ -119,8 +119,10 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   private pageObserver: IntersectionObserver | null = null;
   private readonly INITIAL_PAGES_TO_RENDER = 20; // Renderizar las primeras 20 páginas
   private readonly PAGES_PER_BATCH = 10; // Renderizar 10 páginas a la vez cuando se hace scroll
+  private readonly MAX_PAGES_IN_MEMORY = 30; // Máximo de páginas renderizadas en memoria (para iOS/Safari)
   private isRenderingBatch = false; // Flag para evitar renderizado múltiple
   private backgroundLoadingInterval: any = null; // Intervalo para carga en background
+  private lastVisiblePage: number = 1; // Última página visible (para gestión de memoria)
 
   // Lifecycle
   private destroy$ = new Subject<void>();
@@ -216,6 +218,8 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
 
   /**
    * Cargar PDF y preguntas en paralelo, luego restaurar posición
+   * - PDF: Carga progresiva (páginas iniciales + lazy loading) para ahorrar memoria en iOS
+   * - Preguntas: Carga 100% antes de mostrar (son ligeras)
    */
   private async loadPdfAndQuestions() {
     if (!this.selectedExam) return;
@@ -223,36 +227,54 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     const examId = this.selectedExam.id;
     const pdfPath = this.selectedExam.path;
 
-    // Iniciar carga del PDF
-    this.loadPdfAsync(pdfPath).then(() => {
+    // Iniciar carga del PDF (carga inicial progresiva para ahorrar memoria)
+    this.loadPdfProgressiveAsync(pdfPath).then(() => {
       this.pdfReady = true;
       this.checkInitialLoadComplete();
     });
 
-    // Iniciar carga de preguntas
-    this.examQuestionService.refreshQuestions(examId, {
-      itemPerPage: 20,
-      sort: 'numberQuestion_asc'
-    }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        this.questionsReady = true;
-        this.currentQuestionIndex = this.questions.length > 0 ? 0 : -1;
-        this.checkInitialLoadComplete();
-      },
-      error: (error) => {
-        console.error('Error cargando preguntas:', error);
-        this.loadingQuestions = false;
-        this.showError('Error al cargar las preguntas');
+    // Iniciar carga de TODAS las preguntas (son ligeras, no afectan memoria)
+    this.loadAllQuestionsComplete(examId);
+  }
+
+  /**
+   * Cargar TODAS las preguntas antes de marcar questionsReady
+   */
+  private async loadAllQuestionsComplete(examId: number) {
+    try {
+      // Cargar primera página
+      await this.examQuestionService.refreshQuestions(examId, {
+        itemPerPage: 100, // Cargar más por página para ser más eficiente
+        sort: 'numberQuestion_asc'
+      }).toPromise();
+
+      // Continuar cargando hasta tener todas
+      while (this.hasMore) {
+        await this.examQuestionService.loadNextPage(examId, {
+          itemPerPage: 100,
+          sort: 'numberQuestion_asc'
+        }).toPromise();
       }
-    });
+
+      console.log(`❓ Todas las preguntas cargadas: ${this.questions.length} preguntas`);
+      this.questionsReady = true;
+      this.currentQuestionIndex = this.questions.length > 0 ? 0 : -1;
+      this.checkInitialLoadComplete();
+    } catch (error) {
+      console.error('Error cargando preguntas:', error);
+      this.loadingQuestions = false;
+      this.showError('Error al cargar las preguntas');
+    }
   }
 
   /**
    * Verificar si la carga inicial está completa
+   * - PDF: Páginas iniciales cargadas (resto se carga en background)
+   * - Preguntas: 100% cargadas
    */
   private async checkInitialLoadComplete() {
     if (this.pdfReady && this.questionsReady && !this.initialLoadComplete) {
-      console.log('✅ PDF y preguntas cargados, preparando vista...');
+      console.log('✅ PDF (inicial) y preguntas (100%) cargados, preparando vista...');
 
       // Marcar carga completa
       this.loadingPdf = false;
@@ -261,8 +283,8 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       // Esperar a que el DOM se actualice con el contenido real
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Ahora sí configurar el observer (después de que el contenido esté visible)
-      this.setupPageObserver();
+      // Configurar el observer para detección de página visible y gestión de memoria
+      this.setupPageObserverWithMemoryManagement();
 
       // Restaurar posición si hay estado guardado
       await this.restoreStatePosition();
@@ -270,16 +292,53 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       // Marcar como completo (esto permite interacción del usuario)
       this.initialLoadComplete = true;
 
-      // Iniciar carga en background después de un delay
+      console.log('🎉 Carga inicial completa - Navegación habilitada');
+
+      // Iniciar carga en background del resto del PDF (con gestión de memoria)
       setTimeout(() => {
         this.startBackgroundPdfLoading();
-        this.startBackgroundQuestionsLoading();
       }, 1000);
     }
   }
 
   /**
-   * Cargar PDF usando PDF.js (versión asíncrona sin manejo de skeleton)
+   * Cargar PDF usando PDF.js - Versión PROGRESIVA para ahorrar memoria en iOS/Safari
+   * Solo carga las páginas iniciales, el resto se carga en background
+   */
+  private async loadPdfProgressiveAsync(pdfPath: string): Promise<void> {
+    try {
+      // Verificar que PDF.js esté disponible
+      if (typeof (window as any).pdfjsLib === 'undefined') {
+        this.showError('PDF.js no está disponible. Por favor, recarga la página.');
+        return;
+      }
+
+      const pdfjsLib = (window as any).pdfjsLib;
+
+      // Cargar documento PDF
+      const loadingTask = pdfjsLib.getDocument(pdfPath);
+      this.pdfDoc = await loadingTask.promise;
+      this.totalPages = this.pdfDoc.numPages;
+
+      // Esperar un tick para asegurar que el DOM esté listo
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Limpiar páginas renderizadas anteriores
+      this.renderedPages.clear();
+
+      // Renderizar solo las páginas iniciales (para ahorrar memoria en iOS)
+      await this.renderInitialPagesWithPlaceholders();
+
+      console.log(`📄 PDF cargado: ${this.INITIAL_PAGES_TO_RENDER} de ${this.totalPages} páginas renderizadas`);
+    } catch (error) {
+      console.error('Error cargando PDF:', error);
+      this.showError('Error al cargar el PDF. Verifica que el archivo existe.');
+    }
+  }
+
+  /**
+   * Cargar PDF usando PDF.js (versión que carga TODAS las páginas)
+   * @deprecated Usar loadPdfProgressiveAsync para mejor rendimiento en iOS
    */
   private async loadPdfAsync(pdfPath: string): Promise<void> {
     try {
@@ -302,10 +361,10 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       // Limpiar páginas renderizadas anteriores
       this.renderedPages.clear();
 
-      // Renderizar las páginas iniciales (NO configurar observer aún)
-      await this.renderAllPagesWithoutObserver();
+      // Renderizar TODAS las páginas del PDF
+      await this.renderAllPagesComplete();
 
-      console.log(`📄 PDF cargado: ${this.totalPages} páginas`);
+      console.log(`📄 PDF completamente cargado: ${this.totalPages} páginas renderizadas`);
     } catch (error) {
       console.error('Error cargando PDF:', error);
       this.showError('Error al cargar el PDF. Verifica que el archivo existe.');
@@ -325,7 +384,137 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     this.pdfReady = true;
     this.loadingPdf = false;
   }  /**
-   * Renderizar todas las páginas del PDF (sin configurar observer)
+   * Renderizar páginas iniciales con placeholders para el resto
+   * Optimizado para iOS/Safari - gestiona memoria
+   */
+  async renderInitialPagesWithPlaceholders() {
+    const container = document.getElementById('pdf-container');
+
+    if (!container) {
+      console.error('No se encontró el contenedor pdf-container');
+      this.showError('Error: contenedor PDF no encontrado');
+      return;
+    }
+
+    // Limpiar contenedor
+    container.innerHTML = '';
+
+    // Calcular escala basada en el ancho del contenedor
+    const containerWidth = this.pdfContainer?.nativeElement?.clientWidth || 800;
+
+    // Crear placeholders para TODAS las páginas
+    for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
+      const pageWrapper = document.createElement('div');
+      pageWrapper.className = 'pdf-page-wrapper';
+      pageWrapper.id = `pdf-page-${pageNum}`;
+      pageWrapper.setAttribute('data-page-number', pageNum.toString());
+      pageWrapper.setAttribute('data-rendered', 'false');
+
+      // Crear label de número de página
+      const pageLabel = document.createElement('div');
+      pageLabel.className = 'pdf-page-label';
+      pageLabel.textContent = `Página ${pageNum}`;
+
+      // Crear placeholder con altura estimada
+      const placeholder = document.createElement('div');
+      placeholder.className = 'pdf-page-placeholder';
+      placeholder.style.height = '1100px';
+
+      const placeholderContent = document.createElement('div');
+      placeholderContent.className = 'pdf-placeholder-content';
+
+      const spinner = document.createElement('div');
+      spinner.className = 'placeholder-spinner';
+      spinner.innerHTML = '⏳';
+
+      const text = document.createElement('p');
+      text.textContent = `Página ${pageNum}`;
+
+      placeholderContent.appendChild(spinner);
+      placeholderContent.appendChild(text);
+      placeholder.appendChild(placeholderContent);
+
+      pageWrapper.appendChild(pageLabel);
+      pageWrapper.appendChild(placeholder);
+      container.appendChild(pageWrapper);
+
+      // Agregar click listener
+      pageWrapper.addEventListener('click', () => this.onPageClick(pageNum));
+    }
+
+    // Renderizar solo las páginas iniciales
+    console.log(`📄 Renderizando ${this.INITIAL_PAGES_TO_RENDER} páginas iniciales...`);
+    await this.renderPageRange(1, this.INITIAL_PAGES_TO_RENDER, containerWidth);
+  }
+
+  /**
+   * Renderizar TODAS las páginas del PDF completamente
+   * ADVERTENCIA: Puede causar problemas de memoria en iOS/Safari con PDFs grandes
+   */
+  async renderAllPagesComplete() {
+    const container = document.getElementById('pdf-container');
+
+    if (!container) {
+      console.error('No se encontró el contenedor pdf-container');
+      this.showError('Error: contenedor PDF no encontrado');
+      return;
+    }
+
+    // Limpiar contenedor
+    container.innerHTML = '';
+
+    // Calcular escala basada en el ancho del contenedor
+    const containerWidth = this.pdfContainer?.nativeElement?.clientWidth || 800;
+
+    // Crear placeholders para todas las páginas
+    for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
+      const pageWrapper = document.createElement('div');
+      pageWrapper.className = 'pdf-page-wrapper';
+      pageWrapper.id = `pdf-page-${pageNum}`;
+      pageWrapper.setAttribute('data-page-number', pageNum.toString());
+      pageWrapper.setAttribute('data-rendered', 'false');
+
+      // Crear label de número de página
+      const pageLabel = document.createElement('div');
+      pageLabel.className = 'pdf-page-label';
+      pageLabel.textContent = `Página ${pageNum}`;
+
+      // Crear placeholder con altura estimada
+      const placeholder = document.createElement('div');
+      placeholder.className = 'pdf-page-placeholder';
+      placeholder.style.height = '1100px';
+
+      const placeholderContent = document.createElement('div');
+      placeholderContent.className = 'pdf-placeholder-content';
+
+      const spinner = document.createElement('div');
+      spinner.className = 'placeholder-spinner';
+      spinner.innerHTML = '⏳';
+
+      const text = document.createElement('p');
+      text.textContent = `Cargando página ${pageNum}...`;
+
+      placeholderContent.appendChild(spinner);
+      placeholderContent.appendChild(text);
+      placeholder.appendChild(placeholderContent);
+
+      pageWrapper.appendChild(pageLabel);
+      pageWrapper.appendChild(placeholder);
+      container.appendChild(pageWrapper);
+
+      // Agregar click listener
+      pageWrapper.addEventListener('click', () => this.onPageClick(pageNum));
+    }
+
+    // Renderizar TODAS las páginas (no solo las primeras 20)
+    console.log(`📄 Renderizando ${this.totalPages} páginas...`);
+    await this.renderPageRange(1, this.totalPages, containerWidth);
+    console.log(`✅ Todas las ${this.totalPages} páginas renderizadas`);
+  }
+
+  /**
+   * Renderizar todas las páginas del PDF (sin configurar observer) - DEPRECATED
+   * @deprecated Usar renderAllPagesComplete en su lugar
    */
   async renderAllPagesWithoutObserver() {
     const container = document.getElementById('pdf-container');
@@ -452,7 +641,110 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       }
     }
   }  /**
+   * Configurar observer con gestión de memoria para iOS/Safari
+   * - Carga páginas al acercarse al viewport
+   * - Libera páginas lejanas para ahorrar memoria
+   */
+  setupPageObserverWithMemoryManagement() {
+    // Desconectar observer anterior si existe
+    if (this.pageObserver) {
+      this.pageObserver.disconnect();
+    }
+
+    const options = {
+      root: document.querySelector('.pdf-viewer'),
+      rootMargin: '500px', // Cargar páginas 500px antes de que sean visibles
+      threshold: 0.1
+    };
+
+    this.pageObserver = new IntersectionObserver((entries) => {
+      // Solo procesar si la carga inicial está completa
+      if (!this.initialLoadComplete) return;
+
+      entries.forEach(async entry => {
+        const pageNum = parseInt(entry.target.getAttribute('data-page-number') || '1');
+        const isRendered = entry.target.getAttribute('data-rendered') === 'true';
+
+        // Actualizar página actual si es visible (solo si no estamos restaurando)
+        if (entry.isIntersecting && entry.intersectionRatio > 0.5 && !this.isRestoringState) {
+          this.currentPdfPage = pageNum;
+          this.lastVisiblePage = pageNum;
+
+          // Liberar memoria de páginas lejanas (solo en iOS/Safari)
+          this.freeDistantPagesMemory(pageNum);
+        }
+
+        // Lazy loading: renderizar página si entra en el viewport y no está renderizada
+        if (entry.isIntersecting && !isRendered && !this.isRenderingBatch) {
+          await this.renderNextBatch(pageNum);
+        }
+      });
+    }, options);
+
+    // Observar todas las páginas
+    const pages = document.querySelectorAll('.pdf-page-wrapper');
+    pages.forEach(page => this.pageObserver?.observe(page));
+  }
+
+  /**
+   * Liberar memoria de páginas que están muy lejos de la página visible
+   * Esto es crítico para iOS/Safari que tiene límites de memoria estrictos
+   */
+  private freeDistantPagesMemory(currentPage: number) {
+    // Solo aplicar si hay muchas páginas renderizadas
+    if (this.renderedPages.size <= this.MAX_PAGES_IN_MEMORY) return;
+
+    const pagesToKeep = new Set<number>();
+
+    // Mantener páginas cercanas a la actual (±15 páginas)
+    const keepRadius = Math.floor(this.MAX_PAGES_IN_MEMORY / 2);
+    for (let i = currentPage - keepRadius; i <= currentPage + keepRadius; i++) {
+      if (i >= 1 && i <= this.totalPages) {
+        pagesToKeep.add(i);
+      }
+    }
+
+    // Liberar páginas que no están en el rango
+    const pagesToFree: number[] = [];
+    this.renderedPages.forEach(pageNum => {
+      if (!pagesToKeep.has(pageNum)) {
+        pagesToFree.push(pageNum);
+      }
+    });
+
+    // Liberar memoria reemplazando canvas por placeholder
+    pagesToFree.forEach(pageNum => {
+      const pageWrapper = document.getElementById(`pdf-page-${pageNum}`);
+      if (pageWrapper) {
+        const canvas = pageWrapper.querySelector('canvas');
+        if (canvas) {
+          // Crear placeholder
+          const placeholder = document.createElement('div');
+          placeholder.className = 'pdf-page-placeholder';
+          placeholder.style.height = `${canvas.height}px`;
+          placeholder.style.width = `${canvas.width}px`;
+
+          const placeholderContent = document.createElement('div');
+          placeholderContent.className = 'pdf-placeholder-content';
+          placeholderContent.innerHTML = `<div class="placeholder-spinner">📄</div><p>Página ${pageNum}</p>`;
+          placeholder.appendChild(placeholderContent);
+
+          // Reemplazar canvas por placeholder
+          canvas.replaceWith(placeholder);
+          pageWrapper.setAttribute('data-rendered', 'false');
+          this.renderedPages.delete(pageNum);
+        }
+      }
+    });
+
+    if (pagesToFree.length > 0) {
+      console.log(`🧹 Memoria liberada: ${pagesToFree.length} páginas (manteniendo ${this.renderedPages.size})`);
+    }
+  }
+
+  /**
    * Configurar observer para lazy loading y detectar la página visible
+   * @deprecated Usar setupPageObserverWithMemoryManagement
    */
   setupPageObserver() {
     // Desconectar observer anterior si existe
