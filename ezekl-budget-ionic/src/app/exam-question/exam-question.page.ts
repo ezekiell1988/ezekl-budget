@@ -605,7 +605,7 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Ir a una página específica
+   * Ir a una página específica del PDF
    */
   async goToPage(page: number) {
     if (page < 1 || page > this.totalPages) return;
@@ -623,20 +623,8 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
         await this.renderPageRange(startPage, endPage, containerWidth);
       }
 
-      // Calcular la diferencia entre la página actual y la destino
-      const pageDiff = Math.abs(page - this.currentPdfPage);
-
-      // Si el salto es mayor a 10 páginas o estamos restaurando, hacer scroll instantáneo
-      // Usar 'auto' siempre en iOS para evitar problemas de recarga
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const behavior = (pageDiff > 10 || this.isRestoringState || isIOS) ? 'auto' : 'smooth';
-
-      try {
-        pageElement.scrollIntoView({ behavior: behavior as ScrollBehavior, block: 'start' });
-      } catch (e) {
-        // Fallback para navegadores que no soporten scrollIntoView con opciones
-        pageElement.scrollIntoView(true);
-      }
+      // Scroll simple e instantáneo
+      pageElement.scrollIntoView(true);
       this.currentPdfPage = page;
 
       // Solo guardar estado si no estamos restaurando
@@ -702,8 +690,17 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (question) {
-      this.scrollToQuestion(question.numberQuestion);
-      this.showInfo(`Pregunta ${question.numberQuestion} encontrada en página ${pageNum}`);
+      // Actualizar índice de pregunta actual
+      const index = this.questions.findIndex(q => q.numberQuestion === question.numberQuestion);
+      if (index >= 0) {
+        this.currentQuestionIndex = index;
+      }
+      // Scroll simple a la pregunta en el listado
+      const element = document.getElementById(`question-${question.numberQuestion}`);
+      if (element) {
+        element.scrollIntoView(true);
+      }
+      this.showInfo(`Pregunta ${question.numberQuestion} encontrada`);
     } else {
       this.showInfo(`No hay pregunta asociada a la página ${pageNum}`);
     }
@@ -713,14 +710,16 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
    * Click en una pregunta - navegar al PDF
    */
   async onQuestionClick(question: ExamQuestion) {
-    this.currentQuestionIndex = this.questions.findIndex(q => q.numberQuestion === question.numberQuestion);
+    // Actualizar índice de pregunta actual
+    const index = this.questions.findIndex(q => q.numberQuestion === question.numberQuestion);
+    if (index >= 0) {
+      this.currentQuestionIndex = index;
+    }
     this.saveState();
 
+    // Ir a la página del PDF si existe
     if (question.startPage) {
       await this.goToPage(question.startPage);
-      this.showInfo(`Navegando a la página ${question.startPage}`);
-    } else {
-      this.showInfo('Esta pregunta no tiene página asociada');
     }
   }
 
@@ -730,20 +729,7 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   scrollToQuestion(questionNumber: number) {
     const element = document.getElementById(`question-${questionNumber}`);
     if (element) {
-      // Usar 'auto' en lugar de 'smooth' para evitar problemas en iOS
-      // que pueden causar recargas de página
-      try {
-        element.scrollIntoView({ behavior: 'auto', block: 'center' });
-      } catch (e) {
-        // Fallback para navegadores que no soporten scrollIntoView con opciones
-        element.scrollIntoView(true);
-      }
-
-      // Resaltar temporalmente
-      element.classList.add('highlight');
-      setTimeout(() => {
-        element.classList.remove('highlight');
-      }, 2000);
+      element.scrollIntoView(true);
     }
   }
 
@@ -945,11 +931,9 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
 
       console.log(`🔄 Restaurando estado: página ${state.pdfPage}, pregunta ${state.questionNumber}`);
 
-      // Restaurar página del PDF primero (sin guardar estado)
+      // Restaurar página del PDF
       if (state.pdfPage && state.pdfPage > 0 && state.pdfPage <= this.totalPages) {
         await this.goToPage(state.pdfPage);
-        // Esperar a que el scroll termine
-        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
       // Restaurar pregunta seleccionada por número de pregunta
@@ -960,39 +944,27 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
         if (questionIndex >= 0) {
           // La pregunta ya está cargada
           this.currentQuestionIndex = questionIndex;
-          // Solo hacer scroll a la pregunta, NO navegar al PDF (ya lo hicimos arriba)
-          this.scrollToCurrentQuestion(false);
-          console.log(`✅ Estado restaurado: Pregunta ${state.questionNumber} en página ${state.pdfPage}`);
+          this.scrollToQuestion(state.questionNumber);
+          console.log(`✅ Estado restaurado: Pregunta ${state.questionNumber}`);
         } else {
-          // La pregunta no está cargada, mostrar skeleton y cargarla
+          // La pregunta no está cargada, cargarla
           console.log(`📥 Pregunta ${state.questionNumber} no está cargada, cargando...`);
           this.loadingSpecificQuestion = true;
 
           await this.loadQuestionByNumber(state.questionNumber);
 
-          // Después de cargar, buscar de nuevo y hacer scroll
-          await new Promise(resolve => setTimeout(resolve, 200));
-
           const newIndex = this.questions.findIndex(q => q.numberQuestion === state.questionNumber);
           if (newIndex >= 0) {
             this.currentQuestionIndex = newIndex;
-            this.loadingSpecificQuestion = false;
-
-            // Esperar a que se quite el skeleton antes de hacer scroll
-            await new Promise(resolve => setTimeout(resolve, 100));
-            // Solo hacer scroll a la pregunta, NO navegar al PDF (ya lo hicimos arriba)
-            this.scrollToCurrentQuestion(false);
-            console.log(`✅ Estado restaurado: Pregunta ${state.questionNumber} cargada y navegada`);
-          } else {
-            this.loadingSpecificQuestion = false;
-            console.warn(`⚠️ No se pudo encontrar la pregunta ${state.questionNumber} después de cargar`);
+            this.scrollToQuestion(state.questionNumber);
+            console.log(`✅ Estado restaurado: Pregunta ${state.questionNumber} cargada`);
           }
+          this.loadingSpecificQuestion = false;
         }
       }
     } catch (error) {
       console.error('Error al restaurar posición:', error);
     } finally {
-      // Marcar que terminamos de restaurar
       this.isRestoringState = false;
       console.log('🔓 Restauración completada');
     }
@@ -1004,7 +976,13 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   goToPreviousQuestion() {
     if (this.currentQuestionIndex > 0) {
       this.currentQuestionIndex--;
-      this.scrollToCurrentQuestion();
+      const question = this.questions[this.currentQuestionIndex];
+      // Scroll a la pregunta en el listado
+      this.scrollToQuestion(question.numberQuestion);
+      // Ir a la página del PDF
+      if (question.startPage) {
+        this.goToPage(question.startPage);
+      }
       this.saveState();
     }
   }
@@ -1015,21 +993,25 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   goToNextQuestion() {
     if (this.currentQuestionIndex < this.questions.length - 1) {
       this.currentQuestionIndex++;
-      this.scrollToCurrentQuestion();
+      const question = this.questions[this.currentQuestionIndex];
+      // Scroll a la pregunta en el listado
+      this.scrollToQuestion(question.numberQuestion);
+      // Ir a la página del PDF
+      if (question.startPage) {
+        this.goToPage(question.startPage);
+      }
       this.saveState();
     }
   }
 
   /**
-   * Scroll a la pregunta actual
-   * @param navigateToPdf - Si es true, también navega al PDF (default: true)
+   * Scroll a la pregunta actual y opcionalmente navegar al PDF
    */
   scrollToCurrentQuestion(navigateToPdf: boolean = true) {
     if (this.currentQuestionIndex >= 0 && this.currentQuestionIndex < this.questions.length) {
       const question = this.questions[this.currentQuestionIndex];
       this.scrollToQuestion(question.numberQuestion);
 
-      // Si la pregunta tiene página, navegar al PDF (solo si no estamos restaurando o se indica explícitamente)
       if (navigateToPdf && question.startPage && !this.isRestoringState) {
         this.goToPage(question.startPage);
       }
@@ -1051,29 +1033,31 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     if (index !== -1) {
       // La pregunta está cargada, navegar a ella
       this.currentQuestionIndex = index;
-      this.scrollToCurrentQuestion();
+      const question = this.questions[index];
+      this.scrollToQuestion(questionNumber);
+      if (question.startPage) {
+        this.goToPage(question.startPage);
+      }
+      this.saveState();
     } else {
       // La pregunta no está cargada aún, mostrar skeleton
       this.loadingSpecificQuestion = true;
 
       // Intentar cargar más preguntas hasta encontrarla
       this.loadQuestionByNumber(questionNumber).then(() => {
-        // Después de cargar, buscar de nuevo y hacer scroll
-        setTimeout(() => {
-          const newIndex = this.questions.findIndex(q => q.numberQuestion === questionNumber);
-          if (newIndex >= 0) {
-            this.currentQuestionIndex = newIndex;
-            this.loadingSpecificQuestion = false;
-
-            // Esperar a que se quite el skeleton antes de hacer scroll
-            setTimeout(() => {
-              this.scrollToCurrentQuestion();
-            }, 100);
-          } else {
-            this.loadingSpecificQuestion = false;
-            this.showError(`No se pudo cargar la pregunta ${questionNumber}`);
+        const newIndex = this.questions.findIndex(q => q.numberQuestion === questionNumber);
+        if (newIndex >= 0) {
+          this.currentQuestionIndex = newIndex;
+          const question = this.questions[newIndex];
+          this.scrollToQuestion(questionNumber);
+          if (question.startPage) {
+            this.goToPage(question.startPage);
           }
-        }, 300);
+          this.saveState();
+        } else {
+          this.showError(`No se pudo cargar la pregunta ${questionNumber}`);
+        }
+        this.loadingSpecificQuestion = false;
       });
     }
   }
