@@ -40,7 +40,7 @@
     <!-- Panel izquierdo: PDF (80%) -->
     <div class="pdf-panel" #pdfContainer>
       <div class="pdf-controls">
-        <ion-button size="small" fill="clear" (click)="goToPreviousPage()" [disabled]="currentPdfPage <= 1">
+        <ion-button size="small" fill="clear" (click)="goToPreviousPage()" [disabled]="!initialLoadComplete || currentPdfPage <= 1">
           <ion-icon name="chevron-up" slot="icon-only"></ion-icon>
         </ion-button>
 
@@ -54,19 +54,33 @@
             (keyup.enter)="onPageInputChange($event)"
             min="1"
             [max]="totalPages"
+            [disabled]="!initialLoadComplete"
           />
-          <ion-text color="medium">de {{ totalPages }}</ion-text>
+          <ion-text color="medium">de {{ totalPages || '...' }}</ion-text>
         </div>
 
-        <ion-button size="small" fill="clear" (click)="goToNextPage()" [disabled]="currentPdfPage >= totalPages">
+        <ion-button size="small" fill="clear" (click)="goToNextPage()" [disabled]="!initialLoadComplete || currentPdfPage >= totalPages">
           <ion-icon name="chevron-down" slot="icon-only"></ion-icon>
         </ion-button>
       </div>
 
       <div class="pdf-viewer">
         <!-- Skeleton mientras carga el PDF -->
-        @if (loadingPdf) {
+        @if (loadingPdf || !initialLoadComplete) {
         <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%;">
+          <ion-card color="light" style="width: 100%; max-width: 800px; margin: 0 0 16px 0;">
+            <ion-card-content>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <ion-icon name="document-text" size="large" color="primary"></ion-icon>
+                <div style="flex: 1;">
+                  <h3 style="margin: 0 0 4px 0; font-weight: 600;">Cargando examen...</h3>
+                  <p style="margin: 0; font-size: 14px; color: var(--ion-color-medium);">
+                    Preparando PDF y preguntas
+                  </p>
+                </div>
+              </div>
+            </ion-card-content>
+          </ion-card>
           @for (item of [1,2,3]; track item) {
           <ion-card style="width: 100%; max-width: 800px; margin: 0;">
             <ion-card-content class="ion-no-padding">
@@ -77,8 +91,8 @@
         </div>
         }
 
-        <!-- PDF Container - siempre presente -->
-        <div id="pdf-container" class="pdf-container" [class.hidden]="loadingPdf"></div>
+        <!-- PDF Container - visible solo cuando todo está listo -->
+        <div id="pdf-container" class="pdf-container" [class.hidden]="loadingPdf || !initialLoadComplete"></div>
       </div>
     </div>
 
@@ -86,7 +100,7 @@
     <div class="questions-panel" #questionsList>
       <!-- Controles de navegación de preguntas -->
       <div class="questions-controls">
-        <ion-button size="small" fill="clear" (click)="goToPreviousQuestion()" [disabled]="currentQuestionIndex <= 0 || questions.length === 0">
+        <ion-button size="small" fill="clear" (click)="goToPreviousQuestion()" [disabled]="!initialLoadComplete || currentQuestionIndex <= 0 || questions.length === 0">
           <ion-icon name="chevron-up" slot="icon-only"></ion-icon>
         </ion-button>
 
@@ -100,19 +114,52 @@
             (keyup.enter)="onQuestionInputChange($event)"
             min="1"
             [placeholder]="questions.length > 0 ? '1-' + totalQuestions : ''"
-            [disabled]="questions.length === 0"
+            [disabled]="!initialLoadComplete || questions.length === 0"
           />
-          <ion-text color="medium">de {{ totalQuestions }}</ion-text>
+          <ion-text color="medium">de {{ totalQuestions || '...' }}</ion-text>
         </div>
 
-        <ion-button size="small" fill="clear" (click)="goToNextQuestion()" [disabled]="currentQuestionIndex >= questions.length - 1 || questions.length === 0">
+        <ion-button size="small" fill="clear" (click)="goToNextQuestion()" [disabled]="!initialLoadComplete || currentQuestionIndex >= questions.length - 1 || questions.length === 0">
           <ion-icon name="chevron-down" slot="icon-only"></ion-icon>
         </ion-button>
       </div>
 
       <ion-content class="questions-content">
-        <!-- Skeleton mientras carga pregunta específica -->
-        @if (loadingSpecificQuestion) {
+        <!-- Skeleton mientras carga (PDF o preguntas) -->
+        @if (loadingQuestions || !initialLoadComplete) {
+        <ion-card color="light" style="margin: 16px;">
+          <ion-card-content>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+              <ion-icon name="time-outline" size="large" color="primary"></ion-icon>
+              <div style="flex: 1;">
+                <h3 style="margin: 0 0 4px 0; font-weight: 600;">Cargando preguntas...</h3>
+                <p style="margin: 0; font-size: 14px; color: var(--ion-color-medium);">
+                  Preparando lista de preguntas del examen
+                </p>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+        <ion-list lines="full">
+          @for (item of [1,2,3,4,5]; track item) {
+          <ion-item>
+            <ion-label>
+              <h3>
+                <ion-skeleton-text [animated]="true" style="width: 30%;"></ion-skeleton-text>
+              </h3>
+              <p>
+                <ion-skeleton-text [animated]="true" style="width: 90%;"></ion-skeleton-text>
+                <ion-skeleton-text [animated]="true" style="width: 80%;"></ion-skeleton-text>
+              </p>
+              <ion-skeleton-text [animated]="true" style="width: 50%;"></ion-skeleton-text>
+            </ion-label>
+          </ion-item>
+          }
+        </ion-list>
+        }
+
+        <!-- Skeleton mientras carga pregunta específica (después de carga inicial) -->
+        @if (loadingSpecificQuestion && initialLoadComplete) {
         <ion-card color="light" style="margin: 16px;">
           <ion-card-content>
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -144,28 +191,8 @@
         </ion-card>
         }
 
-        <!-- Skeleton mientras carga preguntas iniciales -->
-        @if (loading && questions.length === 0 && !loadingSpecificQuestion) {
-        <ion-list lines="full">
-          @for (item of [1,2,3,4,5]; track item) {
-          <ion-item>
-            <ion-label>
-              <h3>
-                <ion-skeleton-text [animated]="true" style="width: 30%;"></ion-skeleton-text>
-              </h3>
-              <p>
-                <ion-skeleton-text [animated]="true" style="width: 90%;"></ion-skeleton-text>
-                <ion-skeleton-text [animated]="true" style="width: 80%;"></ion-skeleton-text>
-              </p>
-              <ion-skeleton-text [animated]="true" style="width: 50%;"></ion-skeleton-text>
-            </ion-label>
-          </ion-item>
-          }
-        </ion-list>
-        }
-
-        <!-- Lista de preguntas -->
-        @if ((!loading || questions.length > 0) && !loadingSpecificQuestion) {
+        <!-- Lista de preguntas - solo visible cuando todo está listo -->
+        @if (initialLoadComplete && !loadingSpecificQuestion) {
         <ion-list lines="full">
           @for (question of questions; track question.numberQuestion) {
           <ion-item [id]="'question-' + question.numberQuestion" button (click)="onQuestionClick(question)"
@@ -201,15 +228,15 @@
           <ion-infinite-scroll-content loadingSpinner="bubbles" loadingText="Cargando más preguntas...">
           </ion-infinite-scroll-content>
         </ion-infinite-scroll>
-        }
 
         <!-- Sin preguntas -->
-        @if (!loading && questions.length === 0 && !loadingSpecificQuestion) {
+        @if (questions.length === 0) {
         <div class="ion-padding ion-text-center" style="height: 100%; display: flex; flex-direction: column; justify-content: center;">
           <ion-icon name="alert-circle" size="large" color="warning"></ion-icon>
           <h3 class="ion-margin-top">No hay preguntas</h3>
           <p class="ion-text-color-medium">No se encontraron preguntas para este examen</p>
         </div>
+        }
         }
       </ion-content>
     </div>

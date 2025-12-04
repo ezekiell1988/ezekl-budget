@@ -129,6 +129,32 @@ Se carga desde CDN en `src/index.html`:
 - Si una pregunta no tiene páginas asociadas, solo se mostrará en la lista sin navegación al PDF
 - Si una página del PDF no tiene pregunta asociada, se muestra un mensaje informativo
 
+### Manejo de Restauración de Estado (iOS/iPad)
+- El sistema guarda automáticamente el estado (examen, página PDF, número de pregunta) en localStorage
+- Al cargar la página, se restaura el último estado guardado (si tiene menos de 24 horas)
+
+**Arquitectura de Carga Unificada**:
+El sistema usa un flujo de carga unificado controlado por `initialLoadComplete`:
+1. Se muestran **skeletons** en PDF y preguntas hasta que AMBOS estén listos
+2. PDF y preguntas se cargan en **paralelo** para mayor velocidad
+3. Los controles de navegación están **deshabilitados** hasta que todo esté listo
+4. El `IntersectionObserver` solo procesa eventos cuando `initialLoadComplete = true`
+5. Una vez todo listo, se restaura la posición guardada (página PDF y pregunta)
+6. Solo entonces se habilitan los controles y se inicia la carga en background
+
+**Estados de Control**:
+- `pdfReady`: TRUE cuando el PDF y sus páginas iniciales están renderizados
+- `questionsReady`: TRUE cuando las preguntas iniciales están cargadas
+- `initialLoadComplete`: TRUE cuando AMBOS están listos (PDF + preguntas)
+- `isRestoringState`: Evita guardar estado durante la restauración
+- `hasRestoredState`: Previene restauraciones múltiples
+
+**Beneficios**:
+- Elimina race conditions entre PDF y preguntas
+- Evita bucles de scroll/recarga en iOS/iPad
+- El usuario ve un skeleton claro hasta que todo está listo
+- La restauración de posición es precisa porque ocurre después de la carga completa
+
 ### Navegación de Preguntas
 - Los controles de navegación incluyen botones anterior/siguiente y un input numérico
 - El input muestra el número de la pregunta actual

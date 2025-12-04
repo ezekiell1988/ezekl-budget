@@ -98,6 +98,8 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   // Estados
   loading = false;
   loadingPdf = false;
+  loadingQuestions = false; // Estado de carga de preguntas
+  initialLoadComplete = false; // TRUE cuando PDF y preguntas iniciales están listos
   loadingSpecificQuestion = false; // Skeleton para carga de pregunta específica
   hasMore = true;
   showAlert = false;
@@ -105,7 +107,9 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   showToast = false;
   toastMessage = '';
 
-  // Flags para prevenir bucles de restauración en iOS
+  // Flags para controlar el proceso de carga
+  private pdfReady = false;
+  private questionsReady = false;
   private isRestoringState = false;
   private hasRestoredState = false;
 
@@ -198,42 +202,90 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
         localStorage.removeItem(`exam_state_${previousExam.id}`);
       }
 
-      // Cargar el PDF
-      this.loadPdf(this.selectedExam.path);
+      // Resetear estados de carga
+      this.pdfReady = false;
+      this.questionsReady = false;
+      this.initialLoadComplete = false;
+      this.loadingPdf = true;
+      this.loadingQuestions = true;
 
-      // Cargar las primeras preguntas
-      this.examQuestionService.refreshQuestions(this.selectedExam.id, {
-        itemPerPage: 20,
-        sort: 'numberQuestion_asc'
-      }).pipe(takeUntil(this.destroy$)).subscribe({
-        next: async () => {
-          this.currentQuestionIndex = this.questions.length > 0 ? 0 : -1;
-
-          // Restaurar estado si existe
-          await this.restoreStatePosition();
-
-          // Iniciar carga en background de preguntas
-          this.startBackgroundQuestionsLoading();
-        },
-        error: (error) => {
-          console.error('Error cargando preguntas:', error);
-          this.showError('Error al cargar las preguntas');
-        }
-      });
+      // Cargar PDF y preguntas en paralelo
+      this.loadPdfAndQuestions();
     }
   }
 
   /**
-   * Cargar PDF usando PDF.js
+   * Cargar PDF y preguntas en paralelo, luego restaurar posición
    */
-  async loadPdf(pdfPath: string) {
-    this.loadingPdf = true;
+  private async loadPdfAndQuestions() {
+    if (!this.selectedExam) return;
 
+    const examId = this.selectedExam.id;
+    const pdfPath = this.selectedExam.path;
+
+    // Iniciar carga del PDF
+    this.loadPdfAsync(pdfPath).then(() => {
+      this.pdfReady = true;
+      this.checkInitialLoadComplete();
+    });
+
+    // Iniciar carga de preguntas
+    this.examQuestionService.refreshQuestions(examId, {
+      itemPerPage: 20,
+      sort: 'numberQuestion_asc'
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.questionsReady = true;
+        this.currentQuestionIndex = this.questions.length > 0 ? 0 : -1;
+        this.checkInitialLoadComplete();
+      },
+      error: (error) => {
+        console.error('Error cargando preguntas:', error);
+        this.loadingQuestions = false;
+        this.showError('Error al cargar las preguntas');
+      }
+    });
+  }
+
+  /**
+   * Verificar si la carga inicial está completa
+   */
+  private async checkInitialLoadComplete() {
+    if (this.pdfReady && this.questionsReady && !this.initialLoadComplete) {
+      console.log('✅ PDF y preguntas cargados, preparando vista...');
+
+      // Marcar carga completa
+      this.loadingPdf = false;
+      this.loadingQuestions = false;
+
+      // Esperar a que el DOM se actualice con el contenido real
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Ahora sí configurar el observer (después de que el contenido esté visible)
+      this.setupPageObserver();
+
+      // Restaurar posición si hay estado guardado
+      await this.restoreStatePosition();
+
+      // Marcar como completo (esto permite interacción del usuario)
+      this.initialLoadComplete = true;
+
+      // Iniciar carga en background después de un delay
+      setTimeout(() => {
+        this.startBackgroundPdfLoading();
+        this.startBackgroundQuestionsLoading();
+      }, 1000);
+    }
+  }
+
+  /**
+   * Cargar PDF usando PDF.js (versión asíncrona sin manejo de skeleton)
+   */
+  private async loadPdfAsync(pdfPath: string): Promise<void> {
     try {
       // Verificar que PDF.js esté disponible
       if (typeof (window as any).pdfjsLib === 'undefined') {
         this.showError('PDF.js no está disponible. Por favor, recarga la página.');
-        this.loadingPdf = false;
         return;
       }
 
@@ -250,19 +302,32 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       // Limpiar páginas renderizadas anteriores
       this.renderedPages.clear();
 
-      // Renderizar todas las páginas
-      await this.renderAllPages();
+      // Renderizar las páginas iniciales (NO configurar observer aún)
+      await this.renderAllPagesWithoutObserver();
 
+      console.log(`📄 PDF cargado: ${this.totalPages} páginas`);
     } catch (error) {
       console.error('Error cargando PDF:', error);
       this.showError('Error al cargar el PDF. Verifica que el archivo existe.');
-    } finally {
-      this.loadingPdf = false;
     }
-  }  /**
-   * Renderizar todas las páginas del PDF
+  }
+
+  /**
+   * Cargar PDF usando PDF.js (llamado desde selección manual - mantener por compatibilidad)
    */
-  async renderAllPages() {
+  async loadPdf(pdfPath: string) {
+    this.loadingPdf = true;
+    this.pdfReady = false;
+    this.initialLoadComplete = false;
+
+    await this.loadPdfAsync(pdfPath);
+
+    this.pdfReady = true;
+    this.loadingPdf = false;
+  }  /**
+   * Renderizar todas las páginas del PDF (sin configurar observer)
+   */
+  async renderAllPagesWithoutObserver() {
     const container = document.getElementById('pdf-container');
 
     if (!container) {
@@ -317,8 +382,15 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       pageWrapper.addEventListener('click', () => this.onPageClick(pageNum));
     }
 
-    // Renderizar solo las primeras páginas inicialmente
+    // Renderizar solo las primeras páginas inicialmente (SIN configurar observer aún)
     await this.renderPageRange(1, this.INITIAL_PAGES_TO_RENDER, containerWidth);
+  }
+
+  /**
+   * Renderizar todas las páginas del PDF (con observer - mantener por compatibilidad)
+   */
+  async renderAllPages() {
+    await this.renderAllPagesWithoutObserver();
 
     // Configurar observer para lazy loading y detección de página visible
     this.setupPageObserver();
@@ -383,6 +455,11 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
    * Configurar observer para lazy loading y detectar la página visible
    */
   setupPageObserver() {
+    // Desconectar observer anterior si existe
+    if (this.pageObserver) {
+      this.pageObserver.disconnect();
+    }
+
     const options = {
       root: document.querySelector('.pdf-viewer'),
       rootMargin: '500px', // Cargar páginas 500px antes de que sean visibles
@@ -390,12 +467,15 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     };
 
     this.pageObserver = new IntersectionObserver((entries) => {
+      // Solo procesar si la carga inicial está completa
+      if (!this.initialLoadComplete) return;
+
       entries.forEach(async entry => {
         const pageNum = parseInt(entry.target.getAttribute('data-page-number') || '1');
         const isRendered = entry.target.getAttribute('data-rendered') === 'true';
 
-        // Actualizar página actual si es visible
-        if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+        // Actualizar página actual si es visible (solo si no estamos restaurando)
+        if (entry.isIntersecting && entry.intersectionRatio > 0.5 && !this.isRestoringState) {
           this.currentPdfPage = pageNum;
         }
 
@@ -558,7 +638,11 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
         pageElement.scrollIntoView(true);
       }
       this.currentPdfPage = page;
-      this.saveState();
+
+      // Solo guardar estado si no estamos restaurando
+      if (!this.isRestoringState) {
+        this.saveState();
+      }
     }
   }
 
@@ -690,41 +774,41 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
    */
   async handleRefresh(event: any) {
     if (!this.selectedExam) {
-      event.target.complete();
+      if (event?.target?.complete) event.target.complete();
       return;
     }
 
-    // Prevenir refresh durante restauración
-    if (this.isRestoringState) {
-      event.target.complete();
+    // Prevenir refresh durante restauración o carga inicial
+    if (this.isRestoringState || !this.initialLoadComplete) {
+      if (event?.target?.complete) event.target.complete();
       return;
     }
 
     // Limpiar estado guardado en localStorage
     localStorage.removeItem(`exam_state_${this.selectedExam.id}`);
 
-    // Resetear flags de restauración para permitir nueva restauración si es necesario
+    // Resetear flags
     this.hasRestoredState = false;
     this.isRestoringState = false;
+    this.pdfReady = false;
+    this.questionsReady = false;
+    this.initialLoadComplete = false;
 
     // Resetear estado local
     this.questions = [];
     this.currentQuestionIndex = -1;
+    this.currentPdfPage = 1;
     this.hasMore = true;
 
-    this.examQuestionService.refreshQuestions(this.selectedExam.id, {
-      itemPerPage: 20,
-      sort: 'numberQuestion_asc'
-    }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        event.target.complete();
-        this.showInfo('Datos actualizados');
-      },
-      error: () => {
-        event.target.complete();
-        this.showError('Error al actualizar los datos');
-      }
-    });
+    // Activar skeletons
+    this.loadingPdf = true;
+    this.loadingQuestions = true;
+
+    // Completar el refresh (el skeleton se encarga del feedback visual)
+    if (event?.target?.complete) event.target.complete();
+
+    // Recargar todo usando el flujo unificado
+    this.loadPdfAndQuestions();
   }
 
   /**
@@ -794,7 +878,6 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    this.isRestoringState = true;
     this.hasRestoredState = true;
 
     // Buscar el último examen usado
@@ -811,25 +894,20 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
             continue;
           }
 
-          // Restaurar el examen
+          console.log(`🔄 Restaurando examen: ${pdf.displayName}`);
+
+          // Restaurar el examen usando el nuevo flujo unificado
           this.selectedExam = pdf;
 
-          // Cargar el PDF
-          await this.loadPdf(this.selectedExam.path);
+          // Resetear estados de carga
+          this.pdfReady = false;
+          this.questionsReady = false;
+          this.initialLoadComplete = false;
+          this.loadingPdf = true;
+          this.loadingQuestions = true;
 
-          // Cargar las primeras preguntas
-          this.examQuestionService.refreshQuestions(this.selectedExam.id, {
-            itemPerPage: 20,
-            sort: 'numberQuestion_asc'
-          }).pipe(takeUntil(this.destroy$)).subscribe({
-            next: async () => {
-              // Restaurar posición
-              await this.restoreStatePosition();
-
-              // Iniciar carga en background
-              this.startBackgroundQuestionsLoading();
-            }
-          });
+          // Cargar PDF y preguntas en paralelo (igual que onExamSelected)
+          this.loadPdfAndQuestions();
 
           // Solo restaurar el primer examen encontrado
           break;
@@ -839,9 +917,6 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
         }
       }
     }
-
-    // Marcar restauración como completada
-    this.isRestoringState = false;
   }
 
   /**
@@ -851,10 +926,12 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     if (!this.selectedExam) return;
 
     const savedState = localStorage.getItem(`exam_state_${this.selectedExam.id}`);
-    if (!savedState) return;
+    if (!savedState) {
+      console.log('💭 No hay estado guardado para restaurar');
+      return;
+    }
 
     // Marcar que estamos restaurando para no guardar durante el proceso
-    const wasRestoring = this.isRestoringState;
     this.isRestoringState = true;
 
     try {
@@ -862,16 +939,17 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
 
       // Verificar que sea el mismo examen
       if (state.examId !== this.selectedExam.id) {
-        this.isRestoringState = wasRestoring;
+        this.isRestoringState = false;
         return;
       }
 
-      // Esperar a que se carguen las preguntas iniciales
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`🔄 Restaurando estado: página ${state.pdfPage}, pregunta ${state.questionNumber}`);
 
-      // Restaurar página del PDF
+      // Restaurar página del PDF primero (sin guardar estado)
       if (state.pdfPage && state.pdfPage > 0 && state.pdfPage <= this.totalPages) {
         await this.goToPage(state.pdfPage);
+        // Esperar a que el scroll termine
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
       // Restaurar pregunta seleccionada por número de pregunta
@@ -882,7 +960,8 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
         if (questionIndex >= 0) {
           // La pregunta ya está cargada
           this.currentQuestionIndex = questionIndex;
-          this.scrollToCurrentQuestion();
+          // Solo hacer scroll a la pregunta, NO navegar al PDF (ya lo hicimos arriba)
+          this.scrollToCurrentQuestion(false);
           console.log(`✅ Estado restaurado: Pregunta ${state.questionNumber} en página ${state.pdfPage}`);
         } else {
           // La pregunta no está cargada, mostrar skeleton y cargarla
@@ -892,7 +971,7 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
           await this.loadQuestionByNumber(state.questionNumber);
 
           // Después de cargar, buscar de nuevo y hacer scroll
-          await new Promise(resolve => setTimeout(resolve, 300)); // Esperar a que el DOM se actualice
+          await new Promise(resolve => setTimeout(resolve, 200));
 
           const newIndex = this.questions.findIndex(q => q.numberQuestion === state.questionNumber);
           if (newIndex >= 0) {
@@ -901,7 +980,8 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
 
             // Esperar a que se quite el skeleton antes de hacer scroll
             await new Promise(resolve => setTimeout(resolve, 100));
-            this.scrollToCurrentQuestion();
+            // Solo hacer scroll a la pregunta, NO navegar al PDF (ya lo hicimos arriba)
+            this.scrollToCurrentQuestion(false);
             console.log(`✅ Estado restaurado: Pregunta ${state.questionNumber} cargada y navegada`);
           } else {
             this.loadingSpecificQuestion = false;
@@ -912,11 +992,9 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     } catch (error) {
       console.error('Error al restaurar posición:', error);
     } finally {
-      // Siempre marcar que terminamos de restaurar después de un pequeño delay
-      // para asegurar que todos los scrolls hayan terminado
-      setTimeout(() => {
-        this.isRestoringState = false;
-      }, 1000);
+      // Marcar que terminamos de restaurar
+      this.isRestoringState = false;
+      console.log('🔓 Restauración completada');
     }
   }
 
@@ -1036,7 +1114,10 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
           const index = this.questions.findIndex(q => q.numberQuestion === questionNumber);
           if (index !== -1) {
             this.currentQuestionIndex = index;
-            this.scrollToCurrentQuestion();
+            // Solo hacer scroll si no estamos restaurando estado
+            if (!this.isRestoringState) {
+              this.scrollToCurrentQuestion();
+            }
             return;
           }
         }
@@ -1051,7 +1132,10 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     const index = this.questions.findIndex(q => q.numberQuestion === questionNumber);
     if (index !== -1) {
       this.currentQuestionIndex = index;
-      this.scrollToCurrentQuestion();
+      // Solo hacer scroll si no estamos restaurando estado
+      if (!this.isRestoringState) {
+        this.scrollToCurrentQuestion();
+      }
     } else {
       this.showError(`No se pudo encontrar la pregunta ${questionNumber}`);
     }
