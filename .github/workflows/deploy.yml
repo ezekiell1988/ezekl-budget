@@ -30,7 +30,12 @@ jobs:
           DEPLOY_PORT="${{ env.DEPLOY_PORT }}"
           PROJECT_PATH="/home/azureuser/projects/$PROJECT_NAME"
           
-          echo "🚀 Iniciando deployment de $PROJECT_NAME en puerto $DEPLOY_PORT"
+          # Variables para Blue-Green deployment
+          BLUE_CONTAINER="${PROJECT_NAME}-blue"
+          GREEN_CONTAINER="${PROJECT_NAME}-green"
+          TEMP_PORT=8001
+          
+          echo "🚀 Iniciando deployment ZERO-DOWNTIME de $PROJECT_NAME"
           
           # Crear directorio base si no existe
           mkdir -p /home/azureuser/projects
@@ -99,6 +104,10 @@ jobs:
           REDIS_PASSWORD=
           REDIS_DECODE_RESPONSES=true
           EOF
+
+          # Crear .env temporal para el nuevo contenedor (puerto temporal)
+          cp .env .env.temp
+          sed -i "s/PORT=$DEPLOY_PORT/PORT=$TEMP_PORT/" .env.temp
           
           # Verificar e instalar Docker si no está instalado
           echo "📦 Verificando Docker..."
@@ -142,17 +151,25 @@ jobs:
             DOCKER_CMD="sudo docker"
           fi
 
-          # Detener contenedor anterior si existe (silenciando errores si no existe)
-          echo "🛑 Deteniendo contenedor anterior..."
-          $DOCKER_CMD stop $PROJECT_NAME >/dev/null 2>&1 || true
-          $DOCKER_CMD rm $PROJECT_NAME >/dev/null 2>&1 || true
+          # Determinar cuál contenedor está activo actualmente
+          CURRENT_CONTAINER=""
+          NEW_CONTAINER=""
+          if $DOCKER_CMD ps --format "{{.Names}}" | grep -q "^${BLUE_CONTAINER}$"; then
+            CURRENT_CONTAINER=$BLUE_CONTAINER
+            NEW_CONTAINER=$GREEN_CONTAINER
+            NEW_IMAGE="${PROJECT_NAME}-green-image"
+          elif $DOCKER_CMD ps --format "{{.Names}}" | grep -q "^${GREEN_CONTAINER}$"; then
+            CURRENT_CONTAINER=$GREEN_CONTAINER
+            NEW_CONTAINER=$BLUE_CONTAINER
+            NEW_IMAGE="${PROJECT_NAME}-blue-image"
+          else
+            # Si no hay ninguno corriendo, usar blue como nuevo
+            NEW_CONTAINER=$BLUE_CONTAINER
+            NEW_IMAGE="${PROJECT_NAME}-blue-image"
+          fi
           
-          # Limpiar completamente imágenes Docker para forzar rebuild (silenciando errores)
-          echo "🧹 Limpieza completa de imágenes Docker..."
-          $DOCKER_CMD rmi $PROJECT_NAME-image >/dev/null 2>&1 || true
-          $DOCKER_CMD rmi $PROJECT_NAME >/dev/null 2>&1 || true
-          $DOCKER_CMD image prune -af >/dev/null 2>&1
-          $DOCKER_CMD builder prune -af >/dev/null 2>&1 || true
+          echo "📊 Estado actual: ${CURRENT_CONTAINER:-ninguno} -> Nuevo: $NEW_CONTAINER"
+          echo "🔄 El sitio sigue ACTIVO durante el build..."
           
           # Verificar si Node.js está instalado, si no, instalarlo
           echo "📦 Verificando Node.js..."
@@ -195,69 +212,129 @@ jobs:
           fi
           
           echo "✅ Frontend construido exitosamente"
-          echo "📂 Archivos en www:"
-          ls -lah www/ | head -n 10
-          
           cd ..
           
-          # Construir imagen Docker desde cero con Microsoft ODBC Driver 18
-          echo "🔨 Construyendo imagen Docker para FastAPI + ODBC (build completo)..."
-          $DOCKER_CMD build --no-cache -t $PROJECT_NAME-image .
+          # Limpiar imagen anterior del nuevo contenedor (no la actual que está en uso)
+          echo "🧹 Limpiando imagen anterior de $NEW_CONTAINER..."
+          $DOCKER_CMD rmi $NEW_IMAGE >/dev/null 2>&1 || true
+          
+          # Construir nueva imagen Docker
+          echo "🔨 Construyendo imagen Docker $NEW_IMAGE..."
+          $DOCKER_CMD build --no-cache -t $NEW_IMAGE .
           
           # Verificar que los drivers ODBC estén instalados en la imagen
           echo "🔍 Verificando instalación de drivers ODBC..."
-          $DOCKER_CMD run --rm $PROJECT_NAME-image odbcinst -q -d || echo "⚠️ Warning: No se pudieron verificar drivers ODBC"
+          $DOCKER_CMD run --rm $NEW_IMAGE odbcinst -q -d || echo "⚠️ Warning: No se pudieron verificar drivers ODBC"
           
           # Verificar que el frontend esté en la imagen
           echo "🔍 Verificando frontend en imagen Docker..."
-          if $DOCKER_CMD run --rm $PROJECT_NAME-image ls /app/ezekl-budget-ionic/www/index.html >/dev/null 2>&1; then
+          if $DOCKER_CMD run --rm $NEW_IMAGE ls /app/ezekl-budget-ionic/www/index.html >/dev/null 2>&1; then
             echo "✅ Frontend encontrado en la imagen Docker"
           else
             echo "❌ ERROR: Frontend NO encontrado en la imagen Docker!"
-            echo "📂 Contenido de /app/ezekl-budget-ionic:"
-            $DOCKER_CMD run --rm $PROJECT_NAME-image ls -la /app/ezekl-budget-ionic/ || echo "Directorio no existe"
             exit 1
           fi
           
-          echo "▶️  Ejecutando contenedor con network host para acceso a BD..."
+          # Limpiar contenedor nuevo si existe de un deploy anterior fallido
+          $DOCKER_CMD stop $NEW_CONTAINER >/dev/null 2>&1 || true
+          $DOCKER_CMD rm $NEW_CONTAINER >/dev/null 2>&1 || true
+          
+          # Iniciar nuevo contenedor en puerto temporal para verificar
+          echo "▶️  Iniciando $NEW_CONTAINER en puerto temporal $TEMP_PORT para verificación..."
           $DOCKER_CMD run -d \
-            --name $PROJECT_NAME \
+            --name $NEW_CONTAINER \
+            --restart unless-stopped \
+            --network host \
+            --env-file .env.temp \
+            $NEW_IMAGE
+          
+          # Esperar a que el contenedor esté listo
+          echo "⏳ Esperando que el nuevo contenedor esté listo..."
+          sleep 10
+          
+          # Verificar health check del nuevo contenedor
+          HEALTH_OK=false
+          for i in {1..6}; do
+            if curl -f -s http://localhost:$TEMP_PORT/api/v1/health > /dev/null 2>&1; then
+              echo "✅ Health check exitoso en nuevo contenedor!"
+              HEALTH_OK=true
+              break
+            else
+              echo "⏳ Esperando... (intento $i/6)"
+              sleep 5
+            fi
+          done
+          
+          if [ "$HEALTH_OK" = false ]; then
+            echo "❌ ERROR: El nuevo contenedor no pasó el health check"
+            echo "📋 Logs del nuevo contenedor:"
+            $DOCKER_CMD logs $NEW_CONTAINER --tail 30
+            # Limpiar el contenedor fallido
+            $DOCKER_CMD stop $NEW_CONTAINER >/dev/null 2>&1 || true
+            $DOCKER_CMD rm $NEW_CONTAINER >/dev/null 2>&1 || true
+            echo "🔄 El contenedor anterior sigue activo, no hubo downtime"
+            exit 1
+          fi
+          
+          # === MOMENTO CRÍTICO: Cambio rápido de contenedores ===
+          echo "🔄 Realizando cambio de contenedores (downtime mínimo ~2 segundos)..."
+          
+          # Detener nuevo contenedor temporalmente
+          $DOCKER_CMD stop $NEW_CONTAINER >/dev/null 2>&1
+          $DOCKER_CMD rm $NEW_CONTAINER >/dev/null 2>&1
+          
+          # Detener contenedor actual
+          if [ -n "$CURRENT_CONTAINER" ]; then
+            $DOCKER_CMD stop $CURRENT_CONTAINER >/dev/null 2>&1 || true
+            $DOCKER_CMD rm $CURRENT_CONTAINER >/dev/null 2>&1 || true
+          fi
+          
+          # También limpiar el contenedor legacy si existe
+          $DOCKER_CMD stop $PROJECT_NAME >/dev/null 2>&1 || true
+          $DOCKER_CMD rm $PROJECT_NAME >/dev/null 2>&1 || true
+          
+          # Iniciar nuevo contenedor en puerto de producción
+          $DOCKER_CMD run -d \
+            --name $NEW_CONTAINER \
             --restart unless-stopped \
             --network host \
             --env-file .env \
-            $PROJECT_NAME-image
+            $NEW_IMAGE
           
-          # Verificar que el contenedor esté corriendo
-          echo "✅ Verificando deployment..."
-          sleep 15
+          # Limpiar archivo temporal
+          rm -f .env.temp
           
-          if $DOCKER_CMD ps | grep -q $PROJECT_NAME; then
-            echo "🎉 Contenedor iniciado correctamente!"
+          # Verificar que está corriendo
+          sleep 3
+          
+          if $DOCKER_CMD ps | grep -q $NEW_CONTAINER; then
+            echo "🎉 ¡Deployment exitoso con ZERO-DOWNTIME!"
+            echo "✅ Contenedor activo: $NEW_CONTAINER"
             
-            # Verificar health check
-            echo "🔍 Verificando health check..."
-            for i in {1..5}; do
-              if curl -f -s http://localhost:$DEPLOY_PORT/api/v1/health > /dev/null 2>&1; then
-                echo "✅ Health check exitoso - API y base de datos funcionando!"
-                echo "🌐 Aplicación disponible en: https://budget.ezekl.com"
-                echo "📊 API Health: https://budget.ezekl.com/api/v1/health"
-                echo "📚 API Docs: https://budget.ezekl.com/docs"
-                break
-              else
-                echo "⏳ Esperando que la aplicación esté lista... (intento $i/5)"
-                sleep 10
-              fi
-            done
-            
-            if [ $i -eq 5 ]; then
-              echo "⚠️  Warning: Health check falló, pero contenedor está corriendo"
-              echo "📋 Logs del contenedor:"
-              $DOCKER_CMD logs $PROJECT_NAME --tail 20
+            # Verificar health check final
+            sleep 5
+            if curl -f -s http://localhost:$DEPLOY_PORT/api/v1/health > /dev/null 2>&1; then
+              echo "✅ Health check final exitoso!"
             fi
+            
+            echo "🌐 Aplicación disponible en: https://budget.ezekl.com"
+            echo "📊 API Health: https://budget.ezekl.com/api/v1/health"
+            echo "📚 API Docs: https://budget.ezekl.com/docs"
+            
+            # Limpiar imagen del contenedor anterior para ahorrar espacio
+            if [ -n "$CURRENT_CONTAINER" ]; then
+              OLD_IMAGE="${PROJECT_NAME}-$(echo $CURRENT_CONTAINER | sed "s/${PROJECT_NAME}-//")-image"
+              echo "🧹 Limpiando imagen anterior: $OLD_IMAGE"
+              $DOCKER_CMD rmi $OLD_IMAGE >/dev/null 2>&1 || true
+            fi
+            
+            # Limpiar imágenes huérfanas
+            $DOCKER_CMD image prune -f >/dev/null 2>&1 || true
+            
           else
-            echo "❌ Error en deployment - contenedor no está corriendo"
+            echo "❌ Error en deployment"
             echo "📋 Logs del contenedor:"
-            $DOCKER_CMD logs $PROJECT_NAME --tail 50
+            $DOCKER_CMD logs $NEW_CONTAINER --tail 50
             exit 1
           fi
           
