@@ -111,10 +111,6 @@
       </div>
 
       <ion-content class="questions-content">
-        <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
-          <ion-refresher-content></ion-refresher-content>
-        </ion-refresher>
-
         <!-- Skeleton mientras carga pregunta específica -->
         @if (loadingSpecificQuestion) {
         <ion-card color="light" style="margin: 16px;">
