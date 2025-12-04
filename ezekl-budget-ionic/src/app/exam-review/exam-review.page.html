@@ -140,10 +140,11 @@
         <ion-icon name="chevron-up" slot="icon-only"></ion-icon>
       </ion-button>
 
-      <div class="nav-info">
+      <div class="nav-info" (click)="openGoToDialog()">
         <ion-text color="light">
           <strong>{{ currentQuestionNumber || '-' }}</strong> / {{ totalQuestions }}
         </ion-text>
+        <ion-icon name="navigate" color="light" class="nav-icon"></ion-icon>
       </div>
 
       <ion-button
@@ -153,6 +154,16 @@
         (click)="goToNextQuestion()"
         [disabled]="currentQuestionNumber >= totalQuestions">
         <ion-icon name="chevron-down" slot="icon-only"></ion-icon>
+      </ion-button>
+
+      <ion-button
+        size="small"
+        fill="clear"
+        color="success"
+        (click)="markAllPreviousComplete()"
+        [disabled]="currentQuestionNumber <= 1"
+        title="Marcar anteriores como completadas">
+        <ion-icon name="checkmark-done" slot="icon-only"></ion-icon>
       </ion-button>
     </div>
   }

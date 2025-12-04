@@ -19,6 +19,7 @@ import {
   IonChip,
   IonLabel,
   IonSkeletonText,
+  AlertController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -28,7 +29,10 @@ import {
   chevronUp,
   chevronDown,
   bookmarkOutline,
-  bookmark, alertCircle } from 'ionicons/icons';
+  bookmark,
+  alertCircle,
+  navigate,
+  checkmarkDone } from 'ionicons/icons';
 import { Subject, takeUntil } from 'rxjs';
 import { ExamQuestionService } from '../services/exam-question.service';
 import { ExamQuestion, ExamPdf } from '../models';
@@ -92,9 +96,10 @@ export class ExamReviewPage implements OnInit, OnDestroy {
 
   constructor(
     private examQuestionService: ExamQuestionService,
-    private router: Router
+    private router: Router,
+    private alertController: AlertController
   ) {
-    addIcons({refresh,bookmarkOutline,bookmark,checkmarkCircle,alertCircle,chevronUp,chevronDown,checkmarkCircleOutline,});
+    addIcons({refresh,bookmarkOutline,bookmark,checkmarkCircle,alertCircle,chevronUp,chevronDown,checkmarkCircleOutline,navigate,checkmarkDone});
   }
 
   ngOnInit() {
@@ -336,5 +341,84 @@ export class ExamReviewPage implements OnInit, OnDestroy {
   get progressPercent(): number {
     if (this.totalQuestions === 0) return 0;
     return Math.round((this.completedQuestions.size / this.totalQuestions) * 100);
+  }
+
+  /**
+   * Abrir diálogo para ir a una pregunta específica
+   */
+  async openGoToDialog() {
+    const alert = await this.alertController.create({
+      header: 'Ir a pregunta',
+      inputs: [
+        {
+          name: 'questionNumber',
+          type: 'number',
+          placeholder: `1 - ${this.totalQuestions}`,
+          min: 1,
+          max: this.totalQuestions,
+          value: this.currentQuestionNumber || 1
+        }
+      ],
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel'
+        },
+        {
+          text: 'Ir',
+          handler: (data) => {
+            const num = parseInt(data.questionNumber, 10);
+            if (num >= 1 && num <= this.totalQuestions) {
+              this.goToQuestion(num);
+            }
+          }
+        }
+      ]
+    });
+
+    await alert.present();
+  }
+
+  /**
+   * Ir a una pregunta específica por número
+   */
+  goToQuestion(questionNumber: number) {
+    const question = this.questions.find(q => q.numberQuestion === questionNumber);
+    if (question) {
+      this.currentQuestionNumber = questionNumber;
+      this.scrollToCurrentQuestion();
+      this.saveState();
+    }
+  }
+
+  /**
+   * Marcar todas las preguntas anteriores a la actual como completadas
+   */
+  async markAllPreviousComplete() {
+    if (this.currentQuestionNumber <= 1) return;
+
+    const alert = await this.alertController.create({
+      header: 'Marcar anteriores',
+      message: `¿Marcar las preguntas 1 a ${this.currentQuestionNumber - 1} como completadas?`,
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel'
+        },
+        {
+          text: 'Marcar todas',
+          handler: () => {
+            for (const question of this.questions) {
+              if (question.numberQuestion < this.currentQuestionNumber) {
+                this.completedQuestions.add(question.numberQuestion);
+              }
+            }
+            this.saveState();
+          }
+        }
+      ]
+    });
+
+    await alert.present();
   }
 }

@@ -220,7 +220,11 @@ jobs:
           
           # Construir nueva imagen Docker
           echo "🔨 Construyendo imagen Docker $NEW_IMAGE..."
-          $DOCKER_CMD build --no-cache -t $NEW_IMAGE .
+          if ! $DOCKER_CMD build --no-cache -t $NEW_IMAGE .; then
+            echo "❌ ERROR: Falló la construcción de la imagen Docker"
+            echo "🔄 El contenedor anterior sigue activo, no hubo downtime"
+            exit 1
+          fi
           
           # Verificar que los drivers ODBC estén instalados en la imagen
           echo "🔍 Verificando instalación de drivers ODBC..."
@@ -241,12 +245,19 @@ jobs:
           
           # Iniciar nuevo contenedor en puerto temporal para verificar
           echo "▶️  Iniciando $NEW_CONTAINER en puerto temporal $TEMP_PORT para verificación..."
-          $DOCKER_CMD run -d \
+          if ! $DOCKER_CMD run -d \
             --name $NEW_CONTAINER \
             --restart unless-stopped \
             --network host \
             --env-file .env.temp \
-            $NEW_IMAGE
+            $NEW_IMAGE; then
+            echo "❌ ERROR: Falló al iniciar el contenedor temporal"
+            echo "🔄 El contenedor anterior sigue activo, no hubo downtime"
+            # Limpiar contenedor fallido si existe
+            $DOCKER_CMD stop $NEW_CONTAINER >/dev/null 2>&1 || true
+            $DOCKER_CMD rm $NEW_CONTAINER >/dev/null 2>&1 || true
+            exit 1
+          fi
           
           # Esperar a que el contenedor esté listo
           echo "⏳ Esperando que el nuevo contenedor esté listo..."
