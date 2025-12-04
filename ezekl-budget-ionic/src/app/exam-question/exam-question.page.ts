@@ -109,6 +109,10 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   showToast = false;
   toastMessage = '';
 
+  // Flags para prevenir bucles de restauración en iOS
+  private isRestoringState = false;
+  private hasRestoredState = false;
+
   // PDF.js
   private pdfDoc: any = null;
   private renderedPages: Set<number> = new Set();
@@ -162,9 +166,12 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit() {
     // Restaurar estado después de que la vista se haya inicializado
     // Usar setTimeout para evitar ExpressionChangedAfterItHasBeenCheckedError
-    setTimeout(() => {
-      this.restoreStateExam();
-    }, 0);
+    // Solo restaurar si no se ha restaurado ya (previene bucles en iOS)
+    if (!this.hasRestoredState) {
+      setTimeout(() => {
+        this.restoreStateExam();
+      }, 0);
+    }
   }
 
   ngOnDestroy() {
@@ -543,11 +550,17 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       // Calcular la diferencia entre la página actual y la destino
       const pageDiff = Math.abs(page - this.currentPdfPage);
 
-      // Si el salto es mayor a 10 páginas, hacer scroll instantáneo
-      // Si es menor, usar smooth scroll
-      const behavior = pageDiff > 10 ? 'auto' : 'smooth';
+      // Si el salto es mayor a 10 páginas o estamos restaurando, hacer scroll instantáneo
+      // Usar 'auto' siempre en iOS para evitar problemas de recarga
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const behavior = (pageDiff > 10 || this.isRestoringState || isIOS) ? 'auto' : 'smooth';
 
-      pageElement.scrollIntoView({ behavior: behavior as ScrollBehavior, block: 'start' });
+      try {
+        pageElement.scrollIntoView({ behavior: behavior as ScrollBehavior, block: 'start' });
+      } catch (e) {
+        // Fallback para navegadores que no soporten scrollIntoView con opciones
+        pageElement.scrollIntoView(true);
+      }
       this.currentPdfPage = page;
       this.saveState();
     }
@@ -637,7 +650,14 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
   scrollToQuestion(questionNumber: number) {
     const element = document.getElementById(`question-${questionNumber}`);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Usar 'auto' en lugar de 'smooth' para evitar problemas en iOS
+      // que pueden causar recargas de página
+      try {
+        element.scrollIntoView({ behavior: 'auto', block: 'center' });
+      } catch (e) {
+        // Fallback para navegadores que no soporten scrollIntoView con opciones
+        element.scrollIntoView(true);
+      }
 
       // Resaltar temporalmente
       element.classList.add('highlight');
@@ -678,8 +698,18 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // Prevenir refresh durante restauración
+    if (this.isRestoringState) {
+      event.target.complete();
+      return;
+    }
+
     // Limpiar estado guardado en localStorage
     localStorage.removeItem(`exam_state_${this.selectedExam.id}`);
+
+    // Resetear flags de restauración para permitir nueva restauración si es necesario
+    this.hasRestoredState = false;
+    this.isRestoringState = false;
 
     // Resetear estado local
     this.questions = [];
@@ -742,7 +772,8 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
    * Guardar estado actual en localStorage
    */
   private saveState() {
-    if (!this.selectedExam) return;
+    // No guardar estado mientras se está restaurando (previene bucles en iOS)
+    if (!this.selectedExam || this.isRestoringState) return;
 
     // Guardar el número de pregunta en lugar del índice
     const currentQuestion = this.questions[this.currentQuestionIndex];
@@ -761,6 +792,15 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
    * Restaurar estado guardado desde localStorage
    */
   private async restoreStateExam() {
+    // Prevenir restauración múltiple (especialmente importante en iOS)
+    if (this.hasRestoredState || this.isRestoringState) {
+      console.log('⚠️ Restauración ya en progreso o completada, saltando...');
+      return;
+    }
+
+    this.isRestoringState = true;
+    this.hasRestoredState = true;
+
     // Buscar el último examen usado
     for (const pdf of this.availablePdfs) {
       const savedState = localStorage.getItem(`exam_state_${pdf.id}`);
@@ -803,6 +843,9 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
         }
       }
     }
+
+    // Marcar restauración como completada
+    this.isRestoringState = false;
   }
 
   /**
@@ -814,16 +857,21 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
     const savedState = localStorage.getItem(`exam_state_${this.selectedExam.id}`);
     if (!savedState) return;
 
+    // Marcar que estamos restaurando para no guardar durante el proceso
+    const wasRestoring = this.isRestoringState;
+    this.isRestoringState = true;
+
     try {
       const state = JSON.parse(savedState);
 
       // Verificar que sea el mismo examen
       if (state.examId !== this.selectedExam.id) {
+        this.isRestoringState = wasRestoring;
         return;
       }
 
       // Esperar a que se carguen las preguntas iniciales
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Restaurar página del PDF
       if (state.pdfPage && state.pdfPage > 0 && state.pdfPage <= this.totalPages) {
@@ -867,6 +915,12 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error al restaurar posición:', error);
+    } finally {
+      // Siempre marcar que terminamos de restaurar después de un pequeño delay
+      // para asegurar que todos los scrolls hayan terminado
+      setTimeout(() => {
+        this.isRestoringState = false;
+      }, 1000);
     }
   }
 
@@ -894,14 +948,15 @@ export class ExamQuestionPage implements OnInit, AfterViewInit, OnDestroy {
 
   /**
    * Scroll a la pregunta actual
+   * @param navigateToPdf - Si es true, también navega al PDF (default: true)
    */
-  scrollToCurrentQuestion() {
+  scrollToCurrentQuestion(navigateToPdf: boolean = true) {
     if (this.currentQuestionIndex >= 0 && this.currentQuestionIndex < this.questions.length) {
       const question = this.questions[this.currentQuestionIndex];
       this.scrollToQuestion(question.numberQuestion);
 
-      // Si la pregunta tiene página, navegar al PDF
-      if (question.startPage) {
+      // Si la pregunta tiene página, navegar al PDF (solo si no estamos restaurando o se indica explícitamente)
+      if (navigateToPdf && question.startPage && !this.isRestoringState) {
         this.goToPage(question.startPage);
       }
     }
