@@ -18,7 +18,7 @@ from .copilot import router as copilot_router
 from .exam_question import router as exam_question_router
 
 # Importar routers CRM
-from app.api.crm import cases_router, accounts_router, contacts_router, system_router
+from app.api.crm import cases_router, accounts_router, contacts_router, system_router, webhook_router
 
 # Router principal para todos los endpoints de la API
 router = APIRouter()
@@ -38,6 +38,7 @@ router.include_router(cases_router, prefix="/crm", tags=["CRM - Casos"])
 router.include_router(accounts_router, prefix="/crm", tags=["CRM - Cuentas"])  
 router.include_router(contacts_router, prefix="/crm", tags=["CRM - Contactos"])
 router.include_router(system_router, prefix="/crm", tags=["CRM - Sistema"])
+router.include_router(webhook_router, prefix="/crm", tags=["CRM - Webhook"])
 
 
 @router.get(

@@ -1,4 +1,5 @@
 tests/
+data/
 # Environment variables
 .env
 .env.local
