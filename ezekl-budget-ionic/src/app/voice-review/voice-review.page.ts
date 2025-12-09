@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -26,9 +26,9 @@ import {
   IonFab,
   IonFabButton,
   IonFabList,
-  IonBadge,
   IonList,
   IonItem,
+  IonProgressBar,
   AlertController,
   ToastController,
 } from '@ionic/angular/standalone';
@@ -53,6 +53,10 @@ import {
   stop,
   volumeHigh,
   list,
+  playBack,
+  playForward,
+  playSkipForward,
+  playSkipForwardOutline,
 } from 'ionicons/icons';
 import { Subject, takeUntil } from 'rxjs';
 import { ExamQuestionService } from '../services/exam-question.service';
@@ -102,15 +106,12 @@ const AVAILABLE_PDFS: ExamPdf[] = [
     IonFab,
     IonFabButton,
     IonFabList,
-    IonBadge,
     IonList,
     IonItem,
+    IonProgressBar,
   ],
 })
 export class VoiceReviewPage implements OnInit, OnDestroy {
-  @ViewChild('questionText', { read: ElementRef }) questionTextRef?: ElementRef;
-  @ViewChild('answerText', { read: ElementRef }) answerTextRef?: ElementRef;
-
   // Datos
   availablePdfs = AVAILABLE_PDFS;
   selectedExam: ExamPdf | null = null;
@@ -123,7 +124,7 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
   loading = false;
   initialLoadComplete = false;
   hasMore = true;
-  showQuestionList = false;
+  autoReadNext = true; // Lectura automática de siguiente pregunta
 
   // Voice/Speech
   isSpeaking = false;
@@ -140,25 +141,29 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
     private toastController: ToastController
   ) {
     addIcons({
+      arrowBack,
       refresh,
       micOutline,
       mic,
-      checkmark,
       checkmarkCircle,
+      playBack,
+      stop,
+      playForward,
+      navigate,
+      volumeHigh,
+      list,
       alertCircle,
       ellipsisVertical,
+      checkmarkDone,
       chevronUp,
       chevronDown,
-      navigate,
-      checkmarkDone,
+      checkmark,
       checkmarkCircleOutline,
-      arrowBack,
       radioButtonOn,
       play,
       pause,
-      stop,
-      volumeHigh,
-      list,
+      playSkipForward,
+      playSkipForwardOutline,
     });
 
     // Verificar si el navegador soporta Speech Synthesis
@@ -274,10 +279,10 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Marcar pregunta individual como leída
+   * Marcar pregunta individual como leída (sin detener reproducción)
    */
   toggleComplete(question: ExamQuestion) {
-    if (!this.selectedExam) return;
+    if (!this.selectedExam || !question) return;
 
     const wasCompleted = question.readed || false;
 
@@ -302,6 +307,14 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
   }
 
   /**
+   * Marcar pregunta manualmente (con clic en el botón)
+   */
+  toggleCompleteManual(question: ExamQuestion) {
+    if (!question) return;
+    this.toggleComplete(question);
+  }
+
+  /**
    * Verificar si una pregunta está completada
    */
   isCompleted(questionNumber: number): boolean {
@@ -313,12 +326,11 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
    * Ir a pregunta anterior
    */
   goToPreviousQuestion() {
-    this.stopSpeech();
-
     const idx = this.questions.findIndex(q => q.numberQuestion === this.currentQuestionNumber);
     if (idx > 0) {
       this.currentQuestionNumber = this.questions[idx - 1].numberQuestion;
       this.updateCurrentQuestion();
+      this.scrollToCurrentQuestion();
     }
   }
 
@@ -326,13 +338,34 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
    * Ir a pregunta siguiente
    */
   goToNextQuestion() {
-    this.stopSpeech();
-
     const idx = this.questions.findIndex(q => q.numberQuestion === this.currentQuestionNumber);
     if (idx < this.questions.length - 1) {
       this.currentQuestionNumber = this.questions[idx + 1].numberQuestion;
       this.updateCurrentQuestion();
+      this.scrollToCurrentQuestion();
     }
+  }
+
+  /**
+   * Ir a pregunta anterior y comenzar a leer
+   */
+  goToPreviousQuestionAndRead() {
+    this.stopSpeech();
+    this.goToPreviousQuestion();
+    setTimeout(() => {
+      this.startSpeech();
+    }, 300);
+  }
+
+  /**
+   * Ir a pregunta siguiente y comenzar a leer
+   */
+  goToNextQuestionAndRead() {
+    this.stopSpeech();
+    this.goToNextQuestion();
+    setTimeout(() => {
+      this.startSpeech();
+    }, 300);
   }
 
   /**
@@ -427,16 +460,109 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
   }
 
   /**
+   * Abrir diálogo para ir a una pregunta específica y comenzar a leer
+   */
+  async openGoToDialogAndRead() {
+    const alert = await this.alertController.create({
+      header: 'Ir a pregunta y leer',
+      inputs: [
+        {
+          name: 'questionNumber',
+          type: 'number',
+          placeholder: `1 - ${this.totalQuestions}`,
+          min: 1,
+          max: this.totalQuestions,
+          value: this.currentQuestionNumber || 1
+        }
+      ],
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel'
+        },
+        {
+          text: 'Ir y Leer',
+          handler: (data) => {
+            const questionNumber = parseInt(data.questionNumber, 10);
+            if (questionNumber >= 1 && questionNumber <= this.totalQuestions) {
+              this.stopSpeech();
+              this.goToQuestion(questionNumber);
+              setTimeout(() => {
+                this.startSpeech();
+              }, 500);
+            }
+          }
+        }
+      ]
+    });
+
+    await alert.present();
+  }
+
+  /**
    * Ir a una pregunta específica por número
    */
   goToQuestion(questionNumber: number) {
-    this.stopSpeech();
-
     const question = this.questions.find(q => q.numberQuestion === questionNumber);
     if (question) {
       this.currentQuestionNumber = questionNumber;
       this.updateCurrentQuestion();
-      this.showQuestionList = false;
+      this.scrollToCurrentQuestion();
+    }
+  }
+
+  /**
+   * Toggle lectura automática
+   */
+  toggleAutoRead() {
+    this.autoReadNext = !this.autoReadNext;
+    this.showToast(
+      `Lectura automática ${this.autoReadNext ? 'activada' : 'desactivada'}`,
+      this.autoReadNext ? 'success' : 'warning'
+    );
+  }
+
+  /**
+   * Avanzar automáticamente a la siguiente pregunta y comenzar lectura
+   */
+  private autoAdvanceToNextQuestion() {
+    const idx = this.questions.findIndex(q => q.numberQuestion === this.currentQuestionNumber);
+
+    if (idx < this.questions.length - 1) {
+      // Marcar pregunta actual como leída
+      if (this.currentQuestion && !this.currentQuestion.readed) {
+        this.toggleComplete(this.currentQuestion);
+      }
+
+      // Avanzar a la siguiente
+      setTimeout(() => {
+        this.currentQuestionNumber = this.questions[idx + 1].numberQuestion;
+        this.updateCurrentQuestion();
+
+        // Scroll hacia la pregunta en la lista
+        this.scrollToCurrentQuestion();
+
+        // Pequeña pausa antes de iniciar la siguiente lectura
+        setTimeout(() => {
+          if (this.autoReadNext) {
+            this.startSpeech();
+          }
+        }, 1000);
+      }, 500);
+    } else {
+      // Llegamos al final
+      this.showToast('Has completado todas las preguntas', 'success');
+    }
+  }
+
+  /**
+   * Scroll hacia la pregunta actual en la lista
+   */
+  private scrollToCurrentQuestion() {
+    // Implementación básica - puede mejorarse con ViewChild si es necesario
+    const element = document.querySelector(`ion-item[color="light"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
@@ -559,6 +685,11 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
     this.currentUtterance.onend = () => {
       this.isSpeaking = false;
       this.currentUtterance = null;
+
+      // Avanzar automáticamente a la siguiente pregunta
+      if (this.autoReadNext) {
+        this.autoAdvanceToNextQuestion();
+      }
     };
 
     this.currentUtterance.onerror = (event) => {

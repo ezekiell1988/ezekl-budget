@@ -34,19 +34,32 @@
     </ion-toolbar>
   }
 
-  <!-- Barra de progreso -->
+  <!-- Barra de progreso con control de reproducción -->
   @if (selectedExam && initialLoadComplete) {
     <ion-toolbar color="light">
-      <div class="progress-bar">
-        <div class="progress-info">
-          <ion-text color="medium">
-            <strong>{{ progressText }}</strong> ({{ progressPercent }}%)
-          </ion-text>
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill" [style.width.%]="progressPercent"></div>
-        </div>
-      </div>
+      <ion-grid class="ion-no-padding">
+        <ion-row class="ion-align-items-center ion-padding-horizontal">
+          <ion-col size="auto">
+            <ion-button
+              [color]="isSpeaking ? 'warning' : 'success'"
+              size="default"
+              fill="solid"
+              shape="round"
+              (click)="toggleSpeech()">
+              <ion-icon [name]="isSpeaking ? 'pause' : 'play'" slot="icon-only"></ion-icon>
+            </ion-button>
+          </ion-col>
+          <ion-col>
+            <ion-text color="medium">
+              <p class="ion-no-margin"><strong>{{ progressText }}</strong> ({{ progressPercent }}%)</p>
+            </ion-text>
+            <ion-progress-bar
+              [value]="progressPercent / 100"
+              [color]="progressPercent === 100 ? 'success' : 'primary'">
+            </ion-progress-bar>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
     </ion-toolbar>
   }
 </ion-header>
@@ -86,135 +99,107 @@
         </ion-grid>
       </ion-card-content>
     </ion-card>
+
+    <!-- Skeletons -->
+    @for (item of [1,2,3,4,5]; track item) {
+      <ion-card>
+        <ion-card-header>
+          <ion-skeleton-text [animated]="true" style="width: 30%; height: 24px;"></ion-skeleton-text>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-skeleton-text [animated]="true" style="width: 100%; height: 20px; margin-bottom: 8px;"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 90%; height: 20px; margin-bottom: 8px;"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 95%; height: 20px;"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 80%; height: 40px; margin-top: 16px;"></ion-skeleton-text>
+        </ion-card-content>
+      </ion-card>
+    }
   }
 
   <!-- Vista de pregunta actual (para lector de voz) -->
   @if (selectedExam && initialLoadComplete && currentQuestion) {
-    <ion-card class="voice-question-card">
+    <ion-card>
       <ion-card-header>
         <ion-grid class="ion-no-padding">
           <ion-row class="ion-align-items-center ion-justify-content-between">
-            <ion-col size="auto">
+            <ion-col>
               <ion-chip [color]="isCompleted(currentQuestion.numberQuestion) ? 'success' : 'primary'">
                 <ion-icon [name]="isCompleted(currentQuestion.numberQuestion) ? 'checkmark-circle' : 'radio-button-on'"></ion-icon>
                 <ion-label><strong>Pregunta {{ currentQuestion.numberQuestion }} de {{ totalQuestions }}</strong></ion-label>
               </ion-chip>
             </ion-col>
-            <ion-col size="auto">
-              <ion-button
-                size="small"
-                [color]="isCompleted(currentQuestion.numberQuestion) ? 'success' : 'medium'"
-                (click)="toggleComplete(currentQuestion)">
-                <ion-icon [name]="isCompleted(currentQuestion.numberQuestion) ? 'checkmark-circle' : 'checkmark-circle-outline'" slot="start"></ion-icon>
-                {{ isCompleted(currentQuestion.numberQuestion) ? 'Leída' : 'Marcar' }}
-              </ion-button>
-            </ion-col>
+            @if (isSpeaking) {
+              <ion-col size="auto">
+                <ion-chip color="warning">
+                  <ion-icon name="volume-high"></ion-icon>
+                  <ion-label>Reproduciendo</ion-label>
+                </ion-chip>
+              </ion-col>
+            }
           </ion-row>
         </ion-grid>
       </ion-card-header>
 
       <ion-card-content>
-        <!-- Pregunta -->
-        <div class="voice-content" [attr.aria-live]="isSpeaking ? 'polite' : 'off'">
-          <ion-text>
-            <h2 class="question-title">Pregunta</h2>
-            <p class="question-text" #questionText>
-              {{ currentQuestion.shortQuestion }}
-            </p>
-          </ion-text>
+        <ion-text>
+          <h2>{{ currentQuestion.shortQuestion }}</h2>
+        </ion-text>
 
-          <!-- Respuesta -->
-          @if (currentQuestion.correctAnswer) {
-            <div class="answer-section">
-              <ion-text color="success">
-                <h3 class="answer-title">
-                  <ion-icon name="checkmark-circle" color="success"></ion-icon>
-                  Respuesta Correcta
-                </h3>
-                <p class="answer-text" #answerText>
-                  {{ currentQuestion.correctAnswer }}
-                </p>
-              </ion-text>
-            </div>
-          }
-        </div>
-
-        <!-- Controles de voz -->
-        <div class="voice-controls">
-          <ion-grid>
-            <ion-row class="ion-justify-content-center ion-align-items-center">
-              <!-- Botón reproducir/pausar -->
-              <ion-col size="auto">
-                <ion-button
-                  [color]="isSpeaking ? 'warning' : 'success'"
-                  size="large"
-                  shape="round"
-                  (click)="toggleSpeech()">
-                  <ion-icon [name]="isSpeaking ? 'pause' : 'play'" slot="start"></ion-icon>
-                  {{ isSpeaking ? 'Pausar' : 'Reproducir' }}
-                </ion-button>
-              </ion-col>
-
-              <!-- Botón detener -->
-              @if (isSpeaking) {
-                <ion-col size="auto">
-                  <ion-button
-                    color="danger"
-                    size="large"
-                    shape="round"
-                    (click)="stopSpeech()">
-                    <ion-icon name="stop" slot="start"></ion-icon>
-                    Detener
-                  </ion-button>
-                </ion-col>
-              }
-            </ion-row>
-          </ion-grid>
-        </div>
-
-        <!-- Indicador de estado de voz -->
-        @if (isSpeaking) {
-          <ion-chip color="warning" class="speaking-indicator">
-            <ion-icon name="volume-high"></ion-icon>
-            <ion-label>Reproduciendo...</ion-label>
-          </ion-chip>
+        @if (currentQuestion.correctAnswer) {
+          <ion-item color="success" lines="none" class="ion-margin-top">
+            <ion-icon name="checkmark-circle" slot="start"></ion-icon>
+            <ion-label class="ion-text-wrap">
+              <h3>Respuesta Correcta</h3>
+              <p>{{ currentQuestion.correctAnswer }}</p>
+            </ion-label>
+          </ion-item>
         }
       </ion-card-content>
     </ion-card>
 
-    <!-- Lista compacta de preguntas (opcional, colapsable) -->
+    <!-- Lista completa de preguntas (siempre visible) -->
     <ion-card>
-      <ion-item button (click)="showQuestionList = !showQuestionList">
-        <ion-icon name="list" slot="start" color="primary"></ion-icon>
-        <ion-label>
-          <h3>Ver todas las preguntas</h3>
-        </ion-label>
-        <ion-icon [name]="showQuestionList ? 'chevron-up' : 'chevron-down'" slot="end"></ion-icon>
-      </ion-item>
-
-      @if (showQuestionList) {
-        <ion-list>
-          @for (question of questions; track question.numberQuestion) {
-            <ion-item
-              button
-              [color]="question.numberQuestion === currentQuestionNumber ? 'light' : undefined"
-              (click)="goToQuestion(question.numberQuestion)">
-              <ion-chip
-                slot="start"
-                [color]="isCompleted(question.numberQuestion) ? 'success' : 'medium'"
-                size="small">
-                <ion-label>{{ question.numberQuestion }}</ion-label>
+      <ion-card-header>
+        <ion-grid class="ion-no-padding">
+          <ion-row class="ion-align-items-center ion-justify-content-between">
+            <ion-col>
+              <ion-text color="primary">
+                <h3 class="ion-no-margin">
+                  <ion-icon name="list" style="vertical-align: middle;"></ion-icon>
+                  Todas las Preguntas
+                </h3>
+              </ion-text>
+            </ion-col>
+            <ion-col size="auto">
+              <ion-chip color="primary">
+                <ion-label><strong>{{ progressText }}</strong></ion-label>
               </ion-chip>
-              <ion-label class="ion-text-wrap">
-                <p>{{ question.shortQuestion | slice:0:80 }}{{ question.shortQuestion.length > 80 ? '...' : '' }}</p>
-              </ion-label>
-              @if (isCompleted(question.numberQuestion)) {
-                <ion-icon name="checkmark-circle" color="success" slot="end"></ion-icon>
-              }
-            </ion-item>
-          }
-        </ion-list>
-      }
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-header>
+
+      <ion-list>
+        @for (question of questions; track question.numberQuestion) {
+          <ion-item
+            button
+            [color]="question.numberQuestion === currentQuestionNumber ? 'light' : undefined"
+            (click)="goToQuestion(question.numberQuestion)">
+            <ion-chip
+              slot="start"
+              [color]="isCompleted(question.numberQuestion) ? 'success' : 'medium'"
+              size="small">
+              <ion-label>{{ question.numberQuestion }}</ion-label>
+            </ion-chip>
+            <ion-label class="ion-text-wrap">
+              <p>{{ question.shortQuestion | slice:0:80 }}{{ question.shortQuestion.length > 80 ? '...' : '' }}</p>
+            </ion-label>
+            @if (isCompleted(question.numberQuestion)) {
+              <ion-icon name="checkmark-circle" color="success" slot="end"></ion-icon>
+            }
+          </ion-item>
+        }
+      </ion-list>
     </ion-card>
   }
 
