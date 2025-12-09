@@ -9,6 +9,7 @@ from typing import Optional, List
 
 class ExamQuestion(BaseModel):
     """Modelo para una pregunta de examen."""
+    idExamQuestion: int = Field(..., description="ID de la pregunta")
     numberQuestion: int = Field(..., description="Número de la pregunta")
     startPage: Optional[int] = Field(None, description="Página de inicio")
     endPage: Optional[int] = Field(None, description="Página de fin")
@@ -18,6 +19,7 @@ class ExamQuestion(BaseModel):
     correctAnswer: Optional[str] = Field(None, description="Respuesta correcta")
     explanation: Optional[str] = Field(None, description="Explicación de la respuesta")
     imageExplanation: Optional[str] = Field(None, description="Imagen de explicación (URL o base64)")
+    readed: Optional[bool] = Field(None, description="Indica si la pregunta ha sido leída")
 
 
 class ExamQuestionListRequest(BaseModel):
@@ -38,3 +40,26 @@ class ExamQuestionListResponse(BaseModel):
 class ExamQuestionErrorResponse(BaseModel):
     """Modelo de respuesta para errores."""
     detail: str = Field(..., description="Mensaje de error")
+
+
+class SetQuestionRequest(BaseModel):
+    """Modelo de request para marcar una pregunta como vista/completada."""
+    idExamQuestion: int = Field(..., description="ID de la pregunta del examen")
+
+
+class SetQuestionResponse(BaseModel):
+    """Modelo de respuesta para marcar pregunta."""
+    success: bool = Field(..., description="Indica si la operación fue exitosa")
+    message: str = Field(..., description="Mensaje de la operación")
+
+
+class SetToQuestionRequest(BaseModel):
+    """Modelo de request para marcar preguntas hasta un número específico."""
+    idExam: int = Field(..., description="ID del examen")
+    numberQuestion: int = Field(..., ge=1, description="Número de pregunta hasta donde marcar")
+
+
+class SetToQuestionResponse(BaseModel):
+    """Modelo de respuesta para marcar múltiples preguntas."""
+    success: bool = Field(..., description="Indica si la operación fue exitosa")
+    message: str = Field(..., description="Mensaje de la operación")

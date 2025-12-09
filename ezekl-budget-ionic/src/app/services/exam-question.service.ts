@@ -162,4 +162,40 @@ export class ExamQuestionService {
     this.loading$.next(false);
     this.error$.next(null);
   }
+
+  /**
+   * Marca una pregunta como vista/completada
+   */
+  setQuestion(idExamQuestion: number): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(
+      `${this.API_BASE}/set-question`,
+      { idExamQuestion }
+    ).pipe(
+      catchError(error => {
+        console.error('Error al marcar pregunta:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Marca preguntas hasta un número específico
+   */
+  setToQuestion(idExam: number, numberQuestion: number): Observable<{
+    success: boolean;
+    message: string;
+  }> {
+    return this.http.post<{
+      success: boolean;
+      message: string;
+    }>(
+      `${this.API_BASE}/set-to-question`,
+      { idExam, numberQuestion }
+    ).pipe(
+      catchError(error => {
+        console.error('Error al marcar preguntas hasta número:', error);
+        throw error;
+      })
+    );
+  }
 }

@@ -7,6 +7,7 @@
  * Modelo para una pregunta de examen
  */
 export interface ExamQuestion {
+  idExamQuestion: number;
   numberQuestion: number;
   startPage?: number;
   endPage?: number;
@@ -16,6 +17,7 @@ export interface ExamQuestion {
   correctAnswer?: string;
   explanation?: string;
   imageExplanation?: string;
+  readed?: boolean;
 }
 
 /**

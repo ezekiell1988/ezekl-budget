@@ -1,7 +1,13 @@
 <ion-header [translucent]="true">
   <ion-toolbar color="primary">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/"></ion-back-button>
+      @if (selectedExam) {
+        <ion-button (click)="goBackToSelector()">
+          <ion-icon name="arrow-back" slot="icon-only"></ion-icon>
+        </ion-button>
+      } @else {
+        <ion-back-button defaultHref="/"></ion-back-button>
+      }
     </ion-buttons>
     <ion-title>Repaso de Preguntas</ion-title>
     <ion-buttons slot="end">
@@ -12,20 +18,21 @@
   </ion-toolbar>
 
   <!-- Selector de examen -->
-  <ion-toolbar>
-    <ion-select
-      placeholder="Selecciona un examen"
-      [value]="selectedExam?.id"
-      (ionChange)="onExamSelected($event)"
-      interface="popover"
-      class="exam-selector">
-      @for (pdf of availablePdfs; track pdf.id) {
-        <ion-select-option [value]="pdf.id">
-          {{ pdf.displayName }}
-        </ion-select-option>
-      }
-    </ion-select>
-  </ion-toolbar>
+  @if (!selectedExam) {
+    <ion-toolbar>
+      <ion-select
+        placeholder="Selecciona un examen"
+        (ionChange)="onExamSelected($event)"
+        interface="popover"
+        class="exam-selector">
+        @for (pdf of availablePdfs; track pdf.id) {
+          <ion-select-option [value]="pdf.id">
+            {{ pdf.displayName }}
+          </ion-select-option>
+        }
+      </ion-select>
+    </ion-toolbar>
+  }
 
   <!-- Barra de progreso -->
   @if (selectedExam && initialLoadComplete) {
@@ -44,127 +51,169 @@
   }
 </ion-header>
 
-<ion-content [fullscreen]="true">
+<ion-content [fullscreen]="true" class="ion-padding">
   <!-- Sin examen seleccionado -->
   @if (!selectedExam) {
-    <div class="empty-state">
-      <ion-icon name="bookmark-outline" size="large" color="medium"></ion-icon>
-      <h2>Selecciona un examen</h2>
-      <p>Elige un examen del menú superior para comenzar tu repaso</p>
-    </div>
+    <ion-grid class="ion-text-center ion-padding" style="height: 100%;">
+      <ion-row class="ion-justify-content-center ion-align-items-center" style="height: 100%;">
+        <ion-col size="12" sizeMd="8" sizeLg="6">
+          <ion-icon name="bookmark-outline" size="large" color="medium" style="font-size: 64px;"></ion-icon>
+          <h2>Selecciona un examen</h2>
+          <ion-text color="medium">
+            <p>Elige un examen del menú superior para comenzar tu repaso</p>
+          </ion-text>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
   }
 
   <!-- Loading -->
   @if (selectedExam && !initialLoadComplete) {
-    <div class="loading-container">
-      <ion-card color="light">
+    <ion-card color="light">
+      <ion-card-content>
+        <ion-grid>
+          <ion-row class="ion-align-items-center">
+            <ion-col size="auto">
+              <ion-icon name="bookmark" size="large" color="primary"></ion-icon>
+            </ion-col>
+            <ion-col>
+              <h3 class="ion-no-margin">Cargando preguntas...</h3>
+              <ion-text color="medium">
+                <p class="ion-no-margin">Preparando lista de repaso</p>
+              </ion-text>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    @for (item of [1,2,3,4,5]; track item) {
+      <ion-card>
         <ion-card-content>
-          <div class="loading-header">
-            <ion-icon name="bookmark" size="large" color="primary"></ion-icon>
-            <div>
-              <h3>Cargando preguntas...</h3>
-              <p>Preparando lista de repaso</p>
-            </div>
-          </div>
+          <ion-skeleton-text [animated]="true" style="width: 20%; height: 24px;"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 100%; height: 60px; margin-top: 8px;"></ion-skeleton-text>
+          <ion-skeleton-text [animated]="true" style="width: 30%; height: 32px; margin-top: 12px;"></ion-skeleton-text>
         </ion-card-content>
       </ion-card>
-
-      @for (item of [1,2,3,4,5]; track item) {
-        <ion-card class="question-card skeleton">
-          <ion-card-content>
-            <ion-skeleton-text [animated]="true" style="width: 20%; height: 24px;"></ion-skeleton-text>
-            <ion-skeleton-text [animated]="true" style="width: 100%; height: 60px; margin-top: 8px;"></ion-skeleton-text>
-            <ion-skeleton-text [animated]="true" style="width: 30%; height: 32px; margin-top: 12px;"></ion-skeleton-text>
-          </ion-card-content>
-        </ion-card>
-      }
-    </div>
+    }
   }
 
   <!-- Lista de preguntas -->
   @if (selectedExam && initialLoadComplete) {
-    <div class="questions-container">
-      @for (question of questions; track question.numberQuestion) {
-        <ion-card
-          [id]="'review-question-' + question.numberQuestion"
-          class="question-card"
-          [class.completed]="isCompleted(question.numberQuestion)"
-          [class.current]="question.numberQuestion === currentQuestionNumber"
-          (click)="toggleComplete(question)">
+    @for (question of questions; track question.numberQuestion) {
+      <ion-card
+        [id]="'review-question-' + question.numberQuestion"
+        [color]="question.numberQuestion === currentQuestionNumber ? 'primary' : undefined"
+        [button]="true"
+        (click)="toggleComplete(question)">
 
-          <ion-card-content>
-            <!-- Header con número y estado -->
-            <div class="question-header">
-              <ion-chip [color]="isCompleted(question.numberQuestion) ? 'success' : 'medium'">
-                <ion-icon [name]="isCompleted(question.numberQuestion) ? 'checkmark-circle' : 'checkmark-circle-outline'"></ion-icon>
-                <ion-label><strong>Q{{ question.numberQuestion }}</strong></ion-label>
-              </ion-chip>
-            </div>
-
-            <!-- Pregunta -->
-            <div class="question-text">
-              {{ question.shortQuestion }}
-            </div>
-
-            <!-- Respuesta -->
-            @if (question.correctAnswer) {
-              <div class="answer-section">
-                <ion-chip color="success" class="answer-chip">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <ion-label><strong>Respuesta:</strong> {{ question.correctAnswer }}</ion-label>
+        <ion-card-header>
+          <ion-grid class="ion-no-padding">
+            <ion-row class="ion-align-items-center">
+              <ion-col size="auto">
+                <ion-chip [color]="question.numberQuestion === currentQuestionNumber ? 'light' : (isCompleted(question.numberQuestion) ? 'success' : 'medium')">
+                  <ion-icon [name]="isCompleted(question.numberQuestion) ? 'checkmark-circle' : 'checkmark-circle-outline'"></ion-icon>
+                  <ion-label><strong>Pregunta {{ question.numberQuestion }}</strong></ion-label>
                 </ion-chip>
-              </div>
-            }
-          </ion-card-content>
-        </ion-card>
-      }
+              </ion-col>
+              @if (isCompleted(question.numberQuestion)) {
+                <ion-col>
+                  <ion-badge [color]="question.numberQuestion === currentQuestionNumber ? 'light' : 'success'">
+                    <ion-icon name="checkmark" style="margin-right: 4px;"></ion-icon>
+                    Leída
+                  </ion-badge>
+                </ion-col>
+              }
+            </ion-row>
+          </ion-grid>
+        </ion-card-header>
 
-      <!-- Sin preguntas -->
-      @if (questions.length === 0) {
-        <div class="empty-state">
-          <ion-icon name="alert-circle" size="large" color="warning"></ion-icon>
-          <h3>No hay preguntas</h3>
-          <p>No se encontraron preguntas para este examen</p>
-        </div>
-      }
-    </div>
+        <ion-card-content>
+          <!-- Pregunta -->
+          <ion-text>
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 12px;">
+              {{ question.shortQuestion }}
+            </p>
+          </ion-text>
 
-    <!-- Navegación flotante -->
-    <div class="floating-nav">
-      <ion-button
-        size="small"
-        fill="solid"
-        color="primary"
+          <!-- Respuesta -->
+          @if (question.correctAnswer) {
+            <ion-grid class="ion-no-padding">
+              <ion-row class="ion-align-items-start">
+                <ion-col size="auto">
+                  <ion-icon name="checkmark-circle" color="success" style="font-size: 20px; margin-top: 2px;"></ion-icon>
+                </ion-col>
+                <ion-col>
+                  <ion-text>
+                    <p style="margin: 0; font-size: 15px; line-height: 1.5;">
+                      <strong>{{ question.correctAnswer }}</strong>
+                    </p>
+                  </ion-text>
+                </ion-col>
+              </ion-row>
+            </ion-grid>
+          }
+        </ion-card-content>
+      </ion-card>
+    }
+
+    <!-- Sin preguntas -->
+    @if (questions.length === 0) {
+      <ion-grid class="ion-text-center ion-padding">
+        <ion-row class="ion-justify-content-center">
+          <ion-col size="12" sizeMd="8" sizeLg="6">
+            <ion-icon name="alert-circle" size="large" color="warning" style="font-size: 64px;"></ion-icon>
+            <h3>No hay preguntas</h3>
+            <ion-text color="medium">
+              <p>No se encontraron preguntas para este examen</p>
+            </ion-text>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    }
+  }
+
+  <!-- FAB de navegación: Anterior (izquierda) -->
+  @if (selectedExam && initialLoadComplete && questions.length > 0) {
+    <ion-fab vertical="center" horizontal="start" slot="fixed">
+      <ion-fab-button
+        color="secondary"
         (click)="goToPreviousQuestion()"
         [disabled]="currentQuestionNumber <= 1">
-        <ion-icon name="chevron-up" slot="icon-only"></ion-icon>
-      </ion-button>
+        <ion-icon name="chevron-up"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
 
-      <div class="nav-info" (click)="openGoToDialog()">
-        <ion-text color="light">
-          <strong>{{ currentQuestionNumber || '-' }}</strong> / {{ totalQuestions }}
-        </ion-text>
-        <ion-icon name="navigate" color="light" class="nav-icon"></ion-icon>
-      </div>
-
-      <ion-button
-        size="small"
-        fill="solid"
-        color="primary"
+    <!-- FAB de navegación: Siguiente (derecha) -->
+    <ion-fab vertical="center" horizontal="end" slot="fixed">
+      <ion-fab-button
+        color="secondary"
         (click)="goToNextQuestion()"
         [disabled]="currentQuestionNumber >= totalQuestions">
-        <ion-icon name="chevron-down" slot="icon-only"></ion-icon>
-      </ion-button>
+        <ion-icon name="chevron-down"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
 
-      <ion-button
-        size="small"
-        fill="clear"
-        color="success"
-        (click)="markAllPreviousComplete()"
-        [disabled]="currentQuestionNumber <= 1"
-        title="Marcar anteriores como completadas">
-        <ion-icon name="checkmark-done" slot="icon-only"></ion-icon>
-      </ion-button>
-    </div>
+    <!-- FAB de acciones (bottom-right) -->
+    <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+      <ion-fab-button color="secondary">
+        <ion-icon name="ellipsis-vertical"></ion-icon>
+      </ion-fab-button>
+
+      <ion-fab-list side="top">
+        <ion-fab-button
+          color="tertiary"
+          (click)="openGoToDialog()">
+          <ion-icon name="navigate"></ion-icon>
+        </ion-fab-button>
+
+        <ion-fab-button
+          color="success"
+          (click)="markAllPreviousComplete()"
+          [disabled]="currentQuestionNumber <= 0">
+          <ion-icon name="checkmark-done"></ion-icon>
+        </ion-fab-button>
+      </ion-fab-list>
+    </ion-fab>
   }
 </ion-content>

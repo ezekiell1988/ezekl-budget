@@ -10,10 +10,12 @@ from typing import Optional, Dict
 from app.database.connection import execute_sp
 from app.api.routes.auth import get_current_user
 from app.models.exam_question import (
-    ExamQuestion,
-    ExamQuestionListRequest,
     ExamQuestionListResponse,
-    ExamQuestionErrorResponse
+    ExamQuestionErrorResponse,
+    SetQuestionRequest,
+    SetQuestionResponse,
+    SetToQuestionRequest,
+    SetToQuestionResponse
 )
 
 # Configurar logging
@@ -122,16 +124,28 @@ async def get_exam_questions(
     Raises:
         HTTPException: Si hay error en la consulta o en la base de datos
     """
-    logger.info(f"Usuario {current_user.get('email')} consultando preguntas del examen {idExam}")
+    logger.info(f"Usuario {current_user.get('user', {}).get('emailLogin')} consultando preguntas del examen {idExam}")
     
     try:
+        # Obtener idLogin del usuario autenticado
+        user_data = current_user.get('user', {})
+        id_login = user_data.get('idLogin')
+        
+        if not id_login:
+            logger.error(f"Usuario sin idLogin: {current_user}")
+            raise HTTPException(
+                status_code=401,
+                detail="Token de usuario inválido: falta información del usuario"
+            )
+        
         # Construir el objeto de request para el SP
         request_data = {
             "search": search,
             "sort": sort,
             "page": page,
             "itemPerPage": itemPerPage,
-            "idExam": idExam
+            "idExam": idExam,
+            "idLogin": id_login
         }
         
         # Ejecutar el stored procedure
@@ -178,4 +192,245 @@ async def get_exam_questions(
         raise HTTPException(
             status_code=500,
             detail=f"Error al obtener preguntas del examen: {str(e)}"
+        )
+
+
+@router.post(
+    "/set-question",
+    response_model=SetQuestionResponse,
+    summary="Marcar pregunta como vista/completada",
+    description="""Marca una pregunta de examen como vista o completada por el usuario autenticado.
+    
+    Este endpoint registra el progreso del usuario en un examen específico:
+    
+    **Funcionalidades:**
+    - Crea o actualiza el registro de progreso del usuario
+    - Asocia automáticamente con el usuario autenticado (desde JWT)
+    - Idempotente: múltiples llamadas con los mismos datos no crean duplicados
+    
+    **Autenticación:**
+    - Requiere token JWT válido en el header Authorization
+    - Header: `Authorization: Bearer {token}`
+    - El idLogin se obtiene automáticamente del token
+    - El idCompany se obtiene automáticamente del token
+    
+    **Body (JSON):**
+    - `idExamQuestion`: ID de la pregunta del examen a marcar
+    
+    **Respuesta:**
+    - `success`: true si la operación fue exitosa
+    - `message`: Mensaje descriptivo de la operación
+    
+    **Ejemplo de uso:**
+    ```json
+    POST /exam-questions/set-question
+    {
+      "idExamQuestion": 42
+    }
+    ```
+    """,
+    responses={
+        200: {
+            "description": "Pregunta marcada exitosamente",
+            "model": SetQuestionResponse
+        },
+        401: {
+            "description": "Token de autorización requerido, inválido o expirado"
+        },
+        500: {
+            "description": "Error interno del servidor",
+            "model": ExamQuestionErrorResponse
+        }
+    }
+)
+async def set_question(
+    request: SetQuestionRequest,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Marca una pregunta como vista/completada por el usuario autenticado.
+    
+    Args:
+        request: Datos de la pregunta a marcar
+        current_user: Usuario autenticado (inyectado por Depends)
+    
+    Returns:
+        SetQuestionResponse: Confirmación de la operación
+        
+    Raises:
+        HTTPException: Si hay error en la operación o en la base de datos
+    """
+    logger.info(f"Usuario {current_user.get('user', {}).get('emailLogin')} marcando pregunta {request.idExamQuestion}")
+    
+    try:
+        # Obtener idLogin y idCompany del usuario autenticado
+        user_data = current_user.get('user', {})
+        id_login = user_data.get('idLogin')
+        id_company = user_data.get('idCompany')
+        
+        if not id_login:
+            logger.error(f"Usuario sin idLogin: {current_user}")
+            raise HTTPException(
+                status_code=401,
+                detail="Token de usuario inválido: falta información del usuario"
+            )
+        
+        # Construir el JSON para el SP
+        request_data = {
+            "idLogin": id_login,
+            "idExamQuestion": request.idExamQuestion
+        }
+        
+        # Ejecutar el stored procedure
+        result = await execute_sp("spLoginExamQuestionSetQuestion", request_data)
+        
+        logger.info(f"Pregunta {request.idExamQuestion} marcada exitosamente para usuario {id_login}")
+        
+        return SetQuestionResponse(
+            success=True,
+            message="Pregunta marcada exitosamente"
+        )
+        
+    except HTTPException:
+        # Re-lanzar HTTPException sin modificar
+        raise
+    except Exception as e:
+        logger.error(f"Error al marcar pregunta: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al marcar pregunta: {str(e)}"
+        )
+
+
+@router.post(
+    "/set-to-question",
+    response_model=SetToQuestionResponse,
+    summary="Marcar preguntas hasta un número específico",
+    description="""Marca todas las preguntas desde la 1 hasta el número especificado como leídas/completadas.
+    
+    Este endpoint sincroniza el progreso del usuario en un examen:
+    
+    **Funcionalidades:**
+    - Marca como leídas todas las preguntas desde 1 hasta `numberQuestion`
+    - Elimina marcas de preguntas posteriores a `numberQuestion` (si existen)
+    - Asocia automáticamente con el usuario autenticado (desde JWT)
+    - Idempotente: múltiples llamadas producen el mismo resultado
+    
+    **Casos de uso:**
+    - Marcar progreso al navegar por preguntas
+    - Sincronizar estado cuando el usuario vuelve atrás
+    - Actualizar progreso en lote
+    
+    **Autenticación:**
+    - Requiere token JWT válido en el header Authorization
+    - Header: `Authorization: Bearer {token}`
+    - El idLogin se obtiene automáticamente del token
+    
+    **Body (JSON):**
+    - `idExam`: ID del examen
+    - `numberQuestion`: Número hasta donde marcar (ejemplo: 50 marca preguntas 1-50)
+    
+    **Respuesta:**
+    - `success`: true si la operación fue exitosa
+    - `message`: Mensaje descriptivo de la operación
+    - `recordsInserted`: Cantidad de preguntas nuevas marcadas
+    - `recordsDeleted`: Cantidad de marcas eliminadas (preguntas posteriores)
+    - `totalChanges`: Total de cambios realizados
+    
+    **Ejemplo de uso:**
+    ```json
+    POST /exam-questions/set-to-question
+    {
+      "idExam": 1,
+      "numberQuestion": 50
+    }
+    ```
+    
+    **Ejemplo de respuesta:**
+    ```json
+    {
+      "success": true,
+      "message": "Progreso actualizado: 15 preguntas marcadas, 5 desmarcadas",
+      "recordsInserted": 15,
+      "recordsDeleted": 5,
+      "totalChanges": 20
+    }
+    ```
+    """,
+    responses={
+        200: {
+            "description": "Progreso actualizado exitosamente",
+            "model": SetToQuestionResponse
+        },
+        401: {
+            "description": "Token de autorización requerido, inválido o expirado"
+        },
+        500: {
+            "description": "Error interno del servidor",
+            "model": ExamQuestionErrorResponse
+        }
+    }
+)
+async def set_to_question(
+    request: SetToQuestionRequest,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Marca preguntas hasta un número específico como leídas/completadas.
+    
+    Args:
+        request: Datos del examen y número de pregunta
+        current_user: Usuario autenticado (inyectado por Depends)
+    
+    Returns:
+        SetToQuestionResponse: Resultado de la operación con estadísticas
+        
+    Raises:
+        HTTPException: Si hay error en la operación o en la base de datos
+    """
+    logger.info(
+        f"Usuario {current_user.get('user', {}).get('emailLogin')} marcando hasta pregunta {request.numberQuestion} "
+        f"del examen {request.idExam}"
+    )
+    
+    try:
+        # Obtener idLogin del usuario autenticado
+        user_data = current_user.get('user', {})
+        id_login = user_data.get('idLogin')
+        
+        if not id_login:
+            logger.error(f"Usuario sin idLogin: {current_user}")
+            raise HTTPException(
+                status_code=401,
+                detail="Token de usuario inválido: falta información del usuario"
+            )
+        
+        # Construir el JSON para el SP
+        request_data = {
+            "idLogin": id_login,
+            "idExam": request.idExam,
+            "numberQuestion": request.numberQuestion
+        }
+        
+        # Ejecutar el stored procedure
+        await execute_sp("spLoginExamQuestionSetToQuestion", request_data)
+        
+        logger.info(
+            f"Progreso actualizado hasta pregunta {request.numberQuestion} del examen {request.idExam} "
+            f"para usuario {id_login}"
+        )
+        
+        return SetToQuestionResponse(
+            success=True,
+            message=f"Progreso actualizado hasta la pregunta {request.numberQuestion}"
+        )
+        
+    except HTTPException:
+        # Re-lanzar HTTPException sin modificar
+        raise
+    except Exception as e:
+        logger.error(f"Error al marcar preguntas hasta {request.numberQuestion}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al actualizar progreso: {str(e)}"
         )

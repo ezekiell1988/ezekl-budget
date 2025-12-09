@@ -14,11 +14,19 @@ import {
   IonSelect,
   IonSelectOption,
   IonCard,
+  IonCardHeader,
   IonCardContent,
   IonText,
   IonChip,
   IonLabel,
   IonSkeletonText,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonFab,
+  IonFabButton,
+  IonFabList,
+  IonBadge,
   AlertController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -32,7 +40,10 @@ import {
   bookmark,
   alertCircle,
   navigate,
-  checkmarkDone } from 'ionicons/icons';
+  checkmarkDone,
+  checkmark,
+  arrowBack,
+  ellipsisVertical } from 'ionicons/icons';
 import { Subject, takeUntil } from 'rxjs';
 import { ExamQuestionService } from '../services/exam-question.service';
 import { ExamQuestion, ExamPdf } from '../models';
@@ -42,13 +53,6 @@ const AVAILABLE_PDFS: ExamPdf[] = [
   { id: 1, filename: 'az-204.pdf', displayName: 'AZ-204: Developing Solutions for Microsoft Azure', path: '/assets/pdfs/az-204.pdf' },
   { id: 2, filename: 'dp-300.pdf', displayName: 'DP-300: Administering Microsoft Azure SQL Solutions', path: '/assets/pdfs/dp-300.pdf' },
 ];
-
-interface ReviewState {
-  examId: number;
-  currentQuestion: number;
-  completedQuestions: number[];
-  timestamp: number;
-}
 
 @Component({
   selector: 'app-exam-review',
@@ -69,11 +73,19 @@ interface ReviewState {
     IonSelect,
     IonSelectOption,
     IonCard,
+    IonCardHeader,
     IonCardContent,
     IonText,
     IonChip,
     IonLabel,
     IonSkeletonText,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonFab,
+    IonFabButton,
+    IonFabList,
+    IonBadge,
   ],
 })
 export class ExamReviewPage implements OnInit, OnDestroy {
@@ -83,7 +95,6 @@ export class ExamReviewPage implements OnInit, OnDestroy {
   questions: ExamQuestion[] = [];
   totalQuestions: number = 0;
   currentQuestionNumber: number = 0;
-  completedQuestions: Set<number> = new Set();
 
   // Estados
   loading = false;
@@ -92,14 +103,13 @@ export class ExamReviewPage implements OnInit, OnDestroy {
 
   // Lifecycle
   private destroy$ = new Subject<void>();
-  private readonly STORAGE_KEY = 'exam-review-state';
 
   constructor(
     private examQuestionService: ExamQuestionService,
     private router: Router,
     private alertController: AlertController
   ) {
-    addIcons({refresh,bookmarkOutline,bookmark,checkmarkCircle,alertCircle,chevronUp,chevronDown,checkmarkCircleOutline,navigate,checkmarkDone});
+    addIcons({refresh,bookmarkOutline,bookmark,checkmark,checkmarkCircle,alertCircle,ellipsisVertical,chevronUp,chevronDown,navigate,checkmarkDone,checkmarkCircleOutline,arrowBack});
   }
 
   ngOnInit() {
@@ -127,14 +137,22 @@ export class ExamReviewPage implements OnInit, OnDestroy {
       .subscribe(total => {
         this.totalQuestions = total;
       });
-
-    // Restaurar estado
-    this.restoreState();
   }
 
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    this.examQuestionService.clearState();
+  }
+
+  /**
+   * Regresar al selector de examen
+   */
+  goBackToSelector() {
+    this.selectedExam = null;
+    this.questions = [];
+    this.initialLoadComplete = false;
+    this.currentQuestionNumber = 0;
     this.examQuestionService.clearState();
   }
 
@@ -150,9 +168,6 @@ export class ExamReviewPage implements OnInit, OnDestroy {
       this.questions = [];
       this.initialLoadComplete = false;
       this.examQuestionService.clearState();
-
-      // Cargar preguntas completadas para este examen
-      this.loadCompletedQuestions(examId);
 
       // Cargar todas las preguntas
       await this.loadAllQuestions(examId);
@@ -176,8 +191,8 @@ export class ExamReviewPage implements OnInit, OnDestroy {
 
       this.initialLoadComplete = true;
 
-      // Restaurar posición si existe
-      this.scrollToCurrentQuestion();
+      // Seleccionar la última pregunta leída
+      this.selectLastReadQuestion();
     } catch (error) {
       console.error('Error cargando preguntas:', error);
     } finally {
@@ -186,16 +201,35 @@ export class ExamReviewPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Marcar/desmarcar pregunta como completada
+   * Marcar pregunta individual como leída
    */
   toggleComplete(question: ExamQuestion) {
-    if (this.completedQuestions.has(question.numberQuestion)) {
-      this.completedQuestions.delete(question.numberQuestion);
-    } else {
-      this.completedQuestions.add(question.numberQuestion);
+    if (!this.selectedExam) return;
+
+    const wasCompleted = question.readed || false;
+
+    // Si ya estaba marcada, no hacer nada (no se puede desmarcar individualmente)
+    if (wasCompleted) {
+      this.currentQuestionNumber = question.numberQuestion;
+      return;
     }
 
+    // Actualizar localmente de inmediato para UI responsiva
+    question.readed = true;
     this.currentQuestionNumber = question.numberQuestion;
+
+    // Llamar al backend para marcar como leída
+    this.examQuestionService.setQuestion(question.idExamQuestion).subscribe({
+      next: (response) => {
+        console.log('Pregunta marcada en el servidor:', response.message);
+      },
+      error: (error) => {
+        console.error('Error al marcar pregunta en el servidor:', error);
+        // Revertir el cambio local si falla
+        question.readed = false;
+      }
+    });
+
     this.saveState();
   }
 
@@ -203,7 +237,8 @@ export class ExamReviewPage implements OnInit, OnDestroy {
    * Verificar si una pregunta está completada
    */
   isCompleted(questionNumber: number): boolean {
-    return this.completedQuestions.has(questionNumber);
+    const question = this.questions.find(q => q.numberQuestion === questionNumber);
+    return question?.readed || false;
   }
 
   /**
@@ -245,74 +280,40 @@ export class ExamReviewPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Guardar estado en localStorage
+   * Guardar estado en localStorage (solo para la pregunta actual)
    */
   private saveState() {
-    if (!this.selectedExam) return;
-
-    const state: ReviewState = {
-      examId: this.selectedExam.id,
-      currentQuestion: this.currentQuestionNumber,
-      completedQuestions: Array.from(this.completedQuestions),
-      timestamp: Date.now()
-    };
-
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+    // Ya no usamos localStorage, este método se mantiene para compatibilidad
+    // pero no hace nada. La posición se determina desde el backend.
   }
 
   /**
-   * Restaurar estado desde localStorage
+   * Seleccionar la última pregunta leída automáticamente
    */
-  private restoreState() {
-    try {
-      const saved = localStorage.getItem(this.STORAGE_KEY);
-      if (!saved) return;
-
-      const state: ReviewState = JSON.parse(saved);
-
-      // Verificar que no haya expirado (24 horas)
-      const ONE_DAY = 24 * 60 * 60 * 1000;
-      if (Date.now() - state.timestamp > ONE_DAY) {
-        localStorage.removeItem(this.STORAGE_KEY);
-        return;
+  private selectLastReadQuestion() {
+    // Buscar la última pregunta que está marcada como leída
+    let lastReadIndex = -1;
+    for (let i = this.questions.length - 1; i >= 0; i--) {
+      if (this.questions[i].readed) {
+        lastReadIndex = i;
+        break;
       }
-
-      // Restaurar examen seleccionado
-      this.selectedExam = this.availablePdfs.find(pdf => pdf.id === state.examId) || null;
-
-      if (this.selectedExam) {
-        this.currentQuestionNumber = state.currentQuestion;
-        this.completedQuestions = new Set(state.completedQuestions);
-
-        // Cargar preguntas
-        setTimeout(() => {
-          this.loadAllQuestions(this.selectedExam!.id);
-        }, 100);
-      }
-    } catch (error) {
-      console.error('Error restaurando estado:', error);
     }
-  }
 
-  /**
-   * Cargar preguntas completadas para un examen
-   */
-  private loadCompletedQuestions(examId: number) {
-    try {
-      const saved = localStorage.getItem(this.STORAGE_KEY);
-      if (!saved) return;
-
-      const state: ReviewState = JSON.parse(saved);
-      if (state.examId === examId) {
-        this.completedQuestions = new Set(state.completedQuestions);
-        this.currentQuestionNumber = state.currentQuestion;
-      } else {
-        this.completedQuestions = new Set();
-        this.currentQuestionNumber = 0;
-      }
-    } catch {
-      this.completedQuestions = new Set();
+    // Si hay preguntas leídas, seleccionar la última + 1 (la siguiente sin leer)
+    // Si no hay ninguna leída, seleccionar la primera
+    if (lastReadIndex >= 0 && lastReadIndex < this.questions.length - 1) {
+      this.currentQuestionNumber = this.questions[lastReadIndex + 1].numberQuestion;
+    } else if (lastReadIndex === this.questions.length - 1) {
+      // Si todas están leídas, seleccionar la última
+      this.currentQuestionNumber = this.questions[lastReadIndex].numberQuestion;
+    } else {
+      // Si ninguna está leída, seleccionar la primera
+      this.currentQuestionNumber = this.questions[0]?.numberQuestion || 1;
     }
+
+    this.scrollToCurrentQuestion();
+    this.saveState();
   }
 
   /**
@@ -332,7 +333,8 @@ export class ExamReviewPage implements OnInit, OnDestroy {
    * Contador de progreso
    */
   get progressText(): string {
-    return `${this.completedQuestions.size} / ${this.totalQuestions} completadas`;
+    const completed = this.questions.filter(q => q.readed).length;
+    return `${completed} / ${this.totalQuestions} completadas`;
   }
 
   /**
@@ -340,7 +342,8 @@ export class ExamReviewPage implements OnInit, OnDestroy {
    */
   get progressPercent(): number {
     if (this.totalQuestions === 0) return 0;
-    return Math.round((this.completedQuestions.size / this.totalQuestions) * 100);
+    const completed = this.questions.filter(q => q.readed).length;
+    return Math.round((completed / this.totalQuestions) * 100);
   }
 
   /**
@@ -392,14 +395,14 @@ export class ExamReviewPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Marcar todas las preguntas anteriores a la actual como completadas
+   * Marcar todas las preguntas hasta la actual como completadas
    */
   async markAllPreviousComplete() {
-    if (this.currentQuestionNumber <= 1) return;
+    if (this.currentQuestionNumber <= 0 || !this.selectedExam) return;
 
     const alert = await this.alertController.create({
-      header: 'Marcar anteriores',
-      message: `¿Marcar las preguntas 1 a ${this.currentQuestionNumber - 1} como completadas?`,
+      header: 'Marcar hasta aquí',
+      message: `¿Marcar las preguntas 1 a ${this.currentQuestionNumber} como completadas?`,
       buttons: [
         {
           text: 'Cancelar',
@@ -408,11 +411,26 @@ export class ExamReviewPage implements OnInit, OnDestroy {
         {
           text: 'Marcar todas',
           handler: () => {
-            for (const question of this.questions) {
-              if (question.numberQuestion < this.currentQuestionNumber) {
-                this.completedQuestions.add(question.numberQuestion);
+            // Marcar localmente primero para UI responsiva
+            this.questions.forEach(q => {
+              q.readed = q.numberQuestion <= this.currentQuestionNumber;
+            });
+
+            // Llamar al backend
+            this.examQuestionService.setToQuestion(
+              this.selectedExam!.id,
+              this.currentQuestionNumber
+            ).subscribe({
+              next: (response) => {
+                console.log('Progreso actualizado:', response.message);
+              },
+              error: (error) => {
+                console.error('Error al actualizar progreso:', error);
+                // Recargar preguntas para sincronizar con el servidor
+                this.loadAllQuestions(this.selectedExam!.id);
               }
-            }
+            });
+
             this.saveState();
           }
         }
