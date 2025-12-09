@@ -173,34 +173,14 @@
     }
   }
 
-  <!-- FAB de navegación: Anterior (izquierda) -->
+  <!-- FAB de acciones (top-right) -->
   @if (selectedExam && initialLoadComplete && questions.length > 0) {
-    <ion-fab vertical="center" horizontal="start" slot="fixed">
-      <ion-fab-button
-        color="secondary"
-        (click)="goToPreviousQuestion()"
-        [disabled]="currentQuestionNumber <= 1">
-        <ion-icon name="chevron-up"></ion-icon>
-      </ion-fab-button>
-    </ion-fab>
-
-    <!-- FAB de navegación: Siguiente (derecha) -->
-    <ion-fab vertical="center" horizontal="end" slot="fixed">
-      <ion-fab-button
-        color="secondary"
-        (click)="goToNextQuestion()"
-        [disabled]="currentQuestionNumber >= totalQuestions">
-        <ion-icon name="chevron-down"></ion-icon>
-      </ion-fab-button>
-    </ion-fab>
-
-    <!-- FAB de acciones (bottom-right) -->
-    <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab vertical="top" horizontal="end" slot="fixed">
       <ion-fab-button color="secondary">
         <ion-icon name="ellipsis-vertical"></ion-icon>
       </ion-fab-button>
 
-      <ion-fab-list side="top">
+      <ion-fab-list side="bottom">
         <ion-fab-button
           color="tertiary"
           (click)="openGoToDialog()">
@@ -214,6 +194,26 @@
           <ion-icon name="checkmark-done"></ion-icon>
         </ion-fab-button>
       </ion-fab-list>
+    </ion-fab>
+
+    <!-- FAB de navegación: Anterior (izquierda) -->
+    <ion-fab vertical="bottom" horizontal="start" slot="fixed">
+      <ion-fab-button
+        color="secondary"
+        (click)="goToPreviousQuestion()"
+        [disabled]="currentQuestionNumber <= 1">
+        <ion-icon name="chevron-up"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
+
+    <!-- FAB de navegación: Siguiente (derecha) -->
+    <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+      <ion-fab-button
+        color="secondary"
+        (click)="goToNextQuestion()"
+        [disabled]="currentQuestionNumber >= totalQuestions">
+        <ion-icon name="chevron-down"></ion-icon>
+      </ion-fab-button>
     </ion-fab>
   }
 </ion-content>
