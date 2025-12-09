@@ -1,62 +1,69 @@
 """
-Webhook para recibir datos JSON y guardarlos en archivos.
+Webhook para recibir datos JSON y guardarlos en la base de datos.
 """
 
 from fastapi import APIRouter, Request, HTTPException
 from datetime import datetime
-from pathlib import Path
-import json
 import logging
+from app.database.connection import execute_sp
+from app.models.webhook import WebhookPayload, WebhookLogResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Ruta relativa donde se guardarán los archivos JSON
-# Se resuelve desde la raíz del proyecto (donde está app/)
-DATA_PATH = Path(__file__).parent.parent.parent.parent / "data"
 
-
-@router.post("/webhook")
-async def receive_webhook(request: Request):
+@router.post("/webhook", response_model=WebhookLogResponse)
+async def receive_webhook(payload: WebhookPayload):
     """
-    Recibe cualquier payload JSON y lo guarda en un archivo con timestamp como nombre.
+    Recibe cualquier payload JSON y lo guarda en la base de datos usando spLogAdd.
     
     Args:
-        request: Request de FastAPI con el payload JSON
+        payload: Payload JSON flexible que acepta cualquier estructura
         
     Returns:
-        dict: Confirmación con el nombre del archivo guardado
+        WebhookLogResponse: Confirmación con el ID del log creado
+        
+    Example:
+        ```json
+        {
+            "evento": "pedido_creado",
+            "cliente": "Juan Pérez",
+            "monto": 150.50,
+            "items": [
+                {"producto": "Laptop", "cantidad": 1}
+            ]
+        }
+        ```
     """
     try:
-        # Obtener el JSON del request
-        payload = await request.json()
+        # Convertir el payload a diccionario
+        payload_dict = payload.model_dump()
         
-        # Generar timestamp para el nombre del archivo
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        filename = f"{timestamp}.json"
+        # Generar timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Asegurar que el directorio existe
-        DATA_PATH.mkdir(parents=True, exist_ok=True)
-        
-        # Guardar el archivo
-        file_path = DATA_PATH / filename
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(payload, f, indent=2, ensure_ascii=False)
-        
-        logger.info(f"✅ Webhook recibido y guardado en: {filename}")
-        
-        return {
-            "success": True,
-            "message": "Webhook recibido correctamente",
-            "filename": filename,
-            "timestamp": timestamp
+        # Preparar datos para el stored procedure
+        sp_params = {
+            "typeLog": "webhook",
+            "log": payload_dict
         }
         
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ Error al parsear JSON: {str(e)}")
-        raise HTTPException(status_code=400, detail="El payload no es un JSON válido")
-    
+        # Ejecutar stored procedure
+        result = await execute_sp("spLogAdd", sp_params)
+        
+        logger.info(f"✅ Webhook recibido y guardado en BD con ID: {result.get('idLog')}")
+        
+        return WebhookLogResponse(
+            success=True,
+            message="Webhook recibido y guardado en base de datos",
+            idLog=result.get("idLog"),
+            timestamp=timestamp
+        )
+        
     except Exception as e:
         logger.error(f"❌ Error al procesar webhook: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error al procesar webhook: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error al procesar webhook: {str(e)}"
+        )
