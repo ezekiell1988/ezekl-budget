@@ -45,7 +45,7 @@ async def receive_webhook(payload: WebhookPayload):
         
         # Preparar datos para el stored procedure
         sp_params = {
-            "typeLog": "webhook",
+            "typeLog": "CRM event webhook",
             "log": payload_dict
         }
         
