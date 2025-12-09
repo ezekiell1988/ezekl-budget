@@ -150,6 +150,18 @@ export class MeService {
               text: 'NEW',
               color: 'success'
             }
+          },
+          {
+            id: 'voice-review',
+            title: 'Repaso con Voz',
+            icon: 'mic-outline',
+            route: '/voice-review',
+            enabled: true,
+            color: 'tertiary',
+            badge: {
+              text: 'NEW',
+              color: 'success'
+            }
           }
         ]
       },

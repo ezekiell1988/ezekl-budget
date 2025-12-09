@@ -72,6 +72,13 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta voice-review - repaso de preguntas con lector de voz
+  {
+    path: 'voice-review',
+    loadComponent: () => import('./voice-review/voice-review.page').then( m => m.VoiceReviewPage),
+    canActivate: [AuthGuard]
+  },
+
   // Ruta CRM - protegida, con sub-rutas para tabs
   {
     path: 'crm',

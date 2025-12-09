@@ -1,0 +1,147 @@
+/**
+ * Estilos para la página de repaso con voz
+ * Optimizada para lectura de voz con texto grande y espaciado
+ */
+
+// === Progress Bar ===
+.progress-bar {
+  padding: 8px 16px;
+
+  .progress-info {
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .progress-track {
+    height: 8px;
+    background: var(--ion-color-step-150, var(--ion-color-step-200));
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--ion-color-success);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+}
+
+// === Exam Selector ===
+.exam-selector {
+  width: 100%;
+  max-width: none;
+}
+
+// === Voice Question Card ===
+.voice-question-card {
+  margin: 16px auto;
+  max-width: 900px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+// === Voice Content ===
+.voice-content {
+  padding: 16px 0;
+
+  .question-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ion-color-primary);
+    margin: 0 0 12px;
+  }
+
+  .question-text {
+    font-size: 18px;
+    line-height: 1.8;
+    margin: 0 0 24px;
+    color: var(--ion-text-color);
+  }
+
+  .answer-section {
+    margin-top: 24px;
+    padding: 16px;
+    background: var(--ion-color-success-tint);
+    border-radius: 8px;
+    border-left: 4px solid var(--ion-color-success);
+  }
+
+  .answer-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    ion-icon {
+      font-size: 24px;
+    }
+  }
+
+  .answer-text {
+    font-size: 17px;
+    line-height: 1.7;
+    margin: 0;
+    color: var(--ion-color-success-shade);
+  }
+}
+
+// === Voice Controls ===
+.voice-controls {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ion-color-step-150);
+
+  ion-button {
+    min-width: 150px;
+    font-size: 16px;
+    font-weight: 600;
+
+    ion-icon {
+      font-size: 24px;
+    }
+  }
+}
+
+// === Speaking Indicator ===
+.speaking-indicator {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  animation: pulse 1.5s ease-in-out infinite;
+
+  ion-icon {
+    font-size: 20px;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+// === Responsive ===
+@media (max-width: 768px) {
+  .voice-content {
+    .question-text {
+      font-size: 16px;
+    }
+
+    .answer-text {
+      font-size: 15px;
+    }
+  }
+
+  .voice-controls {
+    ion-button {
+      min-width: 120px;
+      font-size: 14px;
+    }
+  }
+}

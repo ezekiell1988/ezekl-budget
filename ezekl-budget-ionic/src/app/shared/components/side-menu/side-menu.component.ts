@@ -48,6 +48,7 @@ import {
   chevronForward,
   apps,
   businessOutline,
+  micOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../../../services/auth.service';
 import { MeService, MenuSection, MenuItem } from '../../../services/me.service';
@@ -119,6 +120,7 @@ export class SideMenuComponent implements OnInit {
       chevronForward,
       apps,
       businessOutline,
+      micOutline,
     });
 
     // Configurar observables
