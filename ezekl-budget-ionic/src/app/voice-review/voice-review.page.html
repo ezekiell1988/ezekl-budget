@@ -116,91 +116,72 @@
     }
   }
 
-  <!-- Vista de pregunta actual (para lector de voz) -->
-  @if (selectedExam && initialLoadComplete && currentQuestion) {
-    <ion-card>
-      <ion-card-header>
-        <ion-grid class="ion-no-padding">
-          <ion-row class="ion-align-items-center ion-justify-content-between">
-            <ion-col>
-              <ion-chip [color]="isCompleted(currentQuestion.numberQuestion) ? 'success' : 'primary'">
-                <ion-icon [name]="isCompleted(currentQuestion.numberQuestion) ? 'checkmark-circle' : 'radio-button-on'"></ion-icon>
-                <ion-label><strong>Pregunta {{ currentQuestion.numberQuestion }} de {{ totalQuestions }}</strong></ion-label>
-              </ion-chip>
-            </ion-col>
-            @if (isSpeaking) {
+  <!-- Lista de preguntas en formato card -->
+  @if (selectedExam && initialLoadComplete) {
+    @for (question of questions; track question.numberQuestion) {
+      <ion-card
+        [id]="'voice-question-' + question.numberQuestion"
+        [color]="question.numberQuestion === currentQuestionNumber ? 'primary' : undefined"
+        [button]="true"
+        (click)="goToQuestion(question.numberQuestion)">
+
+        <ion-card-header>
+          <ion-grid class="ion-no-padding">
+            <ion-row class="ion-align-items-center ion-justify-content-between">
               <ion-col size="auto">
-                <ion-chip color="warning">
-                  <ion-icon name="volume-high"></ion-icon>
-                  <ion-label>Reproduciendo</ion-label>
+                <ion-chip [color]="question.numberQuestion === currentQuestionNumber ? 'light' : (isCompleted(question.numberQuestion) ? 'success' : 'medium')">
+                  <ion-icon [name]="isCompleted(question.numberQuestion) ? 'checkmark-circle' : 'checkmark-circle-outline'"></ion-icon>
+                  <ion-label><strong>Pregunta {{ question.numberQuestion }}</strong></ion-label>
                 </ion-chip>
               </ion-col>
-            }
-          </ion-row>
-        </ion-grid>
-      </ion-card-header>
+              @if (isCompleted(question.numberQuestion)) {
+                <ion-col>
+                  <ion-badge [color]="question.numberQuestion === currentQuestionNumber ? 'light' : 'success'">
+                    <ion-icon name="checkmark" style="margin-right: 4px;"></ion-icon>
+                    Leída
+                  </ion-badge>
+                </ion-col>
+              }
+              @if (question.numberQuestion === currentQuestionNumber && isSpeaking) {
+                <ion-col size="auto">
+                  <ion-chip color="warning">
+                    <ion-icon name="volume-high"></ion-icon>
+                    <ion-label>Leyendo</ion-label>
+                  </ion-chip>
+                </ion-col>
+              }
+            </ion-row>
+          </ion-grid>
+        </ion-card-header>
 
-      <ion-card-content>
-        <ion-text>
-          <h2>{{ currentQuestion.shortQuestion }}</h2>
-        </ion-text>
+        <ion-card-content>
+          <!-- Pregunta -->
+          <ion-text>
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 12px;">
+              {{ question.shortQuestion }}
+            </p>
+          </ion-text>
 
-        @if (currentQuestion.correctAnswer) {
-          <ion-item color="success" lines="none" class="ion-margin-top">
-            <ion-icon name="checkmark-circle" slot="start"></ion-icon>
-            <ion-label class="ion-text-wrap">
-              <h3>Respuesta Correcta</h3>
-              <p>{{ currentQuestion.correctAnswer }}</p>
-            </ion-label>
-          </ion-item>
-        }
-      </ion-card-content>
-    </ion-card>
-
-    <!-- Lista completa de preguntas (siempre visible) -->
-    <ion-card>
-      <ion-card-header>
-        <ion-grid class="ion-no-padding">
-          <ion-row class="ion-align-items-center ion-justify-content-between">
-            <ion-col>
-              <ion-text color="primary">
-                <h3 class="ion-no-margin">
-                  <ion-icon name="list" style="vertical-align: middle;"></ion-icon>
-                  Todas las Preguntas
-                </h3>
-              </ion-text>
-            </ion-col>
-            <ion-col size="auto">
-              <ion-chip color="primary">
-                <ion-label><strong>{{ progressText }}</strong></ion-label>
-              </ion-chip>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
-      </ion-card-header>
-
-      <ion-list>
-        @for (question of questions; track question.numberQuestion) {
-          <ion-item
-            button
-            [color]="question.numberQuestion === currentQuestionNumber ? 'light' : undefined"
-            (click)="goToQuestion(question.numberQuestion)">
-            <ion-chip
-              slot="start"
-              [color]="isCompleted(question.numberQuestion) ? 'success' : 'medium'"
-              size="small">
-              <ion-label>{{ question.numberQuestion }}</ion-label>
-            </ion-chip>
-            <ion-label class="ion-text-wrap">
-              <p>{{ question.shortQuestion | slice:0:80 }}{{ question.shortQuestion.length > 80 ? '...' : '' }}</p>
-            </ion-label>
-            @if (isCompleted(question.numberQuestion)) {
-              <ion-icon name="checkmark-circle" color="success" slot="end"></ion-icon>
-            }
-          </ion-item>
-        }
-      </ion-list>
-    </ion-card>
+          <!-- Respuesta -->
+          @if (question.correctAnswer) {
+            <ion-grid class="ion-no-padding">
+              <ion-row class="ion-align-items-start">
+                <ion-col size="auto">
+                  <ion-icon name="checkmark-circle" color="success" style="font-size: 20px; margin-top: 2px;"></ion-icon>
+                </ion-col>
+                <ion-col>
+                  <ion-text>
+                    <p style="margin: 0; font-size: 15px; line-height: 1.5;">
+                      <strong>{{ question.correctAnswer }}</strong>
+                    </p>
+                  </ion-text>
+                </ion-col>
+              </ion-row>
+            </ion-grid>
+          }
+        </ion-card-content>
+      </ion-card>
+    }
   }
 
   <!-- Sin preguntas -->
