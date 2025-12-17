@@ -9,10 +9,13 @@ from datetime import datetime
 import email
 from email import policy
 import logging
+import re
+from bs4 import BeautifulSoup
 from app.core.http_request import get_text
 from app.services.email_service import email_service
 from app.models.requests import EmailSendRequest
 from app.models.responses import EmailSendResponse, WebhookEventResponse
+from app.database.connection import execute_sp
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -74,161 +77,199 @@ async def send_email(request: EmailSendRequest) -> EmailSendResponse:
 
 @router.post(
     "/webhook",
-    summary="Webhook de eventos de email",
-    description="""Recibe y procesa eventos de email desde Azure Event Grid.
+    summary="Webhook de emails entrantes",
+    description="""Recibe emails entrantes y los guarda en la base de datos.
     
-    Este webhook maneja automáticamente diferentes tipos de eventos relacionados
-    con emails, incluyendo la validación inicial de suscripción y el procesamiento
-    de emails entrantes.
+    Este webhook procesa emails entrantes, extrae el último mensaje limpio
+    (sin la cadena de respuestas) y guarda toda la información en la base de datos.
     
-    **Tipos de eventos soportados:**
-    - `SubscriptionValidation`: Validación inicial del webhook con Azure Event Grid
-    - `InboundEmailReceived`: Emails recibidos en las direcciones configuradas
-    - `EmailDeliveryReportReceived`: Reportes de entrega, rebotes y fallos
+    **Campos esperados:**
+    - `messageId`: ID único del mensaje
+    - `from`: Remitente del email
+    - `to`: Destinatario(s) del email
+    - `subject`: Asunto del email
+    - `receivedDate`: Fecha de recepción
+    - `body`: Contenido HTML completo del email
+    - `attachments`: Lista de adjuntos (opcional)
     
     **Funcionalidades:**
-    - Validación automática de suscripción Azure Event Grid
-    - Procesamiento de emails entrantes con análisis MIME completo
-    - Extracción de contenido HTML y texto plano
-    - Manejo de adjuntos (logging por ahora)
-    - Reportes de entrega y métricas
+    - Extracción automática del último mensaje (sin cadena de respuestas)
+    - Guardado en base de datos con timestamp
+    - Procesamiento de contenido HTML
+    - Logging detallado
     
-    **Seguridad:**
-    - Validación de headers de Azure Event Grid
-    - Manejo seguro de errores sin exposición de detalles internos
-    - Logging detallado para monitoreo y debugging
-    
-    **Nota:** Este endpoint debe ser configurado como el destino del webhook
-    en Azure Event Grid para recibir eventos de email automáticamente.
-    """,
-    response_model=WebhookEventResponse,
-    response_description="Respuesta de procesamiento del evento (validationResponse para suscripción, ok/error para eventos)"
-)
-async def email_webhook(events: List[Dict[str, Any]], req: Request) -> WebhookEventResponse:
+    **Ejemplo de uso:**
+    ```json
+    {
+        "messageId": "AAMkA...",
+        "from": "usuario@ejemplo.com",
+        "to": "destino@ejemplo.com",
+        "subject": "Asunto del correo",
+        "receivedDate": "2025-12-17T18:05:11+00:00",
+        "body": "<html>Contenido del email...</html>",
+        "attachments": []
+    }
+    ```
     """
-    Webhook para recibir eventos de email desde Azure Event Grid.
-
-    Maneja:
-    - Validación de suscripción de Azure Event Grid
-    - Procesamiento de emails entrantes
-    - Reportes de entrega/rebote
+)
+async def email_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Webhook para recibir emails entrantes y guardarlos en BD.
+    
+    Similar a receive_webhook pero específico para emails.
+    Extrae el mensaje limpio del body HTML y guarda en la base de datos.
 
     Args:
-        events: Lista de eventos de Azure Event Grid
-        req: Request object de FastAPI con headers
+        payload: Datos del email entrante
 
     Returns:
-        WebhookEventResponse: Respuesta estructurada según el tipo de evento
+        Dict con success, message, idLog y timestamp
     """
     try:
-        # 1) Obtener headers
-        aeg_type = req.headers.get("aeg-event-type")
-        processed_at = datetime.utcnow().isoformat() + "Z"
-
-
-        # 2) Validación de suscripción de Azure Event Grid
-        if aeg_type == "SubscriptionValidation":
-            if events and "data" in events[0] and "validationCode" in events[0]["data"]:
-                validation_code = events[0]["data"]["validationCode"]
-                return WebhookEventResponse(validationResponse=validation_code)
-            else:
-                logger.error("Evento de validación sin código")
-                return WebhookEventResponse(
-                    ok=False,
-                    message="Evento de validación inválido",
-                    event_type="SubscriptionValidation",
-                    processed_at=processed_at
-                )
-
-        # 3) Procesamiento de eventos normales
-        if aeg_type == "Notification":
-            events_processed = 0
-            for ev in events:
-                event_type = ev.get("eventType", "")
-                data = ev.get("data", {})
-
-                # Procesamiento de correos entrantes
-                if event_type.endswith("InboundEmailReceived"):
-                    await _process_inbound_email(data)
-                    events_processed += 1
-
-                # Procesamiento de reportes de entrega/rebote (opcional)
-                elif event_type.endswith("EmailDeliveryReportReceived"):
-                    await _process_delivery_report(data)
-                    events_processed += 1
-
-            return WebhookEventResponse(
-                ok=True,
-                message=f"Procesados {events_processed} evento(s) exitosamente",
-                event_type="Notification",
-                processed_at=processed_at
-            )
-
-        # 4) Tipo de evento no reconocido
-        logger.warning(f"Tipo de evento no reconocido: {aeg_type}")
-        return WebhookEventResponse(
-            ok=False,
-            message=f"Tipo de evento no reconocido: {aeg_type}",
-            event_type=aeg_type or "Unknown",
-            processed_at=processed_at
-        )
-
+        # Generar timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Extraer el mensaje limpio del body HTML si existe
+        body_html = payload.get("body", "")
+        if body_html:
+            message_content = _extract_last_message_from_html(body_html)
+            # Agregar el campo "message" al payload
+            payload["message"] = message_content
+        
+        # Preparar datos para el stored procedure
+        sp_params = {
+            "typeLog": "Email Inbound",
+            "log": payload
+        }
+        
+        # Ejecutar stored procedure
+        result = await execute_sp("spLogAdd", sp_params)
+        
+        id_log = result.get("idLog")
+        from_address = payload.get("from", "N/A")
+        subject = payload.get("subject", "N/A")
+        
+        logger.info(f"✅ Email recibido y guardado en BD con ID: {id_log} | From: {from_address} | Subject: {subject}")
+        
+        return {
+            "success": True,
+            "message": "Email recibido y guardado en base de datos",
+            "idLog": id_log,
+            "timestamp": timestamp
+        }
+        
     except Exception as e:
-        logger.error(f"Error procesando evento de email: {str(e)}")
-        # No lanzamos excepción para evitar reintentos innecesarios desde Azure
-        return WebhookEventResponse(
-            ok=False,
-            message="Error interno procesando evento",
-            event_type="Error",
-            processed_at=datetime.utcnow().isoformat() + "Z"
+        logger.error(f"❌ Error al procesar email webhook: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error al procesar email: {str(e)}"
         )
 
 
-async def _process_inbound_email(data: Dict[str, Any]) -> None:
+async def _process_inbound_email(data: Dict[str, Any]) -> int | None:
     """
-    Procesa un email entrante desde Azure Event Grid.
+    Procesa un email entrante desde Azure Event Grid o Microsoft Graph API.
 
     Args:
         data: Datos del evento de email entrante
+        
+    Returns:
+        ID del log creado en BD o None si falla
     """
-    mime_url = data.get("emailContentUrl")
-    to_addresses = data.get("to", [])
-    from_address = data.get("from")
-    subject = data.get("subject")
+    try:
+        # Detectar si es formato de Microsoft Graph API (con messageId, body, etc.)
+        if "messageId" in data and "body" in data:
+            # Formato directo de Microsoft Graph
+            message_id = data.get("messageId")
+            from_address = data.get("from")
+            to_addresses = data.get("to")
+            subject = data.get("subject")
+            received_date = data.get("receivedDate")
+            body_html = data.get("body", "")
+            attachments = data.get("attachments", [])
+            
+            # Extraer solo el último mensaje del HTML (sin cadena de respuestas)
+            message_content = _extract_last_message_from_html(body_html)
+            
+            # Preparar payload para guardar en BD
+            email_data = {
+                "messageId": message_id,
+                "from": from_address,
+                "to": to_addresses,
+                "subject": subject,
+                "receivedDate": received_date,
+                "message": message_content,  # Solo el último mensaje limpio
+                "body": body_html,  # Body completo para referencia
+                "attachments": attachments
+            }
+            
+            # Guardar en base de datos usando spLogAdd
+            sp_params = {
+                "typeLog": "Email Inbound",
+                "log": email_data
+            }
+            
+            result = await execute_sp("spLogAdd", sp_params)
+            id_log = result.get('idLog')
+            logger.info(f"✅ Email guardado en BD con ID: {id_log} | From: {from_address} | Subject: {subject}")
+            return id_log
+            
+        # Formato de Azure Event Grid con MIME URL
+        elif "emailContentUrl" in data:
+            mime_url = data.get("emailContentUrl")
+            to_addresses = data.get("to", [])
+            from_address = data.get("from")
+            subject = data.get("subject")
 
+            # Descargar contenido MIME si está disponible
+            if mime_url:
+                # Usar nuestro cliente HTTP para descargas asíncronas
+                mime_content = await get_text(mime_url)
 
-    # Descargar contenido MIME si está disponible
-    if mime_url:
-        try:
-            # Usar nuestro cliente HTTP para descargas asíncronas
-            mime_content = await get_text(mime_url)
+                # Parsear el mensaje MIME
+                msg = email.message_from_string(mime_content, policy=policy.default)
 
-            # Parsear el mensaje MIME
-            msg = email.message_from_string(mime_content, policy=policy.default)
+                # Extraer cuerpo de texto y HTML
+                text_body, html_body = _extract_email_body(msg)
+                
+                # Extraer solo el último mensaje
+                message_content = _extract_last_message_from_html(html_body) if html_body else text_body
 
-            # Extraer cuerpo de texto y HTML
-            text_body, html_body = _extract_email_body(msg)
-
-            # TODO: Implementar lógica de negocio aquí
-            # - Guardar en base de datos
-            # - Procesar adjuntos si los hay
-            # - Enviar notificaciones
-            # - Etc.
-
-            # Log básico del contenido (limitado por seguridad)
-            if text_body:
-                pass  # Logger eliminado
-
-            # Procesar adjuntos si existen
-            attachments = list(msg.iter_attachments())
-            if attachments:
-                pass  # Logger eliminado
-                # TODO: Implementar procesamiento de adjuntos
-
-        except Exception as e:
-            logger.error(f"Error descargando o procesando contenido MIME: {str(e)}")
-    else:
-        logger.warning("No se proporcionó URL de contenido MIME")
+                # Preparar payload para guardar en BD
+                email_data = {
+                    "from": from_address,
+                    "to": to_addresses,
+                    "subject": subject,
+                    "message": message_content,
+                    "text_body": text_body,
+                    "html_body": html_body
+                }
+                
+                # Procesar adjuntos si existen
+                attachments = list(msg.iter_attachments())
+                if attachments:
+                    email_data["attachments_count"] = len(attachments)
+                
+                # Guardar en base de datos
+                sp_params = {
+                    "typeLog": "Email Inbound MIME",
+                    "log": email_data
+                }
+                
+                result = await execute_sp("spLogAdd", sp_params)
+                id_log = result.get('idLog')
+                logger.info(f"✅ Email MIME guardado en BD con ID: {id_log} | From: {from_address}")
+                return id_log
+            else:
+                logger.warning("No se proporcionó URL de contenido MIME")
+                return None
+        else:
+            logger.warning(f"Formato de email no reconocido: {data.keys()}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error procesando email entrante: {str(e)}")
+        return None
 
 
 async def _process_delivery_report(data: Dict[str, Any]) -> None:
@@ -244,6 +285,63 @@ async def _process_delivery_report(data: Dict[str, Any]) -> None:
     # - Manejar rebotes
     # - Actualizar métricas
     # - Etc.
+
+
+def _extract_last_message_from_html(html_content: str) -> str:
+    """
+    Extrae solo el último mensaje de un email HTML, eliminando la cadena de respuestas.
+    
+    Args:
+        html_content: Contenido HTML completo del email
+        
+    Returns:
+        Texto del último mensaje sin la cadena de respuestas
+    """
+    if not html_content:
+        return ""
+    
+    try:
+        # Parsear HTML con BeautifulSoup
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Buscar el separador de respuestas (común en Outlook y otros clientes)
+        # Puede ser <hr>, <div id="divRplyFwdMsg">, etc.
+        separators = [
+            soup.find('hr'),  # Separador horizontal
+            soup.find('div', id='divRplyFwdMsg'),  # Outlook
+            soup.find('div', class_='gmail_quote'),  # Gmail
+            soup.find('blockquote')  # Quotes generales
+        ]
+        
+        # Encontrar el primer separador válido
+        first_separator = None
+        for sep in separators:
+            if sep:
+                first_separator = sep
+                break
+        
+        if first_separator:
+            # Eliminar todo después del separador (incluido el separador)
+            for element in [first_separator] + list(first_separator.find_all_next()):
+                if element.parent:
+                    element.extract()
+        
+        # Obtener el texto limpio
+        text = soup.get_text(separator='\n', strip=True)
+        
+        # Limpiar líneas vacías múltiples
+        text = re.sub(r'\n\s*\n+', '\n\n', text)
+        
+        return text.strip()
+        
+    except Exception as e:
+        logger.error(f"Error extrayendo último mensaje del HTML: {str(e)}")
+        # Fallback: intentar extraer texto básico
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            return soup.get_text(strip=True)[:500]  # Limitar a 500 caracteres
+        except:
+            return "[Error al procesar contenido del email]"
 
 
 def _extract_email_body(
