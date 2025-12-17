@@ -13,6 +13,7 @@ import re
 from bs4 import BeautifulSoup
 from app.core.http_request import get_text
 from app.services.email_service import email_service
+from app.services.email_queue import queue_email, EmailTask, email_queue
 from app.models.requests import EmailSendRequest
 from app.models.responses import EmailSendResponse, WebhookEventResponse
 from app.database.connection import execute_sp
@@ -27,52 +28,71 @@ router = APIRouter()
 @router.post(
     "/send",
     summary="Enviar email",
-    description="""Envía un email utilizando Azure Communication Services.
+    description="""Envía un email utilizando SMTP de Microsoft 365 en background.
     
-    Este endpoint permite enviar emails a uno o múltiples destinatarios con contenido
-    en formato HTML y/o texto plano. Requiere que se proporcione al menos uno de
-    los dos tipos de contenido.
+    El email se agrega a una cola de envío y se procesa en segundo plano,
+    permitiendo una respuesta inmediata sin esperar el envío completo.
     
-    **Características:**
-    - Soporte para múltiples destinatarios (TO, CC, BCC)
-    - Contenido HTML y/o texto plano
-    - Validación automática de formato de email
-    - Integración con Azure Communication Services
+    **Parámetros:**
+    - to: email del destinatario
+    - subject: asunto
+    - body: contenido del mensaje (HTML o texto plano)
     
     **Ejemplo de uso:**
     ```json
     {
-        "to": ["usuario@ejemplo.com"],
+        "to": "usuario@ejemplo.com",
         "subject": "Bienvenido a Ezekl Budget",
-        "html_content": "<h1>¡Hola!</h1><p>Gracias por registrarte.</p>",
-        "text_content": "¡Hola! Gracias por registrarte."
+        "body": "<h1>¡Hola!</h1><p>Gracias por registrarte.</p>"
     }
     ```
-    """,
-    response_description="Confirmación del envío con detalles del resultado"
-)
-async def send_email(request: EmailSendRequest) -> EmailSendResponse:
     """
-    Endpoint para enviar emails usando Azure Communication Services.
+)
+async def send_email(
+    to: str,
+    subject: str,
+    body: str
+) -> Dict[str, Any]:
+    """
+    Encola un email para envío en background.
     
     Args:
-        request: Datos del email a enviar (destinatarios, asunto, contenido)
+        to: Email del destinatario
+        subject: Asunto del email
+        body: Contenido del email (HTML o texto plano)
         
     Returns:
-        EmailSendResponse: Resultado del envío
-        
-    Raises:
-        HTTPException: Si ocurre un error de validación
+        Dict con success, message, taskId y timestamp
     """
-    # Validar que al menos uno de los contenidos esté presente
-    if not request.html_content and not request.text_content:
-        raise HTTPException(
-            status_code=400, 
-            detail="Se debe proporcionar al menos html_content o text_content"
+    try:
+        # Detectar si es HTML o texto plano
+        is_html = body.strip().startswith('<')
+        
+        # Agregar email a la cola de envío
+        task_id = await queue_email(
+            to=[to],
+            subject=subject,
+            message=body,
+            is_html=is_html
         )
-    
-    # Usar el servicio centralizado para enviar el email
-    return await email_service.send_email_from_request(request)
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        logger.info(f"📬 Email encolado para {to} | Task ID: {task_id} | Subject: {subject}")
+        
+        return {
+            "success": True,
+            "message": f"Email encolado para envío a {to}",
+            "to": to,
+            "subject": subject,
+            "taskId": task_id,
+            "status": "queued",
+            "timestamp": timestamp
+        }
+        
+    except Exception as e:
+        error_msg = f"Error al encolar email: {str(e)}"
+        logger.error(f"❌ {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @router.post(
@@ -148,8 +168,54 @@ async def email_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
         id_log = result.get("idLog")
         from_address = payload.get("from", "N/A")
         subject = payload.get("subject", "N/A")
+        message_content = payload.get("message", "")
         
         logger.info(f"✅ Email recibido y guardado en BD con ID: {id_log} | From: {from_address} | Subject: {subject}")
+        
+        # Enviar copia de confirmación de recepción
+        try:
+            confirmation_subject = f"✅ Recibido: {subject}"
+            confirmation_body = f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2 style="color: #4CAF50;">✅ Email Recibido - Ezekl Budget</h2>
+                    <p>Hemos recibido tu email correctamente y ha sido registrado en nuestro sistema.</p>
+                    
+                    <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <strong>Detalles del email recibido:</strong>
+                        <ul style="list-style: none; padding: 0;">
+                            <li><strong>ID de registro:</strong> {id_log}</li>
+                            <li><strong>De:</strong> {from_address}</li>
+                            <li><strong>Asunto:</strong> {subject}</li>
+                            <li><strong>Fecha:</strong> {timestamp}</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <strong>Mensaje recibido:</strong>
+                        <p style="margin: 10px 0; white-space: pre-wrap;">{message_content[:500]}{"..." if len(message_content) > 500 else ""}</p>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                        <em>Este es un mensaje automático de confirmación. No es necesario responder.</em>
+                    </p>
+                </body>
+            </html>
+            """
+            
+            # Encolar email de confirmación
+            task_id = await queue_email(
+                to=[from_address],
+                subject=confirmation_subject,
+                message=confirmation_body,
+                is_html=True
+            )
+            
+            logger.info(f"📧 Confirmación encolada para {from_address} | Task ID: {task_id}")
+            
+        except Exception as email_error:
+            # No fallar el webhook si el envío de confirmación falla
+            logger.error(f"⚠️ Error al encolar confirmación de recepción: {str(email_error)}")
         
         return {
             "success": True,

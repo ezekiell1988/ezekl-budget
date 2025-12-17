@@ -1,10 +1,12 @@
 """
-Servicio centralizado para gestión de emails usando Azure Communication Services.
+Servicio centralizado para gestión de emails usando SMTP.
 Este módulo proporciona funcionalidad reutilizable para el envío de emails
 desde cualquier parte de la aplicación.
 """
 
-from azure.communication.email import EmailClient
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
 import logging
 from app.core.config import settings
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class EmailService:
     """
-    Servicio para gestión de emails usando Azure Communication Services.
+    Servicio para gestión de emails usando SMTP.
     
     Proporciona métodos para enviar emails de forma asíncrona con configuración
     flexible de remitente, múltiples destinatarios y soporte para contenido
@@ -25,24 +27,8 @@ class EmailService:
     """
     
     def __init__(self):
-        """Inicializa el servicio de email con la configuración de Azure."""
-        self._client = None
-    
-    @property
-    def client(self) -> EmailClient:
-        """
-        Cliente de Azure Communication Services con lazy loading.
-        
-        Returns:
-            EmailClient: Cliente configurado para envío de emails
-        """
-        if self._client is None:
-            connection_string = (
-                f"endpoint={settings.azure_communication_endpoint};"
-                f"accesskey={settings.azure_communication_key}"
-            )
-            self._client = EmailClient.from_connection_string(connection_string)
-        return self._client
+        """Inicializa el servicio de email con la configuración SMTP."""
+        pass
     
     async def send_email(
         self,
@@ -56,7 +42,7 @@ class EmailService:
         from_address: Optional[str] = None
     ) -> EmailSendResponse:
         """
-        Envía un email usando Azure Communication Services.
+        Envía un email usando SMTP.
         
         Args:
             to: Lista de direcciones de destinatarios
@@ -81,49 +67,75 @@ class EmailService:
                 raise ValueError("Se debe proporcionar al menos html_content o text_content")
             
             # Determinar el remitente
-            sender_address = from_address or settings.azure_communication_sender_address
+            sender_address = from_address or settings.smtp_from
             
-            # Construir el mensaje de email según el formato de Azure
-            message = {
-                "senderAddress": sender_address,
-                "recipients": {
-                    "to": [{"address": str(email)} for email in to]
-                },
-                "content": {
-                    "subject": subject,
-                }
-            }
+            # Crear mensaje MIME
+            msg = MIMEMultipart('alternative')
+            msg['From'] = sender_address
+            msg['To'] = ', '.join(to)
+            msg['Subject'] = subject
             
-            # Agregar contenido HTML y/o texto
+            # Agregar CC si existe
+            if cc:
+                msg['Cc'] = ', '.join(cc)
+            
+            # Agregar Reply-To si existe
+            if reply_to:
+                msg['Reply-To'] = reply_to
+            
+            # Agregar contenido (primero texto plano, luego HTML)
             if text_content:
-                message["content"]["plainText"] = text_content
+                msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
             if html_content:
-                message["content"]["html"] = html_content
+                msg.attach(MIMEText(html_content, 'html', 'utf-8'))
             
+            # Preparar lista de todos los destinatarios
+            all_recipients = to.copy()
+            if cc:
+                all_recipients.extend(cc)
+            if bcc:
+                all_recipients.extend(bcc)
             
-            # Enviar el email
-            poller = self.client.begin_send(message)
-            result = poller.result()
+            # Conectar y enviar email
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as server:
+                server.set_debuglevel(0)
+                server.starttls()
+                server.login(settings.smtp_user, settings.smtp_password)
+                server.send_message(msg, to_addrs=all_recipients)
             
+            logger.info(f"✅ Email enviado a {', '.join(to)} | Subject: {subject}")
             
             return EmailSendResponse(
                 success=True,
-                message="Email enviado exitosamente"
+                message=f"Email enviado exitosamente a {len(all_recipients)} destinatario(s)"
             )
             
         except ValueError as ve:
-            # Error de validación - devolver como error de aplicación
             logger.error(f"Error de validación enviando email: {str(ve)}")
             return EmailSendResponse(
                 success=False,
                 message=f"Error de validación: {str(ve)}"
             )
+        
+        except smtplib.SMTPAuthenticationError as e:
+            error_msg = "Error de autenticación SMTP. Verifica usuario y contraseña."
+            logger.error(f"❌ {error_msg}: {str(e)}")
+            return EmailSendResponse(
+                success=False,
+                message=error_msg
+            )
+            
+        except smtplib.SMTPException as e:
+            error_msg = f"Error SMTP: {str(e)}"
+            logger.error(f"❌ {error_msg}")
+            return EmailSendResponse(
+                success=False,
+                message=error_msg
+            )
             
         except Exception as e:
-            # Error general durante el envío
-            error_msg = f"Error enviando email: {str(e)}"
-            logger.error(error_msg)
-            
+            error_msg = f"Error inesperado enviando email: {str(e)}"
+            logger.error(f"❌ {error_msg}")
             return EmailSendResponse(
                 success=False,
                 message=error_msg

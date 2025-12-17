@@ -85,6 +85,13 @@ class Settings(BaseSettings):
     redis_password: Optional[str] = None
     redis_decode_responses: bool = True
     
+    # Configuración SMTP para envío de emails
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_password: str
+    smtp_from: str
+    
     @property
     def is_production(self) -> bool:
         """Detecta si la aplicación está corriendo en producción basado en ENVIRONMENT."""
