@@ -22,11 +22,6 @@ class Settings(BaseSettings):
     azure_openai_api_version: str = "2024-12-01-preview"
     azure_openai_audio_api_version: str = "2025-03-01-preview"  # API version para audio transcription
     
-    # Azure Communication Services Configuration
-    azure_communication_endpoint: str
-    azure_communication_key: str
-    azure_communication_sender_address: str
-    
     # Configuración de Microsoft Azure AD (opcional para autenticación)
     azure_client_id: Optional[str] = None
     azure_client_secret: Optional[str] = None

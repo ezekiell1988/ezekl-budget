@@ -88,13 +88,14 @@ async def lifespan(app: FastAPI):
     # Inicializar email queue
     await email_queue.start()
     
-    # Inicializar Redis
+    # Inicializar Redis (REQUERIDO)
     try:
         await redis_client.initialize()
         logger.info("✅ Redis inicializado exitosamente")
     except Exception as e:
-        logger.warning(f"⚠️  Redis no disponible: {str(e)}")
-        logger.warning("⚠️  La autenticación de WhatsApp no funcionará sin Redis")
+        logger.error(f"❌ Error crítico: No se pudo conectar a Redis: {str(e)}")
+        logger.error("❌ Redis es requerido para el funcionamiento de la aplicación")
+        raise RuntimeError(f"Redis connection failed: {str(e)}") from e
     
     yield  # Aquí la aplicación está ejecutándose
     

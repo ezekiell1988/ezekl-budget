@@ -69,9 +69,11 @@ jobs:
           AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME=gpt-4o-transcribe
           AZURE_OPENAI_API_VERSION=2024-12-01-preview
           AZURE_OPENAI_AUDIO_API_VERSION=2025-03-01-preview
-          AZURE_COMMUNICATION_ENDPOINT=${{ secrets.AZURE_COMMUNICATION_ENDPOINT }}
-          AZURE_COMMUNICATION_KEY=${{ secrets.AZURE_COMMUNICATION_KEY }}
-          AZURE_COMMUNICATION_SENDER_ADDRESS=${{ secrets.AZURE_COMMUNICATION_SENDER_ADDRESS }}
+          SMTP_HOST=smtp.office365.com
+          SMTP_PORT=587
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM=${{ secrets.SMTP_FROM }}
           AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
