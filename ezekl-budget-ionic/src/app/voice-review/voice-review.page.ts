@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -26,9 +26,8 @@ import {
   IonFab,
   IonFabButton,
   IonFabList,
-  IonList,
-  IonItem,
   IonProgressBar,
+  IonBadge,
   AlertController,
   ToastController,
 } from '@ionic/angular/standalone';
@@ -106,9 +105,8 @@ const AVAILABLE_PDFS: ExamPdf[] = [
     IonFab,
     IonFabButton,
     IonFabList,
-    IonList,
-    IonItem,
     IonProgressBar,
+    IonBadge,
   ],
 })
 export class VoiceReviewPage implements OnInit, OnDestroy {
@@ -138,7 +136,8 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
     private examQuestionService: ExamQuestionService,
     private router: Router,
     private alertController: AlertController,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private cdr: ChangeDetectorRef
   ) {
     addIcons({
       arrowBack,
@@ -389,6 +388,7 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
     }
 
     this.updateCurrentQuestion();
+    this.scrollToCurrentQuestion();
   }
 
   /**
@@ -505,6 +505,7 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
   goToQuestion(questionNumber: number) {
     const question = this.questions.find(q => q.numberQuestion === questionNumber);
     if (question) {
+      this.stopSpeech();
       this.currentQuestionNumber = questionNumber;
       this.updateCurrentQuestion();
       this.scrollToCurrentQuestion();
@@ -559,10 +560,13 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
    * Scroll hacia la pregunta actual en la lista
    */
   private scrollToCurrentQuestion() {
-    // Implementación básica - puede mejorarse con ViewChild si es necesario
-    const element = document.querySelector(`ion-item[color="light"]`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (this.currentQuestionNumber > 0) {
+      setTimeout(() => {
+        const element = document.getElementById(`voice-question-${this.currentQuestionNumber}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
     }
   }
 
@@ -637,7 +641,10 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.isSpeaking) {
+    // Verificar si hay algo reproduciéndose actualmente
+    const isCurrentlySpeaking = this.speechSynthesis.speaking && !this.speechSynthesis.paused;
+
+    if (isCurrentlySpeaking) {
       this.pauseSpeech();
     } else {
       this.startSpeech();
@@ -654,6 +661,12 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
     if (this.currentUtterance && this.speechSynthesis.paused) {
       this.speechSynthesis.resume();
       this.isSpeaking = true;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    // Si ya está hablando, no hacer nada
+    if (this.speechSynthesis.speaking && !this.speechSynthesis.paused) {
       return;
     }
 
@@ -677,14 +690,20 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
     this.currentUtterance.pitch = 1; // Tono (0 - 2)
     this.currentUtterance.volume = 1; // Volumen (0 - 1)
 
+    // Establecer isSpeaking inmediatamente antes de los event listeners
+    this.isSpeaking = true;
+    this.cdr.detectChanges();
+
     // Event listeners
     this.currentUtterance.onstart = () => {
       this.isSpeaking = true;
+      this.cdr.detectChanges();
     };
 
     this.currentUtterance.onend = () => {
       this.isSpeaking = false;
       this.currentUtterance = null;
+      this.cdr.detectChanges();
 
       // Avanzar automáticamente a la siguiente pregunta
       if (this.autoReadNext) {
@@ -696,6 +715,7 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
       console.error('Error en speech synthesis:', event);
       this.isSpeaking = false;
       this.currentUtterance = null;
+      this.cdr.detectChanges();
       this.showToast('Error al reproducir voz', 'danger');
     };
 
@@ -709,8 +729,11 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
   private pauseSpeech() {
     if (!this.speechSynthesis) return;
 
-    this.speechSynthesis.pause();
-    this.isSpeaking = false;
+    if (this.speechSynthesis.speaking) {
+      this.speechSynthesis.pause();
+      this.isSpeaking = false;
+      this.cdr.detectChanges();
+    }
   }
 
   /**
@@ -722,6 +745,7 @@ export class VoiceReviewPage implements OnInit, OnDestroy {
     this.speechSynthesis.cancel();
     this.isSpeaking = false;
     this.currentUtterance = null;
+    this.cdr.detectChanges();
   }
 
   /**
