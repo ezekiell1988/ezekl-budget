@@ -3,8 +3,8 @@ Endpoints para gestión de emails recibidos a través de Azure Event Grid.
 Maneja la recepción de emails entrantes y reportes de entrega.
 """
 
-from dataclasses import Field
 from fastapi import APIRouter, Request, HTTPException
+from pydantic import BaseModel, Field
 from typing import Dict, Any, List
 from datetime import datetime
 import email
@@ -24,6 +24,13 @@ logger = logging.getLogger(__name__)
 
 # Router para endpoints de email
 router = APIRouter()
+
+
+class EmailSendRequestLocal(BaseModel):
+    """Modelo para envío de email"""
+    to: str = Field(..., description="Email del destinatario", example="ebaltodano@itqscr.com")
+    subject: str = Field(..., description="Asunto del email", example="Bienvenido a Ezekl Budget")
+    body: str = Field(..., description="Contenido del email (HTML o texto plano)", example="<h1>¡Hola!</h1><p>Gracias por registrarte.</p>")
 
 
 @router.post(
@@ -49,42 +56,36 @@ router = APIRouter()
     ```
     """
 )
-async def send_email(
-    to: str = Field(..., description="Email del destinatario", example="ebaltodano@itqscr.com"),
-    subject: str = Field(..., description="Asunto del email", example="Bienvenido a Ezekl Budget"),
-    body: str = Field(..., description="Contenido del email (HTML o texto plano)", example="<h1>¡Hola!</h1><p>Gracias por registrarte.</p>")
-) -> Dict[str, Any]:
+async def send_email(request: EmailSendRequestLocal) -> Dict[str, Any]:
     """
     Encola un email para envío en background.
     
     Args:
-        to: Email del destinatario
-        subject: Asunto del email
-        body: Contenido del email (HTML o texto plano)
+        request: Datos del email a enviar (to, subject, body)
         
     Returns:
         Dict con success, message, taskId y timestamp
     """
     try:
         # Detectar si es HTML o texto plano
-        is_html = body.strip().startswith('<')
+        is_html = request.body.strip().startswith('<')
         
         # Agregar email a la cola de envío
         task_id = await queue_email(
-            to=[to],
-            subject=subject,
-            message=body,
+            to=[request.to],
+            subject=request.subject,
+            message=request.body,
             is_html=is_html
         )
         
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logger.info(f"📬 Email encolado para {to} | Task ID: {task_id} | Subject: {subject}")
+        logger.info(f"📬 Email encolado para {request.to} | Task ID: {task_id} | Subject: {request.subject}")
         
         return {
             "success": True,
-            "message": f"Email encolado para envío a {to}",
-            "to": to,
-            "subject": subject,
+            "message": f"Email encolado para envío a {request.to}",
+            "to": request.to,
+            "subject": request.subject,
             "taskId": task_id,
             "status": "queued",
             "timestamp": timestamp
