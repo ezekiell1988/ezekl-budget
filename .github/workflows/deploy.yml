@@ -61,7 +61,7 @@ jobs:
           
           # Crear/actualizar archivo .env (siempre sobrescribir para consistencia)
           echo "📝 Creando/actualizando archivo .env con secretos de GitHub..."
-          cat > .env << EOF
+          cat > .env << 'ENVFILE'
           AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT_NAME=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
@@ -72,44 +72,47 @@ jobs:
           SMTP_HOST=smtp.office365.com
           SMTP_PORT=587
           SMTP_USER=${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD='${{ secrets.SMTP_PASSWORD }}'
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
           SMTP_FROM=${{ secrets.SMTP_FROM }}
           AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET='${{ secrets.AZURE_CLIENT_SECRET }}'
+          AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}
-          PORT=\$DEPLOY_PORT
+          PORT=__DEPLOY_PORT__
           DB_HOST=localhost
           DB_PORT=1433
           DB_NAME=budgetdb
           DB_USER=budgetuser
-          DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_DRIVER=ODBC Driver 18 for SQL Server
           DB_TRUST_CERT=yes
           ENVIRONMENT=production
           CRM_TENANT_ID=${{ secrets.CRM_TENANT_ID }}
           CRM_CLIENT_ID=${{ secrets.CRM_CLIENT_ID }}
-          CRM_CLIENT_SECRET='${{ secrets.CRM_CLIENT_SECRET }}'
+          CRM_CLIENT_SECRET=${{ secrets.CRM_CLIENT_SECRET }}
           CRM_D365_BASE_URL=${{ secrets.CRM_D365_BASE_URL }}
           CRM_API_VERSION=v9.0
-          WHATSAPP_ACCESS_TOKEN='${{ secrets.WHATSAPP_ACCESS_TOKEN }}'
+          WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }}
           WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
-          WHATSAPP_VERIFY_TOKEN='${{ secrets.WHATSAPP_VERIFY_TOKEN }}'
+          WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }}
           WHATSAPP_API_VERSION=v24.0
           COPILOT_ENVIRONMENT_ID=${{ secrets.COPILOT_ENVIRONMENT_ID }}
           COPILOT_SCHEMA_NAME=${{ secrets.COPILOT_SCHEMA_NAME }}
           COPILOT_TENANT_ID=${{ secrets.COPILOT_TENANT_ID }}
           COPILOT_AGENT_APP_ID=${{ secrets.COPILOT_AGENT_APP_ID }}
-          COPILOT_CLIENT_SECRET='${{ secrets.COPILOT_CLIENT_SECRET }}'
+          COPILOT_CLIENT_SECRET=${{ secrets.COPILOT_CLIENT_SECRET }}
           REDIS_HOST=localhost
           REDIS_PORT=6379
           REDIS_DB=0
           REDIS_PASSWORD=
           REDIS_DECODE_RESPONSES=true
-          EOF
+          ENVFILE
+          
+          # Reemplazar el placeholder con el valor real del puerto
+          sed -i "s/__DEPLOY_PORT__/$DEPLOY_PORT/g" .env
 
           # Crear .env temporal para el nuevo contenedor (puerto temporal)
           cp .env .env.temp
-          sed -i "s/PORT=\$DEPLOY_PORT/PORT=$TEMP_PORT/" .env.temp
+          sed -i "s/PORT=$DEPLOY_PORT/PORT=$TEMP_PORT/" .env.temp
           
           # Verificar e instalar Docker si no está instalado
           echo "📦 Verificando Docker..."
