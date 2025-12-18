@@ -3,6 +3,7 @@ Endpoints para gestión de emails recibidos a través de Azure Event Grid.
 Maneja la recepción de emails entrantes y reportes de entrega.
 """
 
+from dataclasses import Field
 from fastapi import APIRouter, Request, HTTPException
 from typing import Dict, Any, List
 from datetime import datetime
@@ -49,9 +50,9 @@ router = APIRouter()
     """
 )
 async def send_email(
-    to: str,
-    subject: str,
-    body: str
+    to: str = Field(..., description="Email del destinatario", example="ebaltodano@itqscr.com"),
+    subject: str = Field(..., description="Asunto del email", example="Bienvenido a Ezekl Budget"),
+    body: str = Field(..., description="Contenido del email (HTML o texto plano)", example="<h1>¡Hola!</h1><p>Gracias por registrarte.</p>")
 ) -> Dict[str, Any]:
     """
     Encola un email para envío en background.
