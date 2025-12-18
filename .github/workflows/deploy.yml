@@ -61,7 +61,7 @@ jobs:
           
           # Crear/actualizar archivo .env (siempre sobrescribir para consistencia)
           echo "📝 Creando/actualizando archivo .env con secretos de GitHub..."
-          cat > .env << EOF
+          cat > .env << 'EOF'
           AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT_NAME=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
