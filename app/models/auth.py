@@ -337,6 +337,75 @@ class AuthErrorResponse(BaseModel):
         }
 
 
+# ============== MODELOS PARA AUTENTICACIÓN CON MICROSOFT ==============
+
+
+class MicrosoftUrlRequest(BaseModel):
+    """
+    Modelo para solicitar autenticación con Microsoft con URL de retorno personalizada.
+    
+    Este flujo permite que aplicaciones externas inicien el login con Microsoft
+    y reciban el token JWT en una URL de callback personalizada.
+    """
+    
+    redirect_url: str = Field(
+        description="URL donde se redirigirá al usuario después de la autenticación exitosa con el token JWT como query param",
+        min_length=10,
+        examples=[
+            "https://miapp.com/callback",
+            "https://ejemplo.com/auth/success",
+            "http://localhost:3000/login-callback"
+        ]
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "redirect_url": "https://miapp.com/callback"
+            }
+        }
+
+
+class MicrosoftUrlResponse(BaseModel):
+    """
+    Modelo de respuesta para la solicitud de autenticación con URL personalizada.
+    
+    Contiene la URL de Microsoft a la que el cliente debe redirigir al usuario.
+    """
+    
+    success: bool = Field(
+        description="Indica si la operación fue exitosa",
+        examples=[True]
+    )
+    
+    message: str = Field(
+        description="Mensaje descriptivo",
+        examples=["URL de autenticación generada exitosamente"]
+    )
+    
+    auth_url: str = Field(
+        description="URL de Microsoft a la que se debe redirigir al usuario para autenticación",
+        examples=["https://login.microsoftonline.com/..."]
+    )
+    
+    flow_id: str = Field(
+        description="Identificador único del flujo de autenticación",
+        examples=["550e8400-e29b-41d4-a716-446655440000"]
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "message": "URL de autenticación generada exitosamente",
+                "auth_url": "https://login.microsoftonline.com/...",
+                "flow_id": "550e8400-e29b-41d4-a716-446655440000"
+            }
+        }
+
+
 # ============== MODELOS PARA AUTENTICACIÓN DE WHATSAPP ==============
 
 

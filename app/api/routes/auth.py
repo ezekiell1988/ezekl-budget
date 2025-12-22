@@ -10,8 +10,11 @@ from typing import Dict, Any, Optional
 import logging
 import json
 import aiohttp
+import base64
+from urllib.parse import urlencode, urlparse, parse_qs, urljoin
 from jose import jwe
 from app.core.config import settings
+from app.core.redis import redis_client
 from app.database.connection import execute_sp
 from app.services.email_queue import queue_email
 from app.models.auth import (
@@ -23,6 +26,8 @@ from app.models.auth import (
     LogoutResponse,
     UserData,
     AuthErrorResponse,
+    MicrosoftUrlRequest,
+    MicrosoftUrlResponse,
 )
 
 # Configurar logging
@@ -602,6 +607,118 @@ async def logout(
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
+@router.post(
+    "/microsoft/url",
+    response_model=MicrosoftUrlResponse,
+    summary="Iniciar autenticación con Microsoft con URL de retorno personalizada",
+    description="""Inicia el flujo de autenticación con Microsoft y retorna la URL de autenticación.
+    
+    Este endpoint:
+    1. Recibe una URL de retorno donde se redirigirá al usuario después del login
+    2. Guarda la URL en Redis con un identificador único (24 horas de expiración)
+    3. Retorna la URL de Microsoft para que el cliente redirija manualmente
+    4. Al completar la autenticación, Microsoft redirige al callback que redirige a la URL especificada con el token JWT
+    
+    Ejemplo de uso:
+    ```javascript
+    const response = await fetch('/auth/microsoft/url', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({redirect_url: 'https://miapp.com/callback'})
+    });
+    const data = await response.json();
+    window.location.href = data.auth_url; // Redirigir manualmente
+    ```
+    
+    Resultado final:
+    Después de la autenticación, el usuario será redirigido a: https://miapp.com/callback?token=eyJhbGc...
+    """,
+    responses={
+        200: {"model": MicrosoftUrlResponse, "description": "URL de autenticación generada exitosamente"},
+        400: {"description": "URL de retorno inválida o faltante"},
+        500: {"description": "Error interno del servidor"}
+    }
+)
+async def microsoft_login_with_redirect(data: MicrosoftUrlRequest):
+    """Inicia autenticación con Microsoft con URL de retorno personalizada."""
+    try:
+        redirect_url = data.redirect_url
+        
+        # Validar que la URL sea válida
+        try:
+            parsed = urlparse(redirect_url)
+            if not parsed.scheme or not parsed.netloc:
+                raise ValueError("URL inválida")
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="redirect_url debe ser una URL válida (ej: https://ejemplo.com/callback)"
+            )
+        
+        # Validar credenciales de Azure AD
+        if not all([
+            settings.azure_client_id,
+            settings.azure_tenant_id,
+            settings.azure_client_secret,
+        ]):
+            logger.error("Credenciales de Azure AD no configuradas")
+            raise HTTPException(
+                status_code=500,
+                detail="Autenticación con Microsoft no está configurada",
+            )
+        
+        # Generar identificador único para este flujo
+        import uuid
+        flow_id = str(uuid.uuid4())
+        
+        # Guardar URL de retorno en Redis (expira en 24 horas)
+        redis_key = f"microsoft_redirect:{flow_id}"
+        await redis_client.set(
+            redis_key,
+            {"redirect_url": redirect_url, "created_at": datetime.now(timezone.utc).isoformat()},
+            expires_in_seconds=86400  # 24 horas
+        )
+        
+        logger.info(f"✅ URL de redirección guardada en Redis: {flow_id} -> {redirect_url}")
+        
+        # Crear state con el flow_id para identificar este flujo
+        state_data = {
+            "flow_type": "url_redirect",
+            "flow_id": flow_id
+        }
+        state_encoded = base64.urlsafe_b64encode(
+            json.dumps(state_data).encode()
+        ).decode()
+        
+        # Construir URL de autorización de Microsoft
+        base_url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/authorize"
+        
+        params = {
+            "client_id": settings.azure_client_id,
+            "response_type": "code",
+            "redirect_uri": settings.effective_microsoft_redirect_uri,
+            "scope": "openid profile email User.Read",
+            "response_mode": "query",
+            "state": state_encoded,
+        }
+        
+        auth_url = f"{base_url}?{urlencode(params)}"
+        
+        # Retornar JSON con la URL (el cliente debe redirigir manualmente)
+        return MicrosoftUrlResponse(
+            success=True,
+            message="URL de autenticación generada exitosamente",
+            auth_url=auth_url,
+            flow_id=flow_id
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en microsoft_login_with_redirect: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
 @router.get(
     "/microsoft",
     summary="Iniciar autenticación con Microsoft",
@@ -856,6 +973,368 @@ async def microsoft_callback_normal(
         logger.error(f"Error en microsoft_callback_normal: {str(e)}")
         redirect_url = f"{settings.effective_url_base}/#/login?microsoft_error=server_error"
         return RedirectResponse(url=redirect_url)
+
+
+async def microsoft_callback_redirect(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    error_description: Optional[str] = None,
+    url_redirect_data: dict = None
+):
+    """
+    Procesa el callback de Microsoft para el flujo de redirección a URL personalizada.
+    
+    Este flujo:
+    1. Completa la autenticación con Microsoft
+    2. Crea o asocia la cuenta del usuario
+    3. Genera un token JWT
+    4. Redirige a la URL personalizada con el token como query param
+    """
+    from fastapi.responses import HTMLResponse
+    
+    try:
+        flow_id = url_redirect_data.get("flow_id")
+        
+        # 1. Manejo de errores de OAuth
+        if error:
+            logger.error(f"Error de Microsoft OAuth: {error} - {error_description}")
+            return HTMLResponse(
+                content=f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Error de Autenticación - Ezekl Budget</title>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body {{
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
+                            margin: 0;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        }}
+                        .container {{
+                            background: white;
+                            padding: 40px;
+                            border-radius: 12px;
+                            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                            text-align: center;
+                            max-width: 500px;
+                        }}
+                        h1 {{ color: #e74c3c; }}
+                        p {{ color: #555; line-height: 1.6; }}
+                        .icon {{ font-size: 60px; margin-bottom: 20px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="icon">❌</div>
+                        <h1>Error de Autenticación</h1>
+                        <p>No se pudo completar la autenticación con Microsoft.</p>
+                        <p><strong>Error:</strong> {error_description or error}</p>
+                    </div>
+                </body>
+                </html>
+                """,
+                status_code=400
+            )
+        
+        # 2. Validar que tenemos el código de autorización
+        if not code:
+            logger.error("No se recibió código de autorización de Microsoft")
+            return HTMLResponse(
+                content="""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Error - Ezekl Budget</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: Arial; text-align: center; padding: 50px; }
+                        h1 { color: #e74c3c; }
+                    </style>
+                </head>
+                <body>
+                    <h1>❌ Error</h1>
+                    <p>No se recibió código de autorización.</p>
+                </body>
+                </html>
+                """,
+                status_code=400
+            )
+        
+        # 3. Recuperar URL de redirección desde Redis
+        redis_key = f"microsoft_redirect:{flow_id}"
+        redirect_data = await redis_client.get(redis_key)
+        
+        if not redirect_data:
+            logger.error(f"No se encontró URL de redirección para flow_id: {flow_id}")
+            return HTMLResponse(
+                content="""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Sesión Expirada - Ezekl Budget</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: Arial; text-align: center; padding: 50px; }
+                        h1 { color: #e74c3c; }
+                    </style>
+                </head>
+                <body>
+                    <h1>⏰ Sesión Expirada</h1>
+                    <p>La sesión de autenticación ha expirado. Por favor, intenta nuevamente.</p>
+                </body>
+                </html>
+                """,
+                status_code=400
+            )
+        
+        redirect_url = redirect_data.get("redirect_url")
+        
+        # 4. Intercambiar código por access token
+        token_url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/token"
+        token_data = {
+            "client_id": settings.azure_client_id,
+            "scope": "openid profile email User.Read",
+            "code": code,
+            "redirect_uri": settings.effective_microsoft_redirect_uri,
+            "grant_type": "authorization_code",
+            "client_secret": settings.azure_client_secret,
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(token_url, data=token_data) as token_response:
+                if token_response.status != 200:
+                    error_text = await token_response.text()
+                    logger.error(f"Error obteniendo access token: {error_text}")
+                    return HTMLResponse(
+                        content=f"""
+                        <!DOCTYPE html>
+                        <html>
+                        <head><title>Error - Ezekl Budget</title></head>
+                        <body style="font-family: Arial; text-align: center; padding: 50px;">
+                            <h1>❌ Error</h1>
+                            <p>No se pudo obtener el token de acceso.</p>
+                        </body>
+                        </html>
+                        """,
+                        status_code=500
+                    )
+                
+                token_json = await token_response.json()
+        
+        access_token = token_json.get("access_token")
+        
+        # 5. Obtener información del usuario de Microsoft Graph
+        graph_url = "https://graph.microsoft.com/v1.0/me"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(graph_url, headers=headers) as user_response:
+                if user_response.status != 200:
+                    error_text = await user_response.text()
+                    logger.error(f"Error obteniendo datos de usuario: {error_text}")
+                    return HTMLResponse(
+                        content="""
+                        <!DOCTYPE html>
+                        <html>
+                        <head><title>Error - Ezekl Budget</title></head>
+                        <body style="font-family: Arial; text-align: center; padding: 50px;">
+                            <h1>❌ Error</h1>
+                            <p>No se pudieron obtener los datos del usuario.</p>
+                        </body>
+                        </html>
+                        """,
+                        status_code=500
+                    )
+                
+                user_data = await user_response.json()
+        
+        # 6. Ejecutar stored procedure para crear/login usuario Microsoft
+        user_principal_name = user_data.get("userPrincipalName")
+        display_name = user_data.get("displayName")
+        mail = user_data.get("mail") or user_principal_name
+        microsoft_id = user_data.get("id")
+        
+        logger.info(f"🔍 Datos de Microsoft Graph obtenidos - ID: {microsoft_id}, Email: {mail}, Name: {display_name}")
+        logger.info(f"🔍 User data completo: {user_data}")
+        
+        # El SP espera estos campos con estos nombres exactos
+        sp_params = {
+            "id": microsoft_id,  # El SP espera "id" no "microsoftId"
+            "mail": mail,
+            "displayName": display_name,
+            "userPrincipalName": user_principal_name,
+        }
+        
+        logger.info(f"📤 Enviando a spLoginMicrosoftAddOrEdit: {sp_params}")
+        
+        result = await execute_sp("spLoginMicrosoftAddOrEdit", sp_params)
+        
+        logger.info(f"📦 Resultado de spLoginMicrosoftAddOrEdit: {result}")
+        
+        # Verificar resultado - el SP retorna success=1 y associationStatus
+        if not result:
+            logger.error(f"❌ spLoginMicrosoftAddOrEdit retornó None o vacío")
+            return HTMLResponse(
+                content="""
+                <!DOCTYPE html>
+                <html>
+                <head><title>Error - Ezekl Budget</title></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1>❌ Error</h1>
+                    <p>No se pudo procesar la autenticación (respuesta vacía del servidor).</p>
+                </body>
+                </html>
+                """,
+                status_code=500
+            )
+        
+        # Verificar success (puede ser 1, True, "success", etc.)
+        success = result.get("success")
+        if not success or (isinstance(success, (int, bool)) and not success):
+            error_msg = result.get("message", "Error desconocido")
+            logger.error(f"❌ Error en spLoginMicrosoftAddOrEdit: {error_msg}")
+            return HTMLResponse(
+                content=f"""
+                <!DOCTYPE html>
+                <html>
+                <head><title>Error - Ezekl Budget</title></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1>❌ Error</h1>
+                    <p>No se pudo procesar la autenticación.</p>
+                    <p><small>{error_msg}</small></p>
+                </body>
+                </html>
+                """,
+                status_code=500
+            )
+        
+        # Verificar el estado de asociación
+        association_status = result.get("associationStatus")
+        logger.info(f"🔗 Estado de asociación: {association_status}")
+        
+        # 7. Generar token JWT para el usuario autenticado
+        # Si está asociado, usar linkedUser; si no, usar microsoftUser
+        if association_status == "associated":
+            user_login_data = result.get("linkedUser")
+        else:
+            # Usuario no asociado - podemos crear una sesión temporal o requerir asociación
+            # Por ahora, mostramos mensaje de que necesita asociación
+            microsoft_user = result.get("microsoftUser", {})
+            logger.warning(f"⚠️ Usuario Microsoft no asociado a cuenta del sistema: {microsoft_user.get('email')}")
+            
+            return HTMLResponse(
+                content=f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Asociación Requerida - Ezekl Budget</title>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body {{
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
+                            margin: 0;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        }}
+                        .container {{
+                            background: white;
+                            padding: 40px;
+                            border-radius: 12px;
+                            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                            text-align: center;
+                            max-width: 500px;
+                        }}
+                        h1 {{ color: #f39c12; }}
+                        p {{ color: #555; line-height: 1.6; }}
+                        .icon {{ font-size: 60px; margin-bottom: 20px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="icon">⚠️</div>
+                        <h1>Cuenta No Asociada</h1>
+                        <p>Tu cuenta de Microsoft ({microsoft_user.get('email')}) no está asociada a ninguna cuenta del sistema.</p>
+                        <p>Por favor, contacta al administrador para asociar tu cuenta.</p>
+                    </div>
+                </body>
+                </html>
+                """,
+                status_code=403
+            )
+        
+        logger.info(f"👤 Datos del usuario para token: {user_login_data}")
+        
+        if not user_login_data or not isinstance(user_login_data, dict):
+            logger.error(f"❌ No se obtuvieron datos válidos del usuario. Tipo: {type(user_login_data)}, Valor: {user_login_data}")
+            return HTMLResponse(
+                content="""
+                <!DOCTYPE html>
+                <html>
+                <head><title>Error - Ezekl Budget</title></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1>❌ Error</h1>
+                    <p>No se pudieron obtener los datos del usuario.</p>
+                </body>
+                </html>
+                """,
+                status_code=500
+            )
+        
+        # Crear token JWE
+        token_jwe, expiry = create_jwe_token(user_login_data)
+        
+        # 8. Limpiar Redis (ya no necesitamos la URL guardada)
+        await redis_client.delete(redis_key)
+        
+        logger.info(f"✅ Usuario autenticado exitosamente via URL redirect: {mail}")
+        
+        # 9. Redirigir a la URL personalizada con el token como query param
+        parsed_url = urlparse(redirect_url)
+        query_params = parse_qs(parsed_url.query)
+        query_params['token'] = [token_jwe]
+        
+        # Reconstruir la URL con el nuevo parámetro
+        from urllib.parse import urlunparse
+        new_query = urlencode(query_params, doseq=True)
+        final_url = urlunparse((
+            parsed_url.scheme,
+            parsed_url.netloc,
+            parsed_url.path,
+            parsed_url.params,
+            new_query,
+            parsed_url.fragment
+        ))
+        
+        logger.info(f"🔄 Redirigiendo a: {final_url[:100]}...")
+        
+        return RedirectResponse(url=final_url)
+    
+    except Exception as e:
+        logger.error(f"Error en microsoft_callback_redirect: {str(e)}")
+        return HTMLResponse(
+            content="""
+            <!DOCTYPE html>
+            <html>
+            <head><title>Error - Ezekl Budget</title></head>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h1>❌ Error del Servidor</h1>
+                <p>Ocurrió un error inesperado. Por favor, intenta nuevamente.</p>
+            </body>
+            </html>
+            """,
+            status_code=500
+        )
 
 
 async def microsoft_callback_whatsapp(
@@ -1424,24 +1903,42 @@ async def microsoft_callback(
     """
     Callback de Microsoft OAuth2 - Router principal.
     Detecta el tipo de flujo y delega a la función correspondiente.
+    
+    Tipos de flujo soportados:
+    1. Normal (Web): Redirección a la aplicación web principal
+    2. WhatsApp: Autenticación para usuarios de WhatsApp
+    3. URL Redirect: Redirección a URL personalizada con token JWT
     """
-    # Detectar si es WhatsApp o Web Normal
+    # Detectar el tipo de flujo basado en el state
     is_whatsapp_auth = False
+    is_url_redirect = False
     whatsapp_data = None
+    url_redirect_data = None
     
     if state:
         try:
-            import base64
             decoded_state = base64.urlsafe_b64decode(state.encode()).decode()
-            whatsapp_data = json.loads(decoded_state)
+            state_data = json.loads(decoded_state)
             
-            if whatsapp_data.get("whatsapp_token") and whatsapp_data.get("phone_number"):
+            # Detectar flujo de URL redirect
+            if state_data.get("flow_type") == "url_redirect" and state_data.get("flow_id"):
+                is_url_redirect = True
+                url_redirect_data = state_data
+                logger.info(f"🔄 Flujo de URL redirect detectado: {state_data.get('flow_id')}")
+            
+            # Detectar flujo de WhatsApp
+            elif state_data.get("whatsapp_token") and state_data.get("phone_number"):
                 is_whatsapp_auth = True
-        except Exception:
-            pass
+                whatsapp_data = state_data
+                logger.info(f"📱 Flujo de WhatsApp detectado: {state_data.get('phone_number')}")
+            
+        except Exception as e:
+            logger.warning(f"No se pudo decodificar state, usando flujo normal: {str(e)}")
     
     # Delegar al flujo correspondiente
-    if is_whatsapp_auth:
+    if is_url_redirect:
+        return await microsoft_callback_redirect(code, state, error, error_description, url_redirect_data)
+    elif is_whatsapp_auth:
         return await microsoft_callback_whatsapp(code, state, error, error_description, whatsapp_data)
     else:
         return await microsoft_callback_normal(code, state, error, error_description)
