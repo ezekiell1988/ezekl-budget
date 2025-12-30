@@ -1,0 +1,153 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      @if (!isDesktop && !selectedProductId) {
+        <ion-back-button defaultHref="/"></ion-back-button>
+      }
+      @if (!isDesktop && selectedProductId) {
+        <ion-button (click)="backToList()">
+          <ion-icon slot="icon-only" name="arrow-back"></ion-icon>
+        </ion-button>
+      }
+    </ion-buttons>
+    <ion-title>{{ selectedProductId && !isDesktop ? 'Detalle del Producto' : 'Productos' }}</ion-title>
+  </ion-toolbar>
+  @if (!selectedProductId || isDesktop) {
+    <ion-toolbar>
+      <ion-searchbar
+        [(ngModel)]="searchText"
+        (ionInput)="onSearch($event)"
+        (ionClear)="clearSearch()"
+        placeholder="Buscar productos..."
+        animated="true"
+        debounce="300"
+      ></ion-searchbar>
+    </ion-toolbar>
+  }
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="products-container" [class.split-view]="isDesktop">
+
+    <!-- Listado de productos (siempre visible en desktop, condicional en mobile) -->
+    @if (!selectedProductId || isDesktop) {
+      <div class="products-list" [class.desktop-list]="isDesktop">
+        <!-- Loading Spinner -->
+        @if (loading) {
+          <div class="loading-container">
+            <ion-spinner name="crescent"></ion-spinner>
+            <p>Cargando productos...</p>
+          </div>
+        }
+
+        <!-- Error State -->
+        @if (error && !loading) {
+          <ion-card color="danger">
+            <ion-card-header>
+              <ion-card-title>
+                <ion-icon name="alert-circle-outline"></ion-icon>
+                Error
+              </ion-card-title>
+            </ion-card-header>
+            <ion-card-content>
+              {{ error }}
+              <ion-button expand="block" (click)="refresh()" class="mt-2">
+                Reintentar
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+        }
+
+        <!-- Empty State -->
+        @if (!loading && !error && filteredProducts.length === 0) {
+          <div class="empty-state">
+            <ion-icon name="document-outline" class="empty-icon"></ion-icon>
+            <h2>No hay productos</h2>
+            @if (searchText) {
+              <p>No se encontraron productos que coincidan con "{{ searchText }}"</p>
+            }
+            @if (!searchText) {
+              <p>Aún no hay productos registrados</p>
+            }
+          </div>
+        }
+
+        <!-- Products List -->
+        @if (!loading && !error && filteredProducts.length > 0) {
+          <ion-list>
+            @for (product of filteredProducts; track product.idProduct) {
+              <ng-container *ngTemplateOutlet="productItem; context: { product: product, level: 0 }"></ng-container>
+            }
+          </ion-list>
+        }
+
+        <!-- Recursive Product Item Template -->
+        <ng-template #productItem let-product="product" let-level="level">
+          <!-- Parent Product -->
+          <ion-item
+            [button]="true"
+            [detail]="false"
+            (click)="hasChildren(product) ? toggleExpand(product.idProduct) : null"
+            [class.has-children]="hasChildren(product)"
+            [class.expanded]="isExpanded(product.idProduct)"
+            [class.selected]="selectedProductId === product.idProduct"
+            [style.padding-left]="getIndentLevel(level)"
+          >
+            @if (hasChildren(product)) {
+              <ion-icon
+                slot="start"
+                [name]="isExpanded(product.idProduct) ? 'chevron-down' : 'chevron-forward'"
+                class="expand-icon"
+              ></ion-icon>
+              <ion-icon
+                slot="start"
+                name="folder-outline"
+                [color]="isExpanded(product.idProduct) ? 'primary' : 'medium'"
+              ></ion-icon>
+            }
+            @if (!hasChildren(product)) {
+              <ion-icon
+                slot="start"
+                name="document-outline"
+                color="medium"
+                [style.margin-left]="'24px'"
+              ></ion-icon>
+            }
+            <ion-label>
+              <h2>{{ product.nameProduct }}</h2>
+              <p>{{ product.descriptionProduct }}</p>
+            </ion-label>
+            <ion-button
+              slot="end"
+              fill="clear"
+              size="small"
+              (click)="selectProduct(product); $event.stopPropagation()"
+              class="detail-button"
+            >
+              <ion-icon slot="icon-only" name="information-circle-outline" color="primary"></ion-icon>
+            </ion-button>
+            <ion-note slot="end" color="medium" class="product-id">
+              ID: {{ product.idProduct }}
+            </ion-note>
+          </ion-item>
+
+          <!-- Children Products (Recursive) -->
+          @if (hasChildren(product) && isExpanded(product.idProduct)) {
+            @for (child of product.childrens; track child.idProduct) {
+              <ng-container *ngTemplateOutlet="productItem; context: { product: child, level: level + 1 }"></ng-container>
+            }
+          }
+        </ng-template>
+      </div>
+    }
+
+    <!-- Detalle del producto -->
+    @if (selectedProductId) {
+      <div class="product-detail" [class.desktop-detail]="isDesktop">
+        <app-product-detail
+          [productId]="selectedProductId"
+          [showHeader]="false"
+          (close)="backToList()"
+        ></app-product-detail>
+      </div>
+    }

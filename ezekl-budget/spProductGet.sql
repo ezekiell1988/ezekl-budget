@@ -21,6 +21,4 @@ END
 GO
 
 -- Probar el procedimiento corregido
-EXEC spProductGet @json = N'{
-  "idCompany": 1
-}';
+EXEC spProductGet @json = N'{}';

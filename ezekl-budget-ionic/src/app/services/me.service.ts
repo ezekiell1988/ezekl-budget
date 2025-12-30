@@ -104,6 +104,14 @@ export class MeService {
             color: 'primary'
           },
           {
+            id: 'products',
+            title: 'Productos',
+            icon: 'cube-outline',
+            route: '/products',
+            enabled: true,
+            color: 'primary'
+          },
+          {
             id: 'demo-websocket',
             title: 'Demo WebSocket',
             icon: 'pulse',

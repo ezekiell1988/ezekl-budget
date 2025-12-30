@@ -12,6 +12,7 @@ from .email import router as email_router
 from .auth import router as auth_router, get_current_user
 from .accounting_account import router as accounting_account_router
 from .company import router as company_router
+from .product import router as product_router
 from .whatsapp import router as whatsapp_router
 from .ai import router as ai_router
 from .copilot import router as copilot_router
@@ -28,6 +29,7 @@ router.include_router(email_router, prefix="/email", tags=["correo"])
 router.include_router(auth_router, prefix="/auth", tags=["autenticación"])
 router.include_router(accounting_account_router, prefix="/accounting-accounts", tags=["cuentas-contables"])
 router.include_router(company_router, prefix="/companies", tags=["compañías"])
+router.include_router(product_router, prefix="/products", tags=["productos"])
 router.include_router(whatsapp_router, prefix="/whatsapp", tags=["whatsapp"])
 router.include_router(ai_router, prefix="/ai", tags=["inteligencia-artificial"])
 router.include_router(copilot_router, tags=["asistente-ia"])

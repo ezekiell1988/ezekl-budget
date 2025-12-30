@@ -79,12 +79,16 @@ class AsyncDatabaseManager:
                     # Ejecutar el stored procedure
                     query = f"EXEC {procedure_name} ?"
                     
+                    logger.info(f"Ejecutando: {query} con parámetro: {json_string[:200]}")
+                    
                     await cursor.execute(query, json_string)
                     
                     # Para stored procedures que no retornan datos (UPDATE, DELETE, INSERT sin OUTPUT)
                     # intentamos obtener el resultado, pero si no hay, es normal
                     try:
                         row = await cursor.fetchone()
+                        
+                        logger.info(f"Fila obtenida - Tipo: {type(row)}, Valor: {row}")
                         
                         # Si no hay resultado, el SP fue exitoso pero no retorna datos
                         if row is None:
@@ -94,12 +98,15 @@ class AsyncDatabaseManager:
                         # La columna debe llamarse 'json'
                         json_result = row.json if hasattr(row, 'json') else row[0]
                         
+                        logger.info(f"JSON result - Tipo: {type(json_result)}, Valor: {str(json_result)[:200]}")
+                        
                         if json_result is None:
                             logger.info(f"El SP {procedure_name} ejecutado exitosamente sin datos de retorno")
                             return {"success": True}
                         
                         # Parsear el JSON de respuesta
                         result = json.loads(json_result)
+                        logger.info(f"Resultado parseado exitosamente")
                         return result
                         
                     except Exception as fetch_error:

@@ -58,6 +58,13 @@ export const routes: Routes = [
     canActivate: [AuthGuard]
   },
 
+  // Ruta products - protegida, requiere autenticación
+  {
+    path: 'products',
+    loadComponent: () => import('./products/products.component').then( m => m.ProductsComponent),
+    canActivate: [AuthGuard]
+  },
+
   // Ruta exam-question - protegida, requiere autenticación
   {
     path: 'exam-question',

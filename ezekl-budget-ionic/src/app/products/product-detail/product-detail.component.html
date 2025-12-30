@@ -1,0 +1,198 @@
+@if (showHeader) {
+  <ion-header>
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <ion-button (click)="closeDetail()">
+          <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+      <ion-title>Detalle del Producto</ion-title>
+    </ion-toolbar>
+  </ion-header>
+}
+
+<ion-content [fullscreen]="true" [class.no-header]="!showHeader">
+  <!-- Loading Spinner -->
+  @if (loading) {
+    <div class="loading-container">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Cargando detalle...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error && !loading) {
+    <ion-card color="danger">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          Error
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        {{ error }}
+        <ion-button expand="block" (click)="refresh()" class="mt-2">
+          Reintentar
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+  }
+
+  <!-- Product Detail -->
+  @if (!loading && !error && product) {
+    <div>
+      <!-- Información Principal -->
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>
+            <ion-icon name="information-circle-outline"></ion-icon>
+            {{ product.nameProduct }}
+          </ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-list lines="none">
+            <ion-item>
+              <ion-label>
+                <h3>ID</h3>
+                <p>{{ product.idProduct }}</p>
+              </ion-label>
+            </ion-item>
+            <ion-item>
+              <ion-label>
+                <h3>Descripción</h3>
+                <p>{{ product.descriptionProduct }}</p>
+              </ion-label>
+            </ion-item>
+            @if (product.nameProductFather) {
+              <ion-item>
+                <ion-label>
+                  <h3>Producto Padre</h3>
+                  <p>{{ product.nameProductFather }}</p>
+                </ion-label>
+                <ion-note slot="end">ID: {{ product.idProductFather }}</ion-note>
+              </ion-item>
+            }
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Cuentas Contables -->
+      @if (product.accountingAccount && product.accountingAccount.length > 0) {
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>
+              <ion-icon name="cash-outline"></ion-icon>
+              Cuentas Contables
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-list>
+              @for (account of product.accountingAccount; track account.idProductAccountingAccount) {
+                <ion-item>
+                  <ion-label>
+                    <h3>{{ account.nameAccountingAccount }}</h3>
+                    <p>ID: {{ account.idProductAccountingAccount }}</p>
+                  </ion-label>
+                  <div slot="end" class="account-details">
+                    <ion-badge [color]="getEffectColor(account.effect)">
+                      {{ getEffectLabel(account.effect) }}
+                    </ion-badge>
+                    <ion-note>{{ account.percent }}%</ion-note>
+                  </div>
+                </ion-item>
+              }
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+      }
+
+      <!-- Precios de Entrega -->
+      @if (product.deliveryPrice && product.deliveryPrice.length > 0) {
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>
+              <ion-icon name="cart-outline"></ion-icon>
+              Precios de Entrega
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-list>
+              @for (delivery of product.deliveryPrice; track delivery.idProductDeliveryTypePrice) {
+                <ion-item>
+                  <ion-label>
+                    <h3>{{ delivery.nameDeliveryType }}</h3>
+                    <p>ID: {{ delivery.idProductDeliveryTypePrice }}</p>
+                  </ion-label>
+                  <ion-note slot="end" class="price-note">
+                    {{ formatPrice(delivery.price) }}
+                  </ion-note>
+                </ion-item>
+              }
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+      }
+
+      <!-- Productos Requeridos -->
+      @if (product.required && product.required.length > 0) {
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>
+              <ion-icon name="list-outline"></ion-icon>
+              Productos Requeridos
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-list>
+              @for (required of product.required; track required.idProductRequired) {
+                <ion-item lines="full">
+                  <ion-label>
+                    <h3>{{ required.nameProductRequired }}</h3>
+                    <p>ID: {{ required.idProductRequired }}</p>
+
+                    <!-- Productos Seleccionados -->
+                    @if (required.selected && required.selected.length > 0) {
+                      <div class="selected-products">
+                        <p class="selected-label">Seleccionados:</p>
+                        @for (selected of required.selected; track selected.idProduct) {
+                          <ion-badge color="primary" class="selected-badge">
+                            {{ selected.nameProduct }} (ID: {{ selected.idProduct }})
+                          </ion-badge>
+                        }
+                      </div>
+                    }
+                  </ion-label>
+                </ion-item>
+              }
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+      }
+
+      <!-- Empty States -->
+      @if (!product.accountingAccount || product.accountingAccount.length === 0) {
+        <ion-card>
+          <ion-card-content class="empty-section">
+            <p>No hay cuentas contables configuradas</p>
+          </ion-card-content>
+        </ion-card>
+      }
+
+      @if (!product.deliveryPrice || product.deliveryPrice.length === 0) {
+        <ion-card>
+          <ion-card-content class="empty-section">
+            <p>No hay precios de entrega configurados</p>
+          </ion-card-content>
+        </ion-card>
+      }
+
+      @if (!product.required || product.required.length === 0) {
+        <ion-card>
+          <ion-card-content class="empty-section">
+            <p>No hay productos requeridos configurados</p>
+          </ion-card-content>
+        </ion-card>
+      }
+    </div>
+  }
+</ion-content>

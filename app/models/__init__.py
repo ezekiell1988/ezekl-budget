@@ -7,6 +7,7 @@ from .auth import *
 from .requests import *
 from .responses import *
 from .accounting_account import *
+from .product import *
 
 # Exportar modelos CRM
 from .crm import *

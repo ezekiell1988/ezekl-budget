@@ -1,0 +1,162 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+ion-content.no-header {
+  --padding-top: 0;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+
+  ion-spinner {
+    transform: scale(1.5);
+    margin-bottom: 20px;
+  }
+
+  p {
+    color: var(--ion-color-medium);
+    margin: 0;
+  }
+}
+
+ion-card {
+  margin: 16px;
+
+  ion-card-header {
+    ion-card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+
+      ion-icon {
+        font-size: 24px;
+      }
+    }
+  }
+
+  .mt-2 {
+    margin-top: 8px;
+  }
+}
+
+ion-list {
+  padding: 0;
+
+  ion-item {
+    --padding-start: 0;
+    --inner-padding-end: 0;
+
+    ion-label {
+      h3 {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ion-color-medium);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+      }
+
+      p {
+        font-size: 16px;
+        color: var(--ion-color-dark);
+        margin: 0;
+        white-space: normal;
+      }
+    }
+  }
+}
+
+.account-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+
+  ion-badge {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  ion-note {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ion-color-dark);
+  }
+}
+
+.price-note {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ion-color-success);
+}
+
+.selected-products {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ion-color-light-shade);
+
+  .selected-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ion-color-medium);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .selected-badge {
+    margin-right: 8px;
+    margin-bottom: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+.empty-section {
+  text-align: center;
+  padding: 20px;
+
+  p {
+    color: var(--ion-color-medium);
+    margin: 0;
+    font-style: italic;
+  }
+}
+
+// Animaciones
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+ion-card {
+  animation: fadeIn 0.3s ease;
+  animation-fill-mode: both;
+
+  &:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  &:nth-child(4) {
+    animation-delay: 0.4s;
+  }
+}

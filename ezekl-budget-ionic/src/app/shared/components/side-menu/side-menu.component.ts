@@ -49,6 +49,7 @@ import {
   apps,
   businessOutline,
   micOutline,
+  cubeOutline,
 } from 'ionicons/icons';
 import { AuthService } from '../../../services/auth.service';
 import { MeService, MenuSection, MenuItem } from '../../../services/me.service';
@@ -121,6 +122,7 @@ export class SideMenuComponent implements OnInit {
       apps,
       businessOutline,
       micOutline,
+      cubeOutline,
     });
 
     // Configurar observables
