@@ -7,8 +7,11 @@ BEGIN
   SET NOCOUNT ON;
 
   -- Crear registro en cuentas contables
-  INSERT INTO tbProductAccountingAccount (idProduct, idAccountingAccount, effect, [Percent])
-  SELECT I.idProduct, 1, 1, 100
+  INSERT INTO tbProductAccountingAccount (idProduct, idAccountingAccount, effect, [percent])
+  SELECT I.idProduct, 5, 1, 100
+  FROM inserted I
+  UNION ALL
+  SELECT I.idProduct, 1, -1, 100
   FROM inserted I;
 
   -- Crear registro en configuracion
@@ -22,7 +25,7 @@ BEGIN
   CROSS JOIN tbDeliveryType DT;
 
   -- Crear registro en tipo de entrega precio
-  INSERT INTO tbProductDeliveryTypePrice (idProductDeliveryType, Price)
+  INSERT INTO tbProductDeliveryTypePrice (idProductDeliveryType, price)
   SELECT PDT.idProductDeliveryType, 0
   FROM inserted I
   INNER JOIN tbProductDeliveryType PDT

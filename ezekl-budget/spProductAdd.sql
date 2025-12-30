@@ -35,20 +35,16 @@ BEGIN
   SELECT JSON_QUERY(@json) json;
 END
 GO
-
+-- 23 Promociones
+-- 25 Tamaño TV
 -- Probar el procedimiento corregido
 EXEC spProductAdd @json = N'{
-  "nameProduct": "Actividades familiares",
-  "idProductFather": 1,
-  "descriptionProduct": "Gastos generales (no identificados) en familia",
-  "accounts": [
-    {
-      "idAccountingAccount": 5,
-      "effect": 1,
-      "percent": 100
-    }
-  ]
+  "nameProduct": "TV nueva 60\"",
+  "idProductFather": 24,
+  "descriptionProduct": "TV nueva 60 pulgadas"
 }';
 
+-- EXEC spTruncateTable @table = 'dbo.tbProductDeliveryTypePrice';
+-- EXEC spTruncateTable @table = 'dbo.tbProductDeliveryType';
 -- EXEC spTruncateTable @table = 'dbo.tbProductAccountingAccount';
 -- EXEC spTruncateTable @table = 'dbo.tbProduct';
