@@ -1,29 +1,28 @@
-@import 'default/styles';
+@import "default/styles";
 
 /* Ng Scrollbar */
 @include media-breakpoint-up(md) {
-	.app:not(.app-sidebar-fixed) {
-		& .app-sidebar-content {
-			max-height: initial;
-			height: auto;
-			
-			& .ng-scroll-viewport {
-				contain: initial;
-			}
-			& .ng-scroll-viewport-wrapper,
-			& .ng-scrollbar-wrapper,
-			& .ng-scroll-viewport {
-				position: relative;	
-			}
-		}
-	}
-}
+  .app:not(.app-sidebar-fixed) {
+    & .app-sidebar-content {
+      max-height: initial;
+      height: auto;
 
+      & .ng-scroll-viewport {
+        contain: initial;
+      }
+      & .ng-scroll-viewport-wrapper,
+      & .ng-scrollbar-wrapper,
+      & .ng-scroll-viewport {
+        position: relative;
+      }
+    }
+  }
+}
 
 /* Countdown Timer */
 .countdown-section {
-	display: block;
-	text-align: center;
+  display: block;
+  text-align: center;
 
   .countdown-show1 & {
     width: 98%;
@@ -51,39 +50,36 @@
   display: block;
 }
 
-
 /* Calendar */
 .fc {
-	& .btn {
-		height: auto;
-		padding: $btn-padding-y $btn-padding-x;
-	}
-	& .fc-event, 
-	& .fc-event-dot {
-		background: none;
-		border-color: transparent;
-	}
+  & .btn {
+    height: auto;
+    padding: $btn-padding-y $btn-padding-x;
+  }
+  & .fc-event,
+  & .fc-event-dot {
+    background: none;
+    border-color: transparent;
+  }
 }
-
 
 /* Highlight.js */
 .hljs {
-	& .hljs-keyword,
-	& .hljs-built_in {
-		color: darken($blue, 15%);
-	}
-	& .hljs-class {
-		color: lighten($blue, 5%);
-	}
-	& .hljs-string,
-	& .hljs-literal {
-		color: darken($red, 7.5%);
-	}
-	& .hljs-title {
-		color: lighten($dark, 20%);
-	}
+  & .hljs-keyword,
+  & .hljs-built_in {
+    color: darken($blue, 15%);
+  }
+  & .hljs-class {
+    color: lighten($blue, 5%);
+  }
+  & .hljs-string,
+  & .hljs-literal {
+    color: darken($red, 7.5%);
+  }
+  & .hljs-title {
+    color: lighten($dark, 20%);
+  }
 }
-
 
 /* Material Header Sort */
 .mat-sort-header-sorted {
@@ -94,243 +90,237 @@
   }
 }
 
-
 /* Ng Bootstrap Datepicker */
 ngb-datepicker {
-	body & {
-		border: none;
+  body & {
+    border: none;
 
-		&.dropdown-menu {
-			padding: 5px;
-			border-radius: $border-radius;
-		}
-		& .ngb-dp-header {
-			background: none;
+    &.dropdown-menu {
+      padding: 5px;
+      border-radius: $border-radius;
+    }
+    & .ngb-dp-header {
+      background: none;
 
-			& ngb-datepicker-navigation-select {
-				& > .form-select {
-					font-size: 12px;
-					height: 26px;
-					margin: 0 5px;
-				}
-			}
-			& .ngb-dp-arrow button {
-				:dir(rtl) & {
-					transform: rotate(180deg);
-				}
-			}
-		}
-		& .ngb-dp-months {
-			& .ngb-dp-month {
-				& ngb-datepicker-month {
-					& .ngb-dp-week {
-						border: none;
-						background: none !important;
+      & ngb-datepicker-navigation-select {
+        & > .form-select {
+          font-size: 12px;
+          height: 26px;
+          margin: 0 5px;
+        }
+      }
+      & .ngb-dp-arrow button {
+        :dir(rtl) & {
+          transform: rotate(180deg);
+        }
+      }
+    }
+    & .ngb-dp-months {
+      & .ngb-dp-month {
+        & ngb-datepicker-month {
+          & .ngb-dp-week {
+            border: none;
+            background: none !important;
 
-						& .ngb-dp-weekday {
-							font-style: initial;
-							font-size: 12px;
-							font-weight: bold;
-							color: var(--#{$prefix}component-color);
-						}
-						& .ngb-dp-day {
-							font-weight: 600;
+            & .ngb-dp-weekday {
+              font-style: initial;
+              font-size: 12px;
+              font-weight: bold;
+              color: var(--#{$prefix}component-color);
+            }
+            & .ngb-dp-day {
+              font-weight: 600;
 
-							&:focus {
-								outline: none;
-							}
-							& .btn-light {
-								color: rgba(var(--#{$prefix}component-color-rgb), .5);
+              &:focus {
+                outline: none;
+              }
+              & .btn-light {
+                color: rgba(var(--#{$prefix}component-color-rgb), 0.5);
 
-								&:hover,
-								&:focus,
-								&:active {
-									background: var(--#{$prefix}light);
-									color: var(--#{$prefix}component-color);
-								}
-								&:focus,
-								&:active,
-								&.active {
-									outline: none !important;
-									box-shadow: none !important;
-								}
-								&.bg-primary {
-									color: $white;
-									background: var(--#{$prefix}component-active-bg) !important;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+                &:hover,
+                &:focus,
+                &:active {
+                  background: var(--#{$prefix}light);
+                  color: var(--#{$prefix}component-color);
+                }
+                &:focus,
+                &:active,
+                &.active {
+                  outline: none !important;
+                  box-shadow: none !important;
+                }
+                &.bg-primary {
+                  color: $white;
+                  background: var(--#{$prefix}component-active-bg) !important;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
-
 
 /* Ngx-chart */
 .ngx-charts {
-	body & {
-		color: var(--#{$prefix}component-color);
-		
-		& .gridline-path {
-			stroke: var(--#{$prefix}component-border-color);
-		}
-		& text {
-			fill: var(--#{$prefix}component-color);
-		}
-	}
+  body & {
+    color: var(--#{$prefix}component-color);
+
+    & .gridline-path {
+      stroke: var(--#{$prefix}component-border-color);
+    }
+    & text {
+      fill: var(--#{$prefix}component-color);
+    }
+  }
 }
 .chart-legend {
-	body & {
-		& .legend-title {
-			font-weight: $font-weight-bold;
-			font-size: $font-size-base;
-		}
-		& .legend-labels {
-			background: var(--#{$prefix}light);
-		
-			& .legend-label {
-				color: rgba(var(--#{$prefix}component-color-rgb), .5);
-			
-				&:hover {
-					color: var(--#{$prefix}component-color);
-				}
-			}
-		}
-	}
-}
+  body & {
+    & .legend-title {
+      font-weight: $font-weight-bold;
+      font-size: $font-size-base;
+    }
+    & .legend-labels {
+      background: var(--#{$prefix}light);
 
+      & .legend-label {
+        color: rgba(var(--#{$prefix}component-color-rgb), 0.5);
+
+        &:hover {
+          color: var(--#{$prefix}component-color);
+        }
+      }
+    }
+  }
+}
 
 /* Ngx-editor */
 .NgxEditor__Wrapper {
-	body & {
-		border: none;
-		
-		border-radius: 0;
-		
-		& .NgxEditor__MenuBar {
-			background: var(--#{$prefix}light);
-			border: none;
-			padding: rem(10px) $spacer;
-			display: flex;
-			flex-wrap: wrap;
-			
-			& .NgxEditor__MenuItem.NgxEditor__MenuItem--Icon,
-			& .NgxEditor__Dropdown  {
-				border-radius: $border-radius;
-				
-				&:hover,
-				&:focus {
-					background: var(--#{$prefix}component-dropdown-hover-bg);
-					color: var(--#{$prefix}component-dropdown-hover-color);
-				}
-			}
-			& .NgxEditor__Dropdown--DropdownMenu {
-				background: var(--#{$prefix}component-dropdown-bg);
-			}
-		}
-		& .NgxEditor__Content {
-			padding: $spacer;
-			min-height: rem(250px);
-		}
-		& .NgxEditor {
-			background: var(--#{$prefix}component-bg);
-			color: var(--#{$prefix}component-color);
-			
-			& .NgxEditor__Placeholder:before {
-				color: var(--#{$prefix}component-color);
-			}
-		}
-	}
-}
+  body & {
+    border: none;
 
+    border-radius: 0;
+
+    & .NgxEditor__MenuBar {
+      background: var(--#{$prefix}light);
+      border: none;
+      padding: rem(10px) $spacer;
+      display: flex;
+      flex-wrap: wrap;
+
+      & .NgxEditor__MenuItem.NgxEditor__MenuItem--Icon,
+      & .NgxEditor__Dropdown {
+        border-radius: $border-radius;
+
+        &:hover,
+        &:focus {
+          background: var(--#{$prefix}component-dropdown-hover-bg);
+          color: var(--#{$prefix}component-dropdown-hover-color);
+        }
+      }
+      & .NgxEditor__Dropdown--DropdownMenu {
+        background: var(--#{$prefix}component-dropdown-bg);
+      }
+    }
+    & .NgxEditor__Content {
+      padding: $spacer;
+      min-height: rem(250px);
+    }
+    & .NgxEditor {
+      background: var(--#{$prefix}component-bg);
+      color: var(--#{$prefix}component-color);
+
+      & .NgxEditor__Placeholder:before {
+        color: var(--#{$prefix}component-color);
+      }
+    }
+  }
+}
 
 /* Tagify */
 .tagify {
-	body & {
-		padding-left: rem(6px);
-		padding-right: rem(6px);
-		border-color: var(--#{$prefix}component-border-color);
-		border-radius: $border-radius;
-		display: flex;
-		
-		&:hover {
-			border-color: var(--#{$prefix}component-border-color);
-		}
-		
-		& .tagify__tag {
-			background: var(--#{$prefix}component-active-bg);
-			color: var(--#{$prefix}component-active-color) !important;
-			border-radius: $border-radius;
-			
-			& .tagify__tag_removeBtn {
-				color: rgba(var(--#{$prefix}component-color-rgb), .5);
-				
-				&:hover {
-					background: rgba(0,0,0,.5);
-					color: $white;
-				}
-			}
-			& > div {
-				font-weight: $input-font-weight;
-  			line-height: $input-line-height;
-  			padding: rem(2px) rem(6px);
-  			color: inherit;
-  			
-				&:before {
-					display: none;
-				}
-			}
-		}
-		& .tagify__input {
-			line-height: $input-line-height;
-			font-weight: $input-font-weight;
-			padding: rem(2px) rem(6px);
-			margin-left: 0;
-			margin-right: 0;
-		}
-		&.tagify--focus {
-			border-color: $input-focus-border-color;
-			box-shadow: $input-focus-box-shadow;
-		}
-	}
-}
+  body & {
+    padding-left: rem(6px);
+    padding-right: rem(6px);
+    border-color: var(--#{$prefix}component-border-color);
+    border-radius: $border-radius;
+    display: flex;
 
+    &:hover {
+      border-color: var(--#{$prefix}component-border-color);
+    }
+
+    & .tagify__tag {
+      background: var(--#{$prefix}component-active-bg);
+      color: var(--#{$prefix}component-active-color) !important;
+      border-radius: $border-radius;
+
+      & .tagify__tag_removeBtn {
+        color: rgba(var(--#{$prefix}component-color-rgb), 0.5);
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.5);
+          color: $white;
+        }
+      }
+      & > div {
+        font-weight: $input-font-weight;
+        line-height: $input-line-height;
+        padding: rem(2px) rem(6px);
+        color: inherit;
+
+        &:before {
+          display: none;
+        }
+      }
+    }
+    & .tagify__input {
+      line-height: $input-line-height;
+      font-weight: $input-font-weight;
+      padding: rem(2px) rem(6px);
+      margin-left: 0;
+      margin-right: 0;
+    }
+    &.tagify--focus {
+      border-color: $input-focus-border-color;
+      box-shadow: $input-focus-box-shadow;
+    }
+  }
+}
 
 /* Mailbox */
 .mailbox {
-	& .mailbox-to {
-		& .tagify {
-			border: none;
-			flex: 1;
-			display: flex;
-		
-			& .tagify__tag {
-				background: var(--#{$prefix}component-active-bg);
-				color: var(--#{$prefix}component-active-color);
-			
-				& > div {
-					padding-top: rem(3px);
-					padding-bottom: rem(3px);
-				}
-			}
-			&.tagify--focus {
-				box-shadow: none;
-			}
-		}
-	}
-	& .mailbox-input {
-		& .NgxEditor__Wrapper {
-			& .NgxEditor__MenuBar {
-				background: var(--#{$prefix}light);
-				border-bottom: 1px solid var(--#{$prefix}component-border-color);
-				border-radius: 0;
-			}
-		}
-	}
-}
+  & .mailbox-to {
+    & .tagify {
+      border: none;
+      flex: 1;
+      display: flex;
 
+      & .tagify__tag {
+        background: var(--#{$prefix}component-active-bg);
+        color: var(--#{$prefix}component-active-color);
+
+        & > div {
+          padding-top: rem(3px);
+          padding-bottom: rem(3px);
+        }
+      }
+      &.tagify--focus {
+        box-shadow: none;
+      }
+    }
+  }
+  & .mailbox-input {
+    & .NgxEditor__Wrapper {
+      & .NgxEditor__MenuBar {
+        background: var(--#{$prefix}light);
+        border-bottom: 1px solid var(--#{$prefix}component-border-color);
+        border-radius: 0;
+      }
+    }
+  }
+}
 
 /* Tag Input */
 .ng2-tag-input {
@@ -361,10 +351,10 @@ ngb-datepicker {
       font-size: 12px;
       font-weight: 500;
       color: $dark;
-			
-			&::placeholder {
-				color: lighten($dark, 30%);
-			}
+
+      &::placeholder {
+        color: lighten($dark, 30%);
+      }
     }
   }
 }
@@ -382,12 +372,11 @@ ngb-datepicker {
   }
 }
 
-
 /* Angular Calendar */
 .angular-calendar-inline {
   & .cal-month-view {
-  	background: var(--#{$prefix}component-bg);
-  	
+    background: var(--#{$prefix}component-bg);
+
     & .cal-header {
       border-bottom: 1px solid var(--#{$prefix}component-border-color);
 
@@ -402,8 +391,8 @@ ngb-datepicker {
       border: none;
 
       & .cal-cell-row {
-      	border-bottom-color: var(--#{$prefix}component-border-color);
-      	
+        border-bottom-color: var(--#{$prefix}component-border-color);
+
         &:hover {
           background: none;
         }
@@ -421,7 +410,7 @@ ngb-datepicker {
             min-height: initial;
 
             & .cal-day-number {
-              color: rgba(var(--#{$prefix}component-color-rgb), .5);
+              color: rgba(var(--#{$prefix}component-color-rgb), 0.5);
               font-size: 12px;
               font-weight: $font-weight-bold;
               margin-right: 3px;
@@ -460,7 +449,7 @@ ngb-datepicker {
               height: 5px;
               display: inline-block;
               margin: 1px;
-              background: rgba(var(--#{$prefix}component-color-rgb), .25);
+              background: rgba(var(--#{$prefix}component-color-rgb), 0.25);
               border-radius: 50%;
             }
           }
@@ -488,22 +477,20 @@ ngb-datepicker {
   }
 }
 
-
 /* Ngx Loading bar */
 ngx-loading-bar {
-	color: var(--app-theme) !important;
+  color: var(--app-theme) !important;
 
-	& .ngx-spinner {
+  & .ngx-spinner {
     top: $app-header-height + $app-content-padding-y - 7 !important;
     right: $app-content-padding-x - 20 !important;
     left: auto !important;
-	}
-	& .ngx-bar {
-		background: var(--app-theme) !important;
+  }
+  & .ngx-bar {
+    background: var(--app-theme) !important;
     height: 2px !important;
-	}
+  }
 }
-
 
 /* Ngx Daterangepickr Material */
 .ngx-daterangepicker-action {
@@ -528,8 +515,8 @@ ngx-loading-bar {
   font-family: inherit;
   padding: 0;
   border-radius: $border-radius-lg;
-  box-shadow: 0 6px 30px rgba($black, .2);
-  
+  box-shadow: 0 6px 30px rgba($black, 0.2);
+
   :dir(rtl) & {
     direction: rtl;
     text-align: right;
@@ -592,12 +579,13 @@ ngx-loading-bar {
                   margin: 0;
                   cursor: default;
                   border-radius: $border-radius;
-                  transition: all .2s linear;
+                  transition: all 0.2s linear;
 
                   &:focus {
                     outline: none;
                     border-color: $input-focus-border-color;
-                    box-shadow: 0 0 0 0.125rem rgba($input-focus-border-color ,.3);
+                    box-shadow: 0 0 0 0.125rem
+                      rgba($input-focus-border-color, 0.3);
                   }
                   & + .dropdowns {
                     margin-left: rem(10px);
@@ -633,7 +621,10 @@ ngx-loading-bar {
                   background: $light;
                 }
                 &.in-range {
-                  background: rgba(var(--#{$prefix}component-active-bg-rgb), .5);
+                  background: rgba(
+                    var(--#{$prefix}component-active-bg-rgb),
+                    0.5
+                  );
                   color: var(--#{$prefix}component-active-color);
                   border-radius: 0;
                 }
@@ -813,7 +804,6 @@ ngx-loading-bar {
   }
 }
 
-
 /* Accordion */
 .card-accordion {
   & ngb-accordion {
@@ -838,335 +828,332 @@ ngx-loading-bar {
   }
 }
 
-
 /* ngx-color */
 .sketch-picker {
-	body & {
-		background: var(--#{$prefix}component-dropdown-bg) !important;
-		border: none !important;
-		box-shadow: none !important;
-		
-		& .sketch-fields {
-			& input {
-				border: 1px solid var(--#{$prefix}component-dropdown-border-color) !important;
-				background: none;
-				color: var(--#{$prefix}component-color);
-				box-shadow: none !important;
-			}
-			& span {
-				color: var(--#{$prefix}component-color) !important;
-			}
-		}
-		& .sketch-swatches {
-			border-color: var(--#{$prefix}component-dropdown-border-color);
-		}	
-	}
-}
+  body & {
+    background: var(--#{$prefix}component-dropdown-bg) !important;
+    border: none !important;
+    box-shadow: none !important;
 
+    & .sketch-fields {
+      & input {
+        border: 1px solid var(--#{$prefix}component-dropdown-border-color) !important;
+        background: none;
+        color: var(--#{$prefix}component-color);
+        box-shadow: none !important;
+      }
+      & span {
+        color: var(--#{$prefix}component-color) !important;
+      }
+    }
+    & .sketch-swatches {
+      border-color: var(--#{$prefix}component-dropdown-border-color);
+    }
+  }
+}
 
 /* ngx-datatable */
 .panel {
-	& > .table-responsive .ngx-datatable.bootstrap,
-	& > .ngx-datatable.bootstrap {
-		& .datatable-header {
-			& .datatable-header-inner {
-				& .datatable-header-cell {
-						&:first-child {
-							padding-left: rem(15px);
-						}
-						&:last-child {
-							padding-right: rem(15px);
-						}
-				}
-			}
-		}
-		& .datatable-body {
-			& .datatable-body-row {
-				& .datatable-row-center {
-					& .datatable-body-cell {
-						&:first-child {
-							padding-left: rem(15px);
-						}
-						&:last-child {
-							padding-right: rem(15px);
-						}
-					}
-				}
-			}
-		}
-	}
+  & > .table-responsive .ngx-datatable.bootstrap,
+  & > .ngx-datatable.bootstrap {
+    & .datatable-header {
+      & .datatable-header-inner {
+        & .datatable-header-cell {
+          &:first-child {
+            padding-left: rem(15px);
+          }
+          &:last-child {
+            padding-right: rem(15px);
+          }
+        }
+      }
+    }
+    & .datatable-body {
+      & .datatable-body-row {
+        & .datatable-row-center {
+          & .datatable-body-cell {
+            &:first-child {
+              padding-left: rem(15px);
+            }
+            &:last-child {
+              padding-right: rem(15px);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 .ngx-datatable.bootstrap {
-	font-size: $font-size-base;
-	
-	& .datatable-header {
-		height: auto !important;
-		
-		& .datatable-header-inner {
-			& .datatable-header-cell {
-				padding: $table-cell-padding-y $table-cell-padding-x;
-				font-weight: 600;
-				border-bottom: 1px solid $table-border-color;
-				vertical-align: top;
-				line-height: inherit;
+  font-size: $font-size-base;
 
-				& .datatable-header-cell-template-wrap {
-					display: flex;
-					align-items: center;
+  & .datatable-header {
+    height: auto !important;
 
-					& .datatable-header-cell-wrapper {
-						flex: 1;
+    & .datatable-header-inner {
+      & .datatable-header-cell {
+        padding: $table-cell-padding-y $table-cell-padding-x;
+        font-weight: 600;
+        border-bottom: 1px solid $table-border-color;
+        vertical-align: top;
+        line-height: inherit;
 
-						& .datatable-header-cell-label {
-							display: block;
-							line-height: $line-height-base;
-						}
-					}
-					& .sort-btn {
-						@include fontawesome();
+        & .datatable-header-cell-template-wrap {
+          display: flex;
+          align-items: center;
 
-						&.datatable-icon-sort-unset:before {
-							content: '\f0dc';
-							opacity: 0.25;
-						}
-						&.datatable-icon-up:before {
-							color: $component-active-bg;
-							content: '\f0de';
-						}
-						&.datatable-icon-down:before {
-							color: $component-active-bg;
-							content: '\f0dd';
-						}
-					}
-				}
-			}
-		}
-	}
-	& .datatable-body {
-		& .datatable-body-row {
-			border-top: none;
+          & .datatable-header-cell-wrapper {
+            flex: 1;
 
-			&.datatable-row-even {
-				background: $table-striped-bg;
-				
-				.dark-mode & {
-					background: rgba($gray-700, 0.7);
-				}
-			}
-			& .datatable-row-center {
-				& .datatable-body-cell {
-					padding: $table-cell-padding-y $table-cell-padding-x;
-					vertical-align: top;
-					border-top: none;
-					border-bottom: 1px solid $table-border-color;
-					line-height: inherit;
-				}
-			}
-		}
-	}
-	& .datatable-footer {
-		background: none;
-		color: inherit;
-		margin-top: rem(-3px);
-		padding: 0 $spacer;
+            & .datatable-header-cell-label {
+              display: block;
+              line-height: $line-height-base;
+            }
+          }
+          & .sort-btn {
+            @include fontawesome();
 
-		& .datatable-pager {
-			text-align: end;
-			
-			& ul {
-				& li {
-					& a {
-						padding: $pagination-padding-y $pagination-padding-x;
-						color: $pagination-color;
-						border: 1px solid $pagination-border-color;
-						min-width: inherit;
-						width: auto;
-						height: auto;
-						line-height: inherit;
-						border-radius: $border-radius;
-						margin: 0 $spacer * .25;
-						text-decoration: none;
-						
-						& i {
-							:dir(rtl) & {
-								display: block;
-								transform: rotate(180deg);
-							}
-						}
-						&:hover {
-							color: $pagination-hover-color;
-							background: $pagination-hover-bg !important;
-							border-color: $pagination-hover-border-color;
-						}
-					}
-					&.active {
-						& a {
-							color: $pagination-active-color;
-							background: $pagination-active-bg !important;
-							border-color: $pagination-active-border-color;
-						}
-					}
-				}
-			}
-			& .datatable-icon-left,
-			& .datatable-icon-skip,
-			& .datatable-icon-right,
-			& .datatable-icon-prev {
-				font-size: inherit;
-				line-height: inherit;
+            &.datatable-icon-sort-unset:before {
+              content: "\f0dc";
+              opacity: 0.25;
+            }
+            &.datatable-icon-up:before {
+              color: $component-active-bg;
+              content: "\f0de";
+            }
+            &.datatable-icon-down:before {
+              color: $component-active-bg;
+              content: "\f0dd";
+            }
+          }
+        }
+      }
+    }
+  }
+  & .datatable-body {
+    & .datatable-body-row {
+      border-top: none;
 
-				@include fontawesome();
-			}
-			& .datatable-icon-left:before {
-				content: '\f104';
-			}
-			& .datatable-icon-skip:before {
-				content: '\f101';
-			}
-			& .datatable-icon-right:before {
-				content: '\f105';
-			}
-			& .datatable-icon-prev:before {
-				content: '\f100';
-			}
-		}
-	}
-	& .empty-row {
-		padding: $spacer;
-		border-bottom: 1px solid $border-color;
-	}
+      &.datatable-row-even {
+        background: $table-striped-bg;
+
+        .dark-mode & {
+          background: rgba($gray-700, 0.7);
+        }
+      }
+      & .datatable-row-center {
+        & .datatable-body-cell {
+          padding: $table-cell-padding-y $table-cell-padding-x;
+          vertical-align: top;
+          border-top: none;
+          border-bottom: 1px solid $table-border-color;
+          line-height: inherit;
+        }
+      }
+    }
+  }
+  & .datatable-footer {
+    background: none;
+    color: inherit;
+    margin-top: rem(-3px);
+    padding: 0 $spacer;
+
+    & .datatable-pager {
+      text-align: end;
+
+      & ul {
+        & li {
+          & a {
+            padding: $pagination-padding-y $pagination-padding-x;
+            color: $pagination-color;
+            border: 1px solid $pagination-border-color;
+            min-width: inherit;
+            width: auto;
+            height: auto;
+            line-height: inherit;
+            border-radius: $border-radius;
+            margin: 0 $spacer * 0.25;
+            text-decoration: none;
+
+            & i {
+              :dir(rtl) & {
+                display: block;
+                transform: rotate(180deg);
+              }
+            }
+            &:hover {
+              color: $pagination-hover-color;
+              background: $pagination-hover-bg !important;
+              border-color: $pagination-hover-border-color;
+            }
+          }
+          &.active {
+            & a {
+              color: $pagination-active-color;
+              background: $pagination-active-bg !important;
+              border-color: $pagination-active-border-color;
+            }
+          }
+        }
+      }
+      & .datatable-icon-left,
+      & .datatable-icon-skip,
+      & .datatable-icon-right,
+      & .datatable-icon-prev {
+        font-size: inherit;
+        line-height: inherit;
+
+        @include fontawesome();
+      }
+      & .datatable-icon-left:before {
+        content: "\f104";
+      }
+      & .datatable-icon-skip:before {
+        content: "\f101";
+      }
+      & .datatable-icon-right:before {
+        content: "\f105";
+      }
+      & .datatable-icon-prev:before {
+        content: "\f100";
+      }
+    }
+  }
+  & .empty-row {
+    padding: $spacer;
+    border-bottom: 1px solid $border-color;
+  }
 }
-
 
 /* jsvectormap */
 body {
-	& .jvm-container {
-		position: relative;
-		
-		& .jvm-zoomin, 
-		& .jvm-zoomout, 
-		& .jvm-goback {
-			width: rem(16px);
-			height: rem(16px);
-			padding: 0;
-			left: $spacer;
-			color: var(--#{$prefix}component-color);
-			background: var(--#{$prefix}component-secondary-bg);
-			box-shadow: $box-shadow;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			
-			:dir(rtl) & {
-				left: auto;
-				right: $spacer;
-			}
-			&:hover,
-			&:focus {
-				background: var(--#{$prefix}component-tertiary-bg);
-			}
-			.jvm-without-padding & {
-				left: 0;
-			}
-		}
-		& .jvm-zoomin {
-			top: $card-spacer-x;
-			
-			.jvm-without-padding & {
-				top: 0;
-			}
-		}
-		& .jvm-zoomout {
-			top: $card-spacer-x + rem-default(25px);
-			
-			.jvm-without-padding & {
-				top: rem(25px);
-			}
-		}
-		& .jvm-legend {
-			background: rgba($gray-800, .85);
-			color: var(--#{$prefix}dark);
-			box-shadow: none;
-			border-radius: 0;
-		}
-		& .jvm-legend-title {
-			font-size: $font-size-base - rem-default(3px);
-			padding: $spacer * .3 $spacer * .5;
-			background: rgba(var(--#{$prefix}dark-rgb), .15);
-		}
-		& .jvm-legend-cnt-v {
-			& .jvm-legend {
-				padding: 0;
-				margin: $card-spacer-x $card-spacer-x 0 0;
-				
-				& .jvm-legend-inner {
-					padding: $spacer * .5;
-				}
-				& .jvm-legend-tick {
-					display: flex;
-					align-items: center;
-				}
-				& .jvm-legend-tick-sample {
-					width: rem(16px);
-					height: rem(16px);
-				}
-				& .jvm-legend-tick-text {
-					padding-left: $spacer * .5;
-				}
-			}
-		}
-	}
-	& .jvm-tooltip {
-		display: none;
-		background: rgba(var(--#{$prefix}dark-rgb), .9) !important;
-		color: var(--#{$prefix}body-bg) !important;
-		font-weight: $font-weight-bold !important;
-		padding: rem(4px) rem(8px) !important;
-		border: none !important;
-		font-family: inherit !important;
-		font-size: $font-size-base * .9 !important;
-		z-index: 1000;
-		border-radius: $border-radius !important;
-	}
-	& .map-page {
-		& .jvm-zoomin,
-		& .jvm-zoomout {
-			width: rem(25px) !important;
-			height: rem(25px) !important;
-			font-size: $h3-font-size;
-			left: $app-content-padding-x !important;
-			border-radius: $border-radius-lg;
-			
-			:dir(rtl) & {
-				left: auto !important;
-				right: $app-content-padding-x !important;
-			}
-			@include media-breakpoint-down(md) {
-				left: $app-content-padding-x-sm !important;
-				
-				:dir(rtl) & {
-					left: auto !important;
-					right: $app-content-padding-x-sm !important;
-				}
-			}
-		}
-		& .jvm-zoomin {
-			top: $app-header-height + rem(20px);
-			
-			@include media-breakpoint-down(lg) {
-				top: $app-header-height + rem(20px) + rem(30px);
-			}
-		}
-		& .jvm-zoomout {
-			top: $app-header-height + rem(50px);
-			
-			@include media-breakpoint-down(lg) {
-				top: $app-header-height + rem(30px) + rem(55px);
-			}
-		}
-	}
+  & .jvm-container {
+    position: relative;
+
+    & .jvm-zoomin,
+    & .jvm-zoomout,
+    & .jvm-goback {
+      width: rem(16px);
+      height: rem(16px);
+      padding: 0;
+      left: $spacer;
+      color: var(--#{$prefix}component-color);
+      background: var(--#{$prefix}component-secondary-bg);
+      box-shadow: $box-shadow;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      :dir(rtl) & {
+        left: auto;
+        right: $spacer;
+      }
+      &:hover,
+      &:focus {
+        background: var(--#{$prefix}component-tertiary-bg);
+      }
+      .jvm-without-padding & {
+        left: 0;
+      }
+    }
+    & .jvm-zoomin {
+      top: $card-spacer-x;
+
+      .jvm-without-padding & {
+        top: 0;
+      }
+    }
+    & .jvm-zoomout {
+      top: $card-spacer-x + rem-default(25px);
+
+      .jvm-without-padding & {
+        top: rem(25px);
+      }
+    }
+    & .jvm-legend {
+      background: rgba($gray-800, 0.85);
+      color: var(--#{$prefix}dark);
+      box-shadow: none;
+      border-radius: 0;
+    }
+    & .jvm-legend-title {
+      font-size: $font-size-base - rem-default(3px);
+      padding: $spacer * 0.3 $spacer * 0.5;
+      background: rgba(var(--#{$prefix}dark-rgb), 0.15);
+    }
+    & .jvm-legend-cnt-v {
+      & .jvm-legend {
+        padding: 0;
+        margin: $card-spacer-x $card-spacer-x 0 0;
+
+        & .jvm-legend-inner {
+          padding: $spacer * 0.5;
+        }
+        & .jvm-legend-tick {
+          display: flex;
+          align-items: center;
+        }
+        & .jvm-legend-tick-sample {
+          width: rem(16px);
+          height: rem(16px);
+        }
+        & .jvm-legend-tick-text {
+          padding-left: $spacer * 0.5;
+        }
+      }
+    }
+  }
+  & .jvm-tooltip {
+    display: none;
+    background: rgba(var(--#{$prefix}dark-rgb), 0.9) !important;
+    color: var(--#{$prefix}body-bg) !important;
+    font-weight: $font-weight-bold !important;
+    padding: rem(4px) rem(8px) !important;
+    border: none !important;
+    font-family: inherit !important;
+    font-size: $font-size-base * 0.9 !important;
+    z-index: 1000;
+    border-radius: $border-radius !important;
+  }
+  & .map-page {
+    & .jvm-zoomin,
+    & .jvm-zoomout {
+      width: rem(25px) !important;
+      height: rem(25px) !important;
+      font-size: $h3-font-size;
+      left: $app-content-padding-x !important;
+      border-radius: $border-radius-lg;
+
+      :dir(rtl) & {
+        left: auto !important;
+        right: $app-content-padding-x !important;
+      }
+      @include media-breakpoint-down(md) {
+        left: $app-content-padding-x-sm !important;
+
+        :dir(rtl) & {
+          left: auto !important;
+          right: $app-content-padding-x-sm !important;
+        }
+      }
+    }
+    & .jvm-zoomin {
+      top: $app-header-height + rem(20px);
+
+      @include media-breakpoint-down(lg) {
+        top: $app-header-height + rem(20px) + rem(30px);
+      }
+    }
+    & .jvm-zoomout {
+      top: $app-header-height + rem(50px);
+
+      @include media-breakpoint-down(lg) {
+        top: $app-header-height + rem(30px) + rem(55px);
+      }
+    }
+  }
 }
 
 [dir="rtl"] * {
-	direction: rtl;
+  direction: rtl;
 }
