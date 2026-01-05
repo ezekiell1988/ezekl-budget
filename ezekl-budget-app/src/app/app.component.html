@@ -1,67 +1,15 @@
 <!-- =====================================================
-     LAYOUT RESPONSIVO: DESKTOP (Color-Admin) / MOBILE (Ionic)
+     APP ROOT - Selector de Layout Responsivo
+     
+     Decide qué layout usar según el modo de plataforma:
+     - Mobile: app-mobile-layout (Ionic)
+     - Desktop: app-desktop-layout (Color-Admin)
      ===================================================== -->
 
-<!-- LAYOUT MÓVIL - Ionic (cuando isMobile() es true) -->
 @if (isMobile()) {
   <app-mobile-layout></app-mobile-layout>
 }
 
-<!-- LAYOUT DESKTOP - Color-Admin (cuando isDesktop() es true) -->
 @if (isDesktop()) {
-<!-- BEGIN #app -->
-<div id="app" class="app" [ngClass]="{
-    'has-scroll' : appHasScroll,
-    'app-sidebar-minified': appSettings.appSidebarMinified,
-		'app-sidebar-fixed': !appSettings.appSidebarNone && appSettings.appSidebarFixed,
-		'app-header-fixed': !appSettings.appHeaderNone && appSettings.appHeaderFixed,
-    'app-without-sidebar': appSettings.appSidebarNone || appSettings.appEmpty,
-    'app-without-header': appSettings.appHeaderNone || appSettings.appEmpty,
-    'app-with-end-sidebar': appSettings.appSidebarEnd,
-    'app-with-two-sidebar': appSettings.appSidebarTwo,
-    'app-with-wide-sidebar': appSettings.appSidebarWide,
-    'app-sidebar-end-toggled': appSettings.appSidebarEndToggled,
-    'app-sidebar-mobile-toggled': appSettings.appSidebarMobileToggled,
-    'app-content-full-height': appSettings.appContentFullHeight,
-    'app-with-top-menu': appSettings.appTopMenu,
-    'app-sidebar-end-mobile-toggled': appSettings.appSidebarEndMobileToggled,
-    'app-gradient-enabled': appSettings.appGradientEnabled,
-    'p-0': appSettings.appEmpty
-  }" [class]="appSettings.appClass">
-
-  @if (appSettings.appTopMenu && !appSettings.appEmpty) {
-    <top-menu></top-menu>
-  }
-
-  @if (!appSettings.appEmpty && !appSettings.appHeaderNone) {
-    <header (appSidebarMobileToggled)="onAppSidebarMobileToggled($event)"
-      (appSidebarEndToggled)="onAppSidebarEndToggled($event)"
-      (appSidebarEndMobileToggled)="onAppSidebarEndMobileToggled($event)" [appSidebarTwo]="appSettings.appSidebarTwo">
-    </header>
-  }
-
-  @if (!appSettings.appSidebarNone && !appSettings.appEmpty) {
-    <sidebar (appSidebarMinifiedToggled)="onAppSidebarMinifiedToggled($event)"
-      (appSidebarMobileToggled)="onAppSidebarMobileToggled($event)"
-      [appSidebarTransparent]="appSettings.appSidebarTransparent" [appSidebarMinified]="appSettings.appSidebarMinified"
-      [appSidebarGrid]="appSettings.appSidebarGrid" [appSidebarFixed]="appSettings.appSidebarFixed">
-    </sidebar>
-  }
-
-  @if (appSettings.appSidebarTwo && !appSettings.appEmpty) {
-    <sidebar-right (appSidebarEndMobileToggled)="onAppSidebarEndMobileToggled($event)">
-    </sidebar-right>
-  }
-
-  <div id="content" class="app-content"
-    [ngClass]="appSettings.appContentClass + ' ' + (appSettings.appEmpty ? 'p-0 m-0' : '')">
-    <router-outlet></router-outlet>
-  </div>
-
-  @if (!appSettings.appThemePanelNone) {
-    <theme-panel (appDarkModeChanged)="onAppDarkModeChanged($event)" (appThemeChanged)="onAppThemeChanged($event)">
-    </theme-panel>
-  }
-</div>
-<!-- END #app -->
+  <app-desktop-layout></app-desktop-layout>
 }
