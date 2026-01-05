@@ -14,7 +14,6 @@ from app.models.product import (
     ProductCreateRequest,
     ProductUpdateRequest,
     ProductCreateResponse,
-    ProductListResponse,
     ProductErrorResponse
 )
 
@@ -26,7 +25,7 @@ router = APIRouter()
 
 
 @router.get(
-    "",
+    ".json",
     response_model=List[Product],
     summary="Obtener productos con estructura jerárquica",
     description="""Obtiene todos los productos organizados en estructura de árbol.
@@ -78,14 +77,11 @@ router = APIRouter()
         }
     }
 )
-async def get_products(
-    current_user: Dict = Depends(get_current_user)
-):
+async def get_products():
     """
     Obtener todos los productos con estructura jerárquica.
     """
     try:
-        logger.info(f"Usuario {current_user.get('idLogin')} solicitando productos")
         
         # Preparar parámetros para el SP
         params = {
