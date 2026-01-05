@@ -1,13 +1,18 @@
 import { Component, Input, Output, EventEmitter, ElementRef, HostListener, ViewChild, OnInit, AfterViewChecked, AfterViewInit } 		 from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { NgScrollbarModule } from 'ngx-scrollbar';
 import { slideUp } from '../../composables/slideUp.js';
 import { slideToggle } from '../../composables/slideToggle.js';
 import { AppMenuService } from '../../service/app-menus.service';
 import { AppSettings } from '../../service/app-settings.service';
+import { FloatSubMenuComponent } from '../float-sub-menu/float-sub-menu.component';
 
 @Component({
   selector: 'sidebar',
   templateUrl: './sidebar.component.html',
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, RouterModule, NgScrollbarModule, FloatSubMenuComponent]
 })
 
 export class SidebarComponent implements AfterViewChecked {
