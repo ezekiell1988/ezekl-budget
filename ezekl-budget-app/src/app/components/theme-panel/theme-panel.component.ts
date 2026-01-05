@@ -4,6 +4,7 @@ import { FormsModule } from "@angular/forms";
 import { NgScrollbarModule } from "ngx-scrollbar";
 import { AppVariablesService } from "../../service/app-variables.service";
 import { AppSettings } from "../../service/app-settings.service";
+import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 declare var bootstrap: any;
 
@@ -13,7 +14,7 @@ declare var bootstrap: any;
   standalone: true,
   imports: [CommonModule, FormsModule, NgScrollbarModule],
 })
-export class ThemePanelComponent implements OnInit {
+export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   @Output() appDarkModeChanged = new EventEmitter<boolean>();
   @Output() appThemeChanged = new EventEmitter<boolean>();
   appVariables = this.appVariablesService.getAppVariables();
@@ -21,7 +22,9 @@ export class ThemePanelComponent implements OnInit {
   constructor(
     public appSettings: AppSettings,
     private appVariablesService: AppVariablesService
-  ) {}
+  ) {
+    super();
+  }
 
   active: boolean = false;
   appThemeDarkModeCheckbox: boolean = false;

@@ -3,6 +3,7 @@ import { CommonModule } from "@angular/common";
 import { RouterModule } from "@angular/router";
 import { AppMenuService } from "../../service/app-menus.service";
 import { Router } from "@angular/router";
+import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 declare var slideUp: any;
 declare var slideToggle: any;
@@ -13,10 +14,12 @@ declare var slideToggle: any;
   standalone: true,
   imports: [CommonModule, RouterModule],
 })
-export class TopMenuComponent implements OnInit {
+export class TopMenuComponent extends ResponsiveComponent implements OnInit {
   menus: any[] = [];
 
-  constructor(private appMenuService: AppMenuService, private router: Router) {}
+  constructor(private appMenuService: AppMenuService, private router: Router) {
+    super();
+  }
 
   ngOnInit() {
     this.menus = this.appMenuService.getAppMenus();

@@ -1,4 +1,10 @@
-<div class="theme-panel" [ngClass]="{ 'active': active }">
+<!-- =====================================================
+     THEME-PANEL COMPONENT - SOLO DESKTOP
+     Panel de configuración de temas
+     ===================================================== -->
+
+@if (isDesktop()) {
+  <div class="theme-panel" [ngClass]="{ 'active': active }">
 	<a href="javascript:;" (click)="toggleThemePanel()" class="theme-collapse-btn"><i class="fa fa-cog"></i></a>
 	<ng-scrollbar class="h-100">
 		<div class="theme-panel-content">
@@ -113,5 +119,6 @@
 			<a href="javascript:;" class="btn btn-default d-block w-100 rounded-pill"
 				data-toggle="reset-local-storage"><b>Restablecer Almacenamiento Local</b></a>
 		</div>
-	</ng-scrollbar>
-</div>
+  </ng-scrollbar>
+  </div>
+}

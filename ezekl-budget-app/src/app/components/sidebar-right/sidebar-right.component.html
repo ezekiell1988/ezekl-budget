@@ -1,5 +1,11 @@
-<!-- BEGIN #sidebar-right -->
-<div id="sidebar-right" class="app-sidebar app-sidebar-end" data-bs-theme="dark">
+<!-- =====================================================
+     SIDEBAR-RIGHT COMPONENT - SOLO DESKTOP
+     En mobile no se usa
+     ===================================================== -->
+
+@if (isDesktop()) {
+  <!-- BEGIN #sidebar-right -->
+  <div id="sidebar-right" class="app-sidebar app-sidebar-end" data-bs-theme="dark">
 	<!-- BEGIN sidebar scrollbar -->
 	<ng-scrollbar class="h-100">
 		<div class="p-3">
@@ -129,9 +135,8 @@
 		</div>
 	</ng-scrollbar>
 	<!-- END sidebar scrollbar -->
-</div>
-<div class="app-sidebar-bg app-sidebar-end"></div>
-<div class="app-sidebar-mobile-backdrop app-sidebar-end">
-	<a href="javascript:;" (click)="toggleAppSidebarEndMobile()" class="stretched-link"></a>
-</div>
-<!-- END #sidebar-right -->
+	<div class="app-sidebar-bg"></div>
+	<div class="app-sidebar-mobile-backdrop"><a href="javascript:;" (click)="toggleAppSidebarEndMobile()" class="stretched-link"></a></div>
+  </div>
+  <!-- END #sidebar-right -->
+}

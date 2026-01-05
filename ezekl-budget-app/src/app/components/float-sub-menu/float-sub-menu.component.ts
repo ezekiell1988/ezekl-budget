@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterModule } from "@angular/router";
 import { AppSettings } from "../../service/app-settings.service";
+import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 declare var slideToggle: any;
 
@@ -11,7 +12,7 @@ declare var slideToggle: any;
   standalone: true,
   imports: [CommonModule, RouterModule],
 })
-export class FloatSubMenuComponent {
+export class FloatSubMenuComponent extends ResponsiveComponent {
   @Input() menus;
   @Input() top;
   @Input() left;
@@ -26,7 +27,9 @@ export class FloatSubMenuComponent {
   @Output() hideAppSidebarFloatSubMenu = new EventEmitter();
   @Output() calculateFloatSubMenuPosition = new EventEmitter();
 
-  constructor(public appSettings: AppSettings) {}
+  constructor(public appSettings: AppSettings) {
+    super();
+  }
 
   expandCollapseSubmenu(e, currentMenu, allMenu, active) {
     e.preventDefault();

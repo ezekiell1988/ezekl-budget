@@ -7,6 +7,7 @@ import { slideToggle } from '../../composables/slideToggle.js';
 import { AppMenuService } from '../../service/app-menus.service';
 import { AppSettings } from '../../service/app-settings.service';
 import { FloatSubMenuComponent } from '../float-sub-menu/float-sub-menu.component';
+import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 @Component({
   selector: 'sidebar',
@@ -15,7 +16,7 @@ import { FloatSubMenuComponent } from '../float-sub-menu/float-sub-menu.componen
   imports: [CommonModule, RouterModule, NgScrollbarModule, FloatSubMenuComponent]
 })
 
-export class SidebarComponent implements AfterViewChecked {
+export class SidebarComponent extends ResponsiveComponent implements AfterViewChecked {
 	menus: any[] = [];
 	
   @ViewChild('sidebarScrollbar', { static: false }) private sidebarScrollbar: ElementRef;
@@ -321,6 +322,7 @@ export class SidebarComponent implements AfterViewChecked {
 	}
 
   constructor(private eRef: ElementRef, public appSettings: AppSettings, private appMenuService: AppMenuService) {
+    super();
     if (window.innerWidth <= 767) {
       this.mobileMode = true;
       this.desktopMode = false;

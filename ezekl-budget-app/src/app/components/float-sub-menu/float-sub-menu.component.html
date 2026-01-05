@@ -1,4 +1,10 @@
-@if (menus) {
+<!-- =====================================================
+     FLOAT-SUB-MENU COMPONENT - SOLO DESKTOP
+     Submenú flotante del sidebar minimizado
+     ===================================================== -->
+
+@if (isDesktop()) {
+  @if (menus) {
 <div class="app-sidebar-float-submenu-container" [attr.data-bs-theme]="this.appSettings.appSidebarLight ? '' : 'dark'"
   (mouseenter)="remainMenu()" (mouseleave)="hideMenu()" [style.top]="(top) ? top : ''" [style.left]="(left) ? left : ''"
   [style.right]="right" [style.bottom]="bottom">
@@ -83,5 +89,6 @@
     </div>
     }
   </div>
-</div>
+  </div>
+  }
 }

@@ -8,6 +8,7 @@ import {
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { AppSettings } from "../../service/app-settings.service";
+import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 declare var slideToggle: any;
 
@@ -17,7 +18,7 @@ declare var slideToggle: any;
   standalone: true,
   imports: [CommonModule],
 })
-export class HeaderComponent implements OnDestroy {
+export class HeaderComponent extends ResponsiveComponent implements OnDestroy {
   @Input() appSidebarTwo;
   @Output() appSidebarEndToggled = new EventEmitter<boolean>();
   @Output() appSidebarMobileToggled = new EventEmitter<boolean>();
@@ -47,9 +48,12 @@ export class HeaderComponent implements OnDestroy {
       !this.appSettings.appHeaderMegaMenuMobileToggled;
   }
 
-  ngOnDestroy() {
+  override ngOnDestroy() {
     this.appSettings.appHeaderMegaMenuMobileToggled = false;
+    super.ngOnDestroy();
   }
 
-  constructor(private renderer: Renderer2, public appSettings: AppSettings) {}
+  constructor(private renderer: Renderer2, public appSettings: AppSettings) {
+    super();
+  }
 }

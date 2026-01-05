@@ -1,5 +1,11 @@
-<!-- BEGIN #top-menu -->
-<div class="app-top-menu" data-bs-theme="dark">
+<!-- =====================================================
+     TOP-MENU COMPONENT - SOLO DESKTOP
+     En mobile se usa ion-menu
+     ===================================================== -->
+
+@if (isDesktop()) {
+  <!-- BEGIN #top-menu -->
+  <div class="app-top-menu" data-bs-theme="dark">
 	<div class="menu">
 		@for (menu of menus; track menu) {
 		@if (!menu.is_divider && !menu.is_header) {
@@ -83,5 +89,6 @@
 					class="fa fa-angle-right"></i></a>
 		</div>
 	</div>
-</div>
-<!-- END #top-menu -->
+  </div>
+  <!-- END #top-menu -->
+}
