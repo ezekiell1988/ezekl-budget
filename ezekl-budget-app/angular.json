@@ -18,7 +18,7 @@
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
             "baseHref": "/",
-            "outputPath": "dist",
+            "outputPath": "www",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
@@ -33,6 +33,7 @@
             	"node_modules/angular-calendar/css/angular-calendar.css",
             ],
             "scripts": [
+            	"node_modules/jquery/dist/jquery.min.js",
             	"node_modules/bootstrap/dist/js/bootstrap.bundle.min.js",
             	"node_modules/apexcharts/dist/apexcharts.min.js",
             	"node_modules/lity/dist/lity.min.js",
