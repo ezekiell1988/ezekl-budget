@@ -16,6 +16,8 @@ import {
   IonButton,
   IonIcon
 } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { notificationsOutline, menuOutline } from 'ionicons/icons';
 import { AppSettings } from "../../service/app-settings.service";
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
@@ -74,5 +76,11 @@ export class HeaderComponent extends ResponsiveComponent implements OnDestroy {
 
   constructor(private renderer: Renderer2, public appSettings: AppSettings) {
     super();
+    
+    // Registrar íconos de Ionicons para el header móvil
+    addIcons({
+      notificationsOutline,
+      menuOutline
+    });
   }
 }

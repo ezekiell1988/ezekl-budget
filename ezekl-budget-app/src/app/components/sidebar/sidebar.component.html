@@ -11,6 +11,11 @@
     <ion-header>
         <ion-toolbar>
             <ion-title>Menú</ion-title>
+            <ion-buttons slot="end">
+                <ion-button (click)="closeMenu()">
+                    <ion-icon name="close-outline"></ion-icon>
+                </ion-button>
+            </ion-buttons>
         </ion-toolbar>
     </ion-header>
     <ion-content>
@@ -39,7 +44,9 @@
                                 routerLinkActive="selected" 
                                 [detail]="false"
                                 lines="none"
-                                [class]="'menu-level-' + level">
+                                [class]="'menu-level-' + level"
+                                #rla="routerLinkActive">
+                                <ion-icon [name]="rla.isActive ? 'checkmark-circle' : 'ellipse-outline'" slot="start"></ion-icon>
                                 <ion-label>{{ item.title }}</ion-label>
                             </ion-item>
                         </ion-menu-toggle>

@@ -99,13 +99,16 @@ ion-menu .menu-level-3 ion-label {
 
 /* Item seleccionado actualmente */
 ion-menu ion-item.selected {
-  --background: var(--ion-color-primary);
-  --color: var(--ion-color-primary-contrast);
   font-weight: 600;
 }
 
-ion-menu ion-item.selected ion-icon {
-  color: var(--ion-color-primary-contrast);
+ion-menu ion-item.selected ion-label {
+  font-weight: 600;
+}
+
+/* Ícono del item seleccionado */
+ion-menu ion-item.selected ion-icon[slot="start"] {
+  color: var(--ion-color-primary);
 }
 
 /* Animación suave para submenús */
@@ -132,4 +135,55 @@ ion-menu .menu-footer {
   width: 100%;
   padding: 10px 0;
   border-top: 1px solid var(--ion-color-light);
+}
+
+/* Header del menú lateral móvil */
+ion-menu ion-header ion-toolbar {
+  --background: var(--ion-color-primary);
+  --color: white;
+}
+
+ion-menu ion-header ion-title {
+  color: white;
+  font-weight: 600;
+}
+
+ion-menu ion-header ion-button {
+  --color: white;
+}
+
+ion-menu ion-header ion-icon {
+  color: white;
+  font-size: 24px;
+}
+
+/* =====================================================
+   HEADER - BARRA SUPERIOR MOBILE (IONIC)
+   ===================================================== */
+
+/**
+ * Asegurar que los íconos del header sean visibles
+ */
+
+ion-header ion-toolbar {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+}
+
+ion-header ion-title {
+  color: var(--ion-color-primary-contrast);
+  font-weight: 600;
+}
+
+ion-header ion-button {
+  --color: var(--ion-color-primary-contrast);
+}
+
+ion-header ion-icon {
+  color: var(--ion-color-primary-contrast);
+  font-size: 24px;
+}
+
+ion-header ion-menu-button {
+  --color: var(--ion-color-primary-contrast);
 }

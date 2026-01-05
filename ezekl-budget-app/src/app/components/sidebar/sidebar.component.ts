@@ -12,7 +12,10 @@ import {
   IonItem,
   IonLabel,
   IonIcon,
-  IonMenuToggle
+  IonMenuToggle,
+  IonButton,
+  IonButtons,
+  MenuController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { 
@@ -27,7 +30,10 @@ import {
   chevronForwardOutline,
   chevronDownOutline,
   folderOutline,
-  documentOutline
+  documentOutline,
+  closeOutline,
+  checkmarkCircle,
+  ellipseOutline
 } from 'ionicons/icons';
 import { slideUp } from '../../composables/slideUp.js';
 import { slideToggle } from '../../composables/slideToggle.js';
@@ -54,7 +60,9 @@ import { ResponsiveComponent } from '../../shared/responsive-component.base';
     IonItem,
     IonLabel,
     IonIcon,
-    IonMenuToggle
+    IonMenuToggle,
+    IonButton,
+    IonButtons
   ]
 })
 
@@ -379,6 +387,11 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 		item.expanded = !item.expanded;
 	}
 
+	async closeMenu(): Promise<void> {
+		// Cerrar el menú lateral
+		await this.menuController.close('main-menu');
+	}
+
 	private mapIconToIonic(colorAdminIcon: string): string {
 		// Mapear íconos de FontAwesome a Ionicons
 		const iconMap: { [key: string]: string } = {
@@ -403,7 +416,7 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 		console.log('Logout clicked');
 	}
 
-  constructor(private eRef: ElementRef, public appSettings: AppSettings, private appMenuService: AppMenuService) {
+  constructor(private eRef: ElementRef, public appSettings: AppSettings, private appMenuService: AppMenuService, private menuController: MenuController) {
     super();
     
     // Registrar íconos de Ionicons
@@ -419,7 +432,10 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
       chevronForwardOutline,
       chevronDownOutline,
       folderOutline,
-      documentOutline
+      documentOutline,
+      closeOutline,
+      checkmarkCircle,
+      ellipseOutline
     });
     if (window.innerWidth <= 767) {
       this.mobileMode = true;
