@@ -148,6 +148,11 @@ class HealthCheckResponse(BaseModel):
         description="Versión actual de la aplicación",
         examples=["1.0.0", "1.2.3"]
     )
+
+    domain: str = Field(
+        description="Dominio o URL base del servidor",
+        examples=["https://budget.ezekl.com"]
+    )
     
     environment: Optional[Dict[str, Any]] = Field(
         default=None,
