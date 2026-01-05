@@ -2,6 +2,33 @@ import { Component, Input, Output, EventEmitter, ElementRef, HostListener, ViewC
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { NgScrollbarModule } from 'ngx-scrollbar';
+import { 
+  IonMenu,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent,
+  IonList,
+  IonItem,
+  IonLabel,
+  IonIcon,
+  IonMenuToggle
+} from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { 
+  homeOutline, 
+  personOutline, 
+  settingsOutline,
+  logOutOutline,
+  walletOutline,
+  statsChartOutline,
+  documentTextOutline,
+  businessOutline,
+  chevronForwardOutline,
+  chevronDownOutline,
+  folderOutline,
+  documentOutline
+} from 'ionicons/icons';
 import { slideUp } from '../../composables/slideUp.js';
 import { slideToggle } from '../../composables/slideToggle.js';
 import { AppMenuService } from '../../service/app-menus.service';
@@ -13,7 +40,22 @@ import { ResponsiveComponent } from '../../shared/responsive-component.base';
   selector: 'sidebar',
   templateUrl: './sidebar.component.html',
   standalone: true,
-  imports: [CommonModule, RouterModule, NgScrollbarModule, FloatSubMenuComponent]
+  imports: [
+    CommonModule, 
+    RouterModule, 
+    NgScrollbarModule, 
+    FloatSubMenuComponent,
+    IonMenu,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonContent,
+    IonList,
+    IonItem,
+    IonLabel,
+    IonIcon,
+    IonMenuToggle
+  ]
 })
 
 export class SidebarComponent extends ResponsiveComponent implements AfterViewChecked {
@@ -318,11 +360,67 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
   
   
 	ngOnInit() {
-		this.menus = this.appMenuService.getAppMenus(); 
+		this.menus = this.appMenuService.getAppMenus();
+		this.initializeMobileMenuState(this.menus);
+	}
+
+	private initializeMobileMenuState(items: any[]): void {
+		// Inicializar el estado de expansión para cada item con submenú
+		items.forEach(item => {
+			if (item.submenu) {
+				item.expanded = false; // Por defecto colapsado
+				this.initializeMobileMenuState(item.submenu); // Recursivo
+			}
+		});
+	}
+
+	toggleMobileSubmenu(item: any): void {
+		// Alternar el estado de expansión
+		item.expanded = !item.expanded;
+	}
+
+	private mapIconToIonic(colorAdminIcon: string): string {
+		// Mapear íconos de FontAwesome a Ionicons
+		const iconMap: { [key: string]: string } = {
+			'fa fa-home': 'home-outline',
+			'fa fa-user': 'person-outline',
+			'fa fa-cog': 'settings-outline',
+			'fa fa-wallet': 'wallet-outline',
+			'fa fa-chart-line': 'stats-chart-outline',
+			'fa fa-file': 'document-text-outline',
+			'fa fa-building': 'business-outline',
+			'fas fa-home': 'home-outline',
+			'fas fa-user': 'person-outline',
+			'bi bi-house': 'home-outline',
+			'bi bi-person': 'person-outline',
+		};
+
+		return iconMap[colorAdminIcon] || 'ellipse-outline';
+	}
+
+	logout(): void {
+		// Implementar lógica de logout
+		console.log('Logout clicked');
 	}
 
   constructor(private eRef: ElementRef, public appSettings: AppSettings, private appMenuService: AppMenuService) {
     super();
+    
+    // Registrar íconos de Ionicons
+    addIcons({
+      homeOutline,
+      personOutline,
+      settingsOutline,
+      logOutOutline,
+      walletOutline,
+      statsChartOutline,
+      documentTextOutline,
+      businessOutline,
+      chevronForwardOutline,
+      chevronDownOutline,
+      folderOutline,
+      documentOutline
+    });
     if (window.innerWidth <= 767) {
       this.mobileMode = true;
       this.desktopMode = false;

@@ -1,11 +1,28 @@
 <!-- =====================================================
      HEADER COMPONENT - RESPONSIVE DUAL TEMPLATE
      
-     Mobile: Sin header (manejado en mobile-layout)
+     Mobile: Ionic Header
      Desktop: Color-Admin Header
      ===================================================== -->
 
-<!-- ========== SOLO VERSIÓN DESKTOP ========== -->
+<!-- ========== VERSIÓN MÓVIL (Ionic) ========== -->
+@if (isMobile()) {
+  <ion-header>
+    <ion-toolbar>
+      <ion-buttons slot="start">
+        <ion-menu-button></ion-menu-button>
+      </ion-buttons>
+      <ion-title>{{ pageTitle }}</ion-title>
+      <ion-buttons slot="end">
+        <ion-button>
+          <ion-icon name="notifications-outline"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  </ion-header>
+}
+
+<!-- ========== VERSIÓN DESKTOP (Color-Admin) ========== -->
 @if (isDesktop()) {
   <!-- BEGIN #header -->
   <div id="header" class="app-header" [attr.data-bs-theme]="this.appSettings.appHeaderInverse ? 'dark' : ''">

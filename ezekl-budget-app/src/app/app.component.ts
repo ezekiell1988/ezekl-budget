@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Subscription } from "rxjs";
-import { PlatformDetectorService, PlatformMode } from "./service/platform-detector.service";
+import { PlatformDetectorService, PlatformMode } from "./service";
 import { MobileLayoutComponent, DesktopLayoutComponent } from "./layouts";
 
 @Component({

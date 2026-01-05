@@ -20,8 +20,8 @@ import {
   IonButton,
   IonBadge
 } from '@ionic/angular/standalone';
-import { ResponsiveComponent } from '../../shared/responsive-component.base';
-import { PanelComponent } from '../../components/panel/panel.component';
+import { ResponsiveComponent } from '../../shared';
+import { PanelComponent } from '../../components';
 
 @Component({
   selector: 'home',

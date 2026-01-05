@@ -7,6 +7,15 @@ import {
   OnDestroy,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { 
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonButtons,
+  IonMenuButton,
+  IonButton,
+  IonIcon
+} from '@ionic/angular/standalone';
 import { AppSettings } from "../../service/app-settings.service";
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
@@ -16,10 +25,20 @@ declare var slideToggle: any;
   selector: "header",
   templateUrl: "./header.component.html",
   standalone: true,
-  imports: [CommonModule],
+  imports: [
+    CommonModule,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonButtons,
+    IonMenuButton,
+    IonButton,
+    IonIcon
+  ],
 })
 export class HeaderComponent extends ResponsiveComponent implements OnDestroy {
   @Input() appSidebarTwo;
+  @Input() pageTitle = 'EzekL Budget'; // Para versión móvil
   @Output() appSidebarEndToggled = new EventEmitter<boolean>();
   @Output() appSidebarMobileToggled = new EventEmitter<boolean>();
   @Output() appSidebarEndMobileToggled = new EventEmitter<boolean>();

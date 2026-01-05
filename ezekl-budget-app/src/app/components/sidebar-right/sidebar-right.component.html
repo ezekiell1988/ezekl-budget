@@ -1,11 +1,13 @@
 <!-- =====================================================
-     SIDEBAR-RIGHT COMPONENT - SOLO DESKTOP
-     En mobile no se usa
+     SIDEBAR-RIGHT COMPONENT - RESPONSIVE
+     
+     Mobile: No se utiliza (no hay sidebar-right en móvil)
+     Desktop: Sidebar secundario de Color-Admin
      ===================================================== -->
 
 @if (isDesktop()) {
-  <!-- BEGIN #sidebar-right -->
-  <div id="sidebar-right" class="app-sidebar app-sidebar-end" data-bs-theme="dark">
+<!-- BEGIN #sidebar-right -->
+<div id="sidebar-right" class="app-sidebar app-sidebar-end" data-bs-theme="dark">
 	<!-- BEGIN sidebar scrollbar -->
 	<ng-scrollbar class="h-100">
 		<div class="p-3">
@@ -136,7 +138,8 @@
 	</ng-scrollbar>
 	<!-- END sidebar scrollbar -->
 	<div class="app-sidebar-bg"></div>
-	<div class="app-sidebar-mobile-backdrop"><a href="javascript:;" (click)="toggleAppSidebarEndMobile()" class="stretched-link"></a></div>
-  </div>
-  <!-- END #sidebar-right -->
+	<div class="app-sidebar-mobile-backdrop"><a href="javascript:;" (click)="toggleAppSidebarEndMobile()"
+			class="stretched-link"></a></div>
+</div>
+<!-- END #sidebar-right -->
 }

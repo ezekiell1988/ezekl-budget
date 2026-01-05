@@ -59,3 +59,77 @@ body.desktop-mode {
  * Color-Admin se ocultan mediante el CSS dinámico
  * que se carga en ionic-mobile.css
  */
+
+/* =====================================================
+   SIDEBAR - MENÚ LATERAL MOBILE (IONIC)
+   ===================================================== */
+
+/**
+ * Estilos para el menú lateral recursivo en Ionic
+ * Indentación visual para niveles de menú anidados
+ */
+
+ion-menu .menu-level-0 {
+  --padding-start: 16px;
+}
+
+ion-menu .menu-level-1 {
+  --padding-start: 32px;
+}
+
+ion-menu .menu-level-1 ion-label {
+  font-size: 0.95rem;
+}
+
+ion-menu .menu-level-2 {
+  --padding-start: 48px;
+}
+
+ion-menu .menu-level-2 ion-label {
+  font-size: 0.9rem;
+}
+
+ion-menu .menu-level-3 {
+  --padding-start: 64px;
+}
+
+ion-menu .menu-level-3 ion-label {
+  font-size: 0.85rem;
+}
+
+/* Item seleccionado actualmente */
+ion-menu ion-item.selected {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+  font-weight: 600;
+}
+
+ion-menu ion-item.selected ion-icon {
+  color: var(--ion-color-primary-contrast);
+}
+
+/* Animación suave para submenús */
+ion-menu .submenu-container {
+  animation: slideDown 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
+/* Footer del menú lateral móvil */
+ion-menu .menu-footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 10px 0;
+  border-top: 1px solid var(--ion-color-light);
+}
