@@ -1,14 +1,17 @@
-import { Component, HostListener, OnInit } from "@angular/core";
+import { Component, HostListener, OnInit, OnDestroy, signal, computed } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterModule } from "@angular/router";
 import { Router, NavigationStart } from "@angular/router";
+import { Subscription } from "rxjs";
 import { AppVariablesService } from "./service/app-variables.service";
 import { AppSettings } from "./service/app-settings.service";
+import { PlatformDetectorService, PlatformMode } from "./service/platform-detector.service";
 import { HeaderComponent } from "./components/header/header.component";
 import { SidebarComponent } from "./components/sidebar/sidebar.component";
 import { SidebarRightComponent } from "./components/sidebar-right/sidebar-right.component";
 import { TopMenuComponent } from "./components/top-menu/top-menu.component";
 import { ThemePanelComponent } from "./components/theme-panel/theme-panel.component";
+import { MobileLayoutComponent } from "./layouts/mobile-layout/mobile-layout.component";
 
 @Component({
   selector: "app-root",
@@ -22,13 +25,22 @@ import { ThemePanelComponent } from "./components/theme-panel/theme-panel.compon
     SidebarRightComponent,
     TopMenuComponent,
     ThemePanelComponent,
+    MobileLayoutComponent,
   ],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
+  // Signals para manejo reactivo del modo de plataforma
+  platformMode = signal<PlatformMode>('desktop');
+  isMobile = computed(() => this.platformMode() === 'mobile');
+  isDesktop = computed(() => this.platformMode() === 'desktop');
+  
+  private platformSubscription: Subscription | null = null;
+
   constructor(
     router: Router,
     public appSettings: AppSettings,
-    private appVariablesService: AppVariablesService
+    private appVariablesService: AppVariablesService,
+    private platformDetector: PlatformDetectorService
   ) {
     router.events.subscribe((e) => {
       if (e instanceof NavigationStart) {
@@ -46,6 +58,11 @@ export class AppComponent implements OnInit {
   appVariables = this.appVariablesService.getAppVariables();
 
   ngOnInit() {
+    // Suscribirse a cambios de modo de plataforma
+    this.platformSubscription = this.platformDetector.platformMode$.subscribe(mode => {
+      this.platformMode.set(mode);
+    });
+    
     // page settings
     if (this.appSettings.appDarkMode) {
       this.onAppDarkModeChanged(true);
@@ -146,5 +163,11 @@ export class AppComponent implements OnInit {
     document.body.classList.add(newTheme);
     this.appVariables = this.appVariablesService.getAppVariables();
     this.appVariablesService.variablesReload.emit();
+  }
+
+  ngOnDestroy(): void {
+    if (this.platformSubscription) {
+      this.platformSubscription.unsubscribe();
+    }
   }
 }

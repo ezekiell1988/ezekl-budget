@@ -1,16 +1,215 @@
-<!-- begin breadcrumb -->
-<ol class="breadcrumb float-xl-end">
-  <li class="breadcrumb-item"><a href="javascript:;">Inicio</a></li>
-  <li class="breadcrumb-item"><a href="javascript:;">Biblioteca</a></li>
-  <li class="breadcrumb-item active"><a href="javascript:;">Datos</a></li>
-</ol>
-<!-- end breadcrumb -->
-<!-- begin page-header -->
-<h1 class="page-header">Encabezado de Página <small>texto pequeño del encabezado va aquí...</small></h1>
-<!-- end page-header -->
+<!-- =====================================================
+     HOME PAGE - RESPONSIVE DUAL TEMPLATE
+     
+     Template condicional según plataforma:
+     - Mobile: Ionic Cards y componentes
+     - Desktop: Color-Admin widgets y paneles
+     ===================================================== -->
 
-<!-- begin panel -->
-<panel title="Título del Panel aquí">
-  Contenido del Panel Aquí
-</panel>
-<!-- end panel -->
+<!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
+@if (isMobile()) {
+  <div class="ion-padding">
+    <!-- Tarjeta de Balance Principal -->
+    <ion-card class="balance-card">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="wallet-outline"></ion-icon>
+          Balance Total
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="balance-amount">{{ formatCurrency(accountSummary.totalBalance) }}</div>
+        <div class="balance-details">
+          <div class="balance-item income">
+            <ion-icon name="trending-up-outline" color="success"></ion-icon>
+            <span>Ingresos: {{ formatCurrency(accountSummary.income) }}</span>
+          </div>
+          <div class="balance-item expense">
+            <ion-icon name="trending-down-outline" color="danger"></ion-icon>
+            <span>Gastos: {{ formatCurrency(accountSummary.expenses) }}</span>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Transacciones Recientes -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Transacciones Recientes</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list lines="full">
+          @for (transaction of recentTransactions; track transaction.id) {
+            <ion-item>
+              <ion-icon 
+                slot="start" 
+                [name]="getTransactionIcon(transaction.type)"
+                [color]="getTransactionColor(transaction.type)">
+              </ion-icon>
+              <ion-label>
+                <h3>{{ transaction.description }}</h3>
+                <p>{{ transaction.date | date:'short' }}</p>
+              </ion-label>
+              <ion-badge 
+                slot="end" 
+                [color]="getTransactionColor(transaction.type)">
+                {{ formatCurrency(transaction.amount) }}
+              </ion-badge>
+            </ion-item>
+          }
+        </ion-list>
+        
+        <ion-button expand="block" fill="clear" (click)="viewAllTransactions()">
+          Ver todas
+          <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Botón de acción rápida -->
+    <ion-button expand="block" class="ion-margin" (click)="addTransaction()">
+      <ion-icon name="cash-outline" slot="start"></ion-icon>
+      Nueva Transacción
+    </ion-button>
+  </div>
+}
+
+<!-- ========== VERSIÓN DESKTOP (COLOR-ADMIN) ========== -->
+@if (isDesktop()) {
+  <!-- begin breadcrumb -->
+  <ol class="breadcrumb float-xl-end">
+    <li class="breadcrumb-item"><a href="javascript:;">Inicio</a></li>
+    <li class="breadcrumb-item"><a href="javascript:;">Dashboard</a></li>
+    <li class="breadcrumb-item active">Resumen</li>
+  </ol>
+  <!-- end breadcrumb -->
+
+  <!-- begin page-header -->
+  <h1 class="page-header">
+    Dashboard <small>Resumen de tu situación financiera</small>
+  </h1>
+  <!-- end page-header -->
+
+  <!-- begin row - Balance Cards -->
+  <div class="row">
+    <!-- Total Balance -->
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats bg-teal">
+        <div class="stats-icon stats-icon-lg"><i class="fa fa-wallet fa-fw"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">BALANCE TOTAL</div>
+          <div class="stats-number">{{ formatCurrency(accountSummary.totalBalance) }}</div>
+          <div class="stats-progress progress">
+            <div class="progress-bar" style="width: 70.1%;"></div>
+          </div>
+          <div class="stats-desc">Actualizado hoy</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Income -->
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats bg-green">
+        <div class="stats-icon stats-icon-lg"><i class="fa fa-arrow-up fa-fw"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">INGRESOS</div>
+          <div class="stats-number">{{ formatCurrency(accountSummary.income) }}</div>
+          <div class="stats-progress progress">
+            <div class="progress-bar" style="width: 85%;"></div>
+          </div>
+          <div class="stats-desc">Este mes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expenses -->
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats bg-red">
+        <div class="stats-icon stats-icon-lg"><i class="fa fa-arrow-down fa-fw"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">GASTOS</div>
+          <div class="stats-number">{{ formatCurrency(accountSummary.expenses) }}</div>
+          <div class="stats-progress progress">
+            <div class="progress-bar" style="width: 66%;"></div>
+          </div>
+          <div class="stats-desc">Este mes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Savings -->
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats bg-blue">
+        <div class="stats-icon stats-icon-lg"><i class="fa fa-piggy-bank fa-fw"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">AHORROS</div>
+          <div class="stats-number">{{ formatCurrency(accountSummary.savings) }}</div>
+          <div class="stats-progress progress">
+            <div class="progress-bar" style="width: 33%;"></div>
+          </div>
+          <div class="stats-desc">Meta: ₡5,000</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- end row -->
+
+  <!-- begin row - Transactions Panel -->
+  <div class="row">
+    <div class="col-xl-8">
+      <panel title="Transacciones Recientes">
+        <div class="table-responsive">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th class="text-end">Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (transaction of recentTransactions; track transaction.id) {
+                <tr>
+                  <td>{{ transaction.description }}</td>
+                  <td>{{ transaction.date | date:'short' }}</td>
+                  <td>
+                    <span class="badge" [class]="transaction.type === 'income' ? 'bg-success' : 'bg-danger'">
+                      {{ transaction.type === 'income' ? 'Ingreso' : 'Gasto' }}
+                    </span>
+                  </td>
+                  <td class="text-end" [class]="transaction.type === 'income' ? 'text-success' : 'text-danger'">
+                    {{ formatCurrency(transaction.amount) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div footer class="text-end">
+          <button class="btn btn-primary btn-sm" (click)="viewAllTransactions()">
+            Ver todas las transacciones
+          </button>
+        </div>
+      </panel>
+    </div>
+
+    <div class="col-xl-4">
+      <panel title="Acciones Rápidas">
+        <div class="d-grid gap-2">
+          <button class="btn btn-success" (click)="addTransaction()">
+            <i class="fa fa-plus me-2"></i>Nueva Transacción
+          </button>
+          <button class="btn btn-outline-primary">
+            <i class="fa fa-file-export me-2"></i>Exportar Reporte
+          </button>
+          <button class="btn btn-outline-secondary">
+            <i class="fa fa-cog me-2"></i>Configuración
+          </button>
+        </div>
+      </panel>
+    </div>
+  </div>
+  <!-- end row -->
+}
+

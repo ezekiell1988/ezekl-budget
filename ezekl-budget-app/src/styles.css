@@ -1,2 +1,61 @@
 /* You can add global styles to this file, and also import other style files */
 @import '~@fortawesome/fontawesome-free/css/all.css';
+
+/* =====================================================
+   RESPONSIVE PLATFORM STYLES
+   ===================================================== */
+
+/**
+ * Clases utilitarias para mostrar/ocultar contenido
+ * según el modo de plataforma activo
+ */
+
+/* Ocultar en modo móvil (Ionic) */
+body.ionic-mode .desktop-only {
+  display: none !important;
+}
+
+/* Ocultar en modo desktop (Color-Admin) */
+body.desktop-mode .ionic-only,
+body.desktop-mode .mobile-only {
+  display: none !important;
+}
+
+/* Mostrar solo en móvil */
+body.ionic-mode .ionic-only,
+body.ionic-mode .mobile-only {
+  display: block !important;
+}
+
+/* Mostrar solo en desktop */
+body.desktop-mode .desktop-only {
+  display: block !important;
+}
+
+/* =====================================================
+   PREVENIR CONFLICTOS DE ESTILOS
+   ===================================================== */
+
+/**
+ * Cuando estamos en modo desktop, asegurarnos que
+ * los estilos de Ionic no afecten nada
+ */
+body.desktop-mode {
+  /* Ionic components should be hidden */
+  ion-app,
+  ion-router-outlet,
+  ion-menu,
+  ion-header,
+  ion-footer,
+  ion-content,
+  ion-toolbar,
+  ion-tab-bar {
+    display: none !important;
+  }
+}
+
+/**
+ * Cuando estamos en modo móvil, los estilos de
+ * Color-Admin se ocultan mediante el CSS dinámico
+ * que se carga en ionic-mobile.css
+ */

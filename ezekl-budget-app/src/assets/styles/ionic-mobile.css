@@ -1,0 +1,302 @@
+/**
+ * =====================================================
+ * IONIC MOBILE STYLES
+ * =====================================================
+ * Este archivo se carga dinámicamente SOLO cuando la 
+ * pantalla es de tamaño móvil (< 768px).
+ * 
+ * Los estilos aquí están scoped usando la clase 
+ * .ionic-mode que se agrega al body.
+ * 
+ * NOTA: Los estilos core de Ionic se cargan via 
+ * provideIonicAngular() en app.config.ts
+ * =====================================================
+ */
+
+/* =====================================================
+   OCULTAR ELEMENTOS DE COLOR-ADMIN EN MODO MÓVIL
+   ===================================================== */
+body.ionic-mode #header.app-header,
+body.ionic-mode #sidebar.app-sidebar,
+body.ionic-mode .app-sidebar-end,
+body.ionic-mode .theme-panel,
+body.ionic-mode .top-menu,
+body.ionic-mode .float-sub-menu-container {
+  display: none !important;
+}
+
+/* El contenido principal ocupa todo */
+body.ionic-mode #content.app-content {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-height: 100vh;
+}
+
+/* Mostrar elementos de Ionic */
+body.ionic-mode .ionic-only {
+  display: block !important;
+}
+
+body.ionic-mode .desktop-only {
+  display: none !important;
+}
+
+/* Estilos base para Ionic app */
+body.ionic-mode ion-app {
+  display: block !important;
+}
+
+body.ionic-mode ion-router-outlet {
+  display: block !important;
+}
+
+/* =====================================================
+   ESTILOS PERSONALIZADOS PARA IONIC EN MODO MÓVIL
+   ===================================================== */
+
+/* Variables de tema para Ionic */
+body.ionic-mode {
+  --ion-background-color: var(--bs-body-bg, #ffffff);
+  --ion-text-color: var(--bs-body-color, #212529);
+  --ion-font-family: var(--bs-font-sans-serif, system-ui, -apple-system, sans-serif);
+  
+  /* Colores primarios - heredar del tema */
+  --ion-color-primary: var(--app-theme, #348fe2);
+  --ion-color-primary-rgb: 52, 143, 226;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #2e7ec7;
+  --ion-color-primary-tint: #489ae5;
+}
+
+/* Toolbar de Ionic */
+body.ionic-mode ion-toolbar {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+}
+
+body.ionic-mode ion-title {
+  font-weight: 600;
+}
+
+/* Tab bar */
+body.ionic-mode ion-tab-bar {
+  --background: var(--bs-body-bg, #ffffff);
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+body.ionic-mode ion-tab-button {
+  --color: var(--bs-secondary-color, #6c757d);
+  --color-selected: var(--app-theme, #348fe2);
+}
+
+/* Menu lateral de Ionic */
+body.ionic-mode ion-menu {
+  --background: var(--bs-body-bg, #ffffff);
+}
+
+body.ionic-mode ion-menu ion-content {
+  --background: var(--bs-body-bg, #ffffff);
+}
+
+body.ionic-mode ion-item {
+  --background: transparent;
+  --color: var(--bs-body-color, #212529);
+  --border-color: var(--bs-border-color, #dee2e6);
+}
+
+/* Cards */
+body.ionic-mode ion-card {
+  --background: var(--bs-body-bg, #ffffff);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  margin: 16px;
+}
+
+body.ionic-mode ion-card-header {
+  padding: 1rem;
+}
+
+body.ionic-mode ion-card-content {
+  padding: 1rem;
+}
+
+/* Listas */
+body.ionic-mode ion-list {
+  --background: transparent;
+}
+
+/* Botones - heredar estilos de Bootstrap */
+body.ionic-mode ion-button {
+  --border-radius: 0.375rem;
+  font-weight: 500;
+}
+
+/* Inputs */
+body.ionic-mode ion-input,
+body.ionic-mode ion-textarea,
+body.ionic-mode ion-select {
+  --background: var(--bs-body-bg, #ffffff);
+  --color: var(--bs-body-color, #212529);
+  --placeholder-color: var(--bs-secondary-color, #6c757d);
+}
+
+/* FAB buttons */
+body.ionic-mode ion-fab-button {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+}
+
+/* Loading & Spinners */
+body.ionic-mode ion-spinner {
+  --color: var(--app-theme, #348fe2);
+}
+
+/* Refresher */
+body.ionic-mode ion-refresher {
+  --ion-color-primary: var(--app-theme, #348fe2);
+}
+
+/* Toast */
+body.ionic-mode ion-toast {
+  --background: var(--bs-dark, #212529);
+  --color: #ffffff;
+}
+
+/* Modal */
+body.ionic-mode ion-modal {
+  --background: var(--bs-body-bg, #ffffff);
+}
+
+/* Segment (tabs) */
+body.ionic-mode ion-segment {
+  --background: var(--bs-light, #f8f9fa);
+}
+
+body.ionic-mode ion-segment-button {
+  --color: var(--bs-body-color, #212529);
+  --color-checked: var(--app-theme, #348fe2);
+  --indicator-color: var(--app-theme, #348fe2);
+}
+
+/* Searchbar */
+body.ionic-mode ion-searchbar {
+  --background: var(--bs-light, #f8f9fa);
+  --color: var(--bs-body-color, #212529);
+  --placeholder-color: var(--bs-secondary-color, #6c757d);
+  --icon-color: var(--bs-secondary-color, #6c757d);
+}
+
+/* Badge */
+body.ionic-mode ion-badge {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+}
+
+/* Chip */
+body.ionic-mode ion-chip {
+  --background: var(--bs-light, #f8f9fa);
+  --color: var(--bs-body-color, #212529);
+}
+
+/* Toggle */
+body.ionic-mode ion-toggle {
+  --track-background: var(--bs-secondary-bg, #e9ecef);
+  --track-background-checked: var(--app-theme, #348fe2);
+}
+
+/* Checkbox */
+body.ionic-mode ion-checkbox {
+  --border-color: var(--bs-border-color, #dee2e6);
+  --border-color-checked: var(--app-theme, #348fe2);
+  --background-checked: var(--app-theme, #348fe2);
+}
+
+/* Radio */
+body.ionic-mode ion-radio {
+  --color: var(--bs-border-color, #dee2e6);
+  --color-checked: var(--app-theme, #348fe2);
+}
+
+/* =====================================================
+   ESTILOS PERSONALIZADOS PARA LA APP
+   ===================================================== */
+
+/* Balance Card */
+body.ionic-mode .balance-card {
+  background: linear-gradient(135deg, var(--app-theme, #348fe2), #1e5aa8);
+  color: white;
+}
+
+body.ionic-mode .balance-card ion-card-header {
+  color: white;
+}
+
+body.ionic-mode .balance-card ion-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+body.ionic-mode .balance-card ion-card-content {
+  color: white;
+}
+
+body.ionic-mode .balance-amount {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+body.ionic-mode .balance-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.ionic-mode .balance-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+body.ionic-mode .balance-item ion-icon {
+  font-size: 1.2rem;
+}
+
+body.ionic-mode .balance-item.income ion-icon {
+  color: #4ade80 !important;
+}
+
+body.ionic-mode .balance-item.expense ion-icon {
+  color: #f87171 !important;
+}
+
+/* =====================================================
+   DARK MODE SUPPORT PARA IONIC
+   ===================================================== */
+body.ionic-mode[data-bs-theme="dark"] {
+  --ion-background-color: var(--bs-body-bg, #212529);
+  --ion-text-color: var(--bs-body-color, #dee2e6);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-toolbar {
+  --background: var(--bs-dark, #1a1d20);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-tab-bar {
+  --background: var(--bs-dark, #1a1d20);
+  border-top-color: var(--bs-border-color, #495057);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-card {
+  --background: var(--bs-dark, #2b2f32);
+}
+
+body.ionic-mode[data-bs-theme="dark"] .balance-card {
+  background: linear-gradient(135deg, #1e3a5f, #0f1f33);
+}

@@ -1,3 +1,14 @@
+<!-- =====================================================
+     LAYOUT RESPONSIVO: DESKTOP (Color-Admin) / MOBILE (Ionic)
+     ===================================================== -->
+
+<!-- LAYOUT MÓVIL - Ionic (cuando isMobile() es true) -->
+@if (isMobile()) {
+  <app-mobile-layout></app-mobile-layout>
+}
+
+<!-- LAYOUT DESKTOP - Color-Admin (cuando isDesktop() es true) -->
+@if (isDesktop()) {
 <!-- BEGIN #app -->
 <div id="app" class="app" [ngClass]="{
     'has-scroll' : appHasScroll,
@@ -53,3 +64,4 @@
   }
 </div>
 <!-- END #app -->
+}
