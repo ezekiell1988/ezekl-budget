@@ -2,8 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Subscription } from "rxjs";
 import { PlatformDetectorService, PlatformMode } from "./service/platform-detector.service";
-import { MobileLayoutComponent } from "./layouts/mobile-layout/mobile-layout.component";
-import { DesktopLayoutComponent } from "./layouts/desktop-layout/desktop-layout.component";
+import { MobileLayoutComponent, DesktopLayoutComponent } from "./layouts";
 
 @Component({
   selector: "app-root",

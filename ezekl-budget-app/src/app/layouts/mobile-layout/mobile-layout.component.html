@@ -1,0 +1,65 @@
+<!-- =====================================================
+     MOBILE LAYOUT - Ionic Framework
+     
+     Estructura de la app móvil con:
+     - ion-menu: Menú lateral
+     - ion-header: Barra superior
+     - ion-content: Contenido principal
+     ===================================================== -->
+
+<ion-app>
+  <!-- Menú lateral de Ionic -->
+  <ion-menu contentId="main-content" menuId="main-menu" type="overlay">
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Menú</ion-title>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content>
+      <ion-list>
+        @for (item of menuItems; track item.title) {
+          <ion-menu-toggle auto-hide="true">
+            <ion-item 
+              [routerLink]="item.url" 
+              routerLinkActive="selected"
+              [detail]="false"
+              lines="none">
+              <ion-icon [name]="item.icon" slot="start"></ion-icon>
+              <ion-label>{{ item.title }}</ion-label>
+            </ion-item>
+          </ion-menu-toggle>
+        }
+      </ion-list>
+      
+      <div class="menu-footer">
+        <ion-item lines="none" button (click)="logout()">
+          <ion-icon name="log-out-outline" slot="start"></ion-icon>
+          <ion-label>Cerrar Sesión</ion-label>
+        </ion-item>
+      </div>
+    </ion-content>
+  </ion-menu>
+
+  <!-- Contenido principal -->
+  <div class="ion-page" id="main-content">
+    <!-- Header de la app móvil -->
+    <ion-header>
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-menu-button></ion-menu-button>
+        </ion-buttons>
+        <ion-title>{{ pageTitle }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button>
+            <ion-icon name="notifications-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <!-- Contenido - donde se renderizan las páginas -->
+    <ion-content>
+      <router-outlet></router-outlet>
+    </ion-content>
+  </div>
+</ion-app>

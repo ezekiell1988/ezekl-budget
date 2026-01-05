@@ -1,0 +1,36 @@
+// Mobile Layout Component Styles
+// Estilos para el layout móvil con Ionic
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.selected {
+  --background: var(--ion-color-primary-tint);
+  --color: var(--ion-color-primary);
+}
+
+.menu-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  border-top: 1px solid var(--ion-border-color);
+}
+
+ion-content {
+  --background: var(--ion-background-color);
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+.ion-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
