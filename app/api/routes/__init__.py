@@ -3,7 +3,7 @@ Endpoints HTTP de la API ezekl-budget.
 Estructura preparada para escalar con múltiples rutas organizadas.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import Dict
 from app.core.config import settings
 from app.database.connection import test_db_connection
@@ -166,7 +166,7 @@ async def get_realtime_credentials(current_user: Dict = Depends(get_current_user
     """,
     response_description="Estado detallado del sistema y todos sus componentes"
 )
-async def health_check():
+async def health_check(request: Request):
     """
     Endpoint de salud para verificar que la API y la base de datos están funcionando.
 
@@ -221,10 +221,14 @@ async def health_check():
             detail="Servicio no disponible: Error de conexión a base de datos",
         )
 
+    # Obtener la URL base del servidor desde el request
+    server_url = f"{request.url.scheme}://{request.url.netloc}"
+
     return {
         "status": "healthy",
         "message": "Ezekl Budget API está funcionando correctamente",
         "version": "1.0.0",
+        "domain": server_url,
         "environment": {
             "is_production": settings.is_production,
             "configured_host": settings.db_host,
