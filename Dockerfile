@@ -1,6 +1,10 @@
 # Usar imagen base de Python 3.13 slim
 FROM python:3.13-slim
 
+# Definir arquitectura como argumento de build
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
 # Instalar dependencias del sistema y Microsoft ODBC Driver
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -8,7 +12,11 @@ RUN apt-get update && apt-get install -y \
     gnupg2 \
     unixodbc-dev \
     && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.asc.gpg \
-    && echo "deb [arch=amd64] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
+    && if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+         echo "deb [arch=arm64] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list; \
+       else \
+         echo "deb [arch=amd64] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list; \
+       fi \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*

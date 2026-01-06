@@ -170,9 +170,27 @@ def build_frontend():
         else:  # Linux/Mac
             run_command(f"rm -rf {www_path}", check=False)
     
+    # Limpiar node_modules si existe para evitar conflictos de bloqueo
+    if node_modules_path.exists():
+        print("🧹 Limpiando node_modules...")
+        if os.name == 'nt':  # Windows
+            run_command(f"rmdir /s /q {node_modules_path}", check=False)
+        else:  # Linux/Mac
+            run_command(f"rm -rf {node_modules_path}", check=False)
+        
+        # Esperar un momento para que el sistema libere los archivos
+        import time
+        time.sleep(2)
+    
     # Instalar dependencias
     print("📦 Instalando dependencias de npm...")
-    run_command("npm ci --loglevel error", cwd=str(frontend_path))
+    
+    # Intentar primero con npm ci
+    result = run_command("npm ci --loglevel error", cwd=str(frontend_path), check=False)
+    
+    if result.returncode != 0:
+        print("⚠️  npm ci falló, intentando con npm install...")
+        run_command("npm install --loglevel error", cwd=str(frontend_path))
     
     # Build de producción
     print("🏗️  Ejecutando build de producción...")
@@ -196,7 +214,11 @@ def build_docker_image():
     print(f"Imagen: {image_full_name}")
     print(f"Latest: {image_latest}")
     
-    run_command(f"docker build --no-cache -t {image_full_name} -t {image_latest} .")
+    # Construir para la plataforma Linux AMD64 (necesaria para Azure Container Apps)
+    run_command(
+        f"docker buildx build --platform linux/amd64 "
+        f"--load -t {image_full_name} -t {image_latest} ."
+    )
     
     print("✅ Imagen Docker construida exitosamente")
     return image_full_name, image_latest
@@ -339,9 +361,22 @@ def deploy_container_app(image_full_name):
         # App existe, hacer update
         print(f"🔄 Actualizando Container App: {CONTAINER_APP_NAME}...")
         
-        # Construir string de variables de entorno
+        # Construir strings de variables y secretos
         env_vars_str = build_env_vars_string(env_vars)
+        secrets_str = build_secrets_string(env_vars)
         
+        # Primero actualizar los secretos si existen
+        if secrets_str:
+            print("🔐 Actualizando secretos...")
+            run_command(
+                f"az containerapp secret set "
+                f"--name {CONTAINER_APP_NAME} "
+                f"--resource-group {RESOURCE_GROUP} "
+                f"--secrets {secrets_str}",
+                check=False  # No fallar si algún secreto ya existe
+            )
+        
+        # Luego actualizar la imagen y variables de entorno
         run_command(
             f"az containerapp update "
             f"--name {CONTAINER_APP_NAME} "
@@ -385,7 +420,7 @@ def deploy_container_app(image_full_name):
         print("✅ Container App creada")
 
 
-def get_app_url():
+def get_app_url(image_full_name):
     """Obtiene la URL de la aplicación desplegada"""
     print_step("Obteniendo URL de la aplicación")
     
@@ -451,7 +486,7 @@ def main():
         deploy_container_app(image_full_name)
         
         # 9. Obtener URL
-        get_app_url()
+        get_app_url(image_full_name)
         
         print("\n✅ Deployment completado exitosamente!")
         
