@@ -10,7 +10,7 @@ from app.models.auth import CurrentUser
 from app.services.crm_service import crm_service
 from app.services.crm_auth import crm_auth_service
 from app.models.crm import CRMHealthResponse, CRMDiagnoseResponse, CRMTokenResponse
-from app.api.auth import get_current_user
+from app.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 

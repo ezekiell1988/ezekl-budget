@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from app.core.config import settings
 from app.models.auth import CurrentUser
 from app.models.responses import CredentialsResponse, RealtimeCredentialsResponse
-from ..auth import get_current_user
+from app.utils.auth import get_current_user
 
 router = APIRouter(tags=["Credenciales"])
 

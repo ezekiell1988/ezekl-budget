@@ -16,7 +16,7 @@ from app.models.sharepoint import (
     DrivesResponse, DriveItemsResponse, DriveItem,
     SearchResponse, SharePointOperationResponse, HealthCheckResponse
 )
-from app.api.auth import get_current_user
+from app.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 

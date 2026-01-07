@@ -21,7 +21,7 @@ from app.models.auth import (
 from app.services.whatsapp_service import whatsapp_service
 from app.services.ai_service import ai_service
 from app.core.config import settings
-from app.api.auth import get_current_user
+from app.utils.auth import get_current_user
 
 # Configurar logging
 logger = logging.getLogger(__name__)

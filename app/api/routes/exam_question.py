@@ -8,7 +8,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends, Query, Path
 from typing import Optional, Dict
 from app.database.connection import execute_sp
-from app.api.auth import get_current_user
+from app.utils.auth import get_current_user
 from app.models.auth import CurrentUser
 from app.models.exam_question import (
     ExamQuestionListResponse,

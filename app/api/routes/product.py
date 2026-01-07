@@ -8,7 +8,7 @@ import json
 from fastapi import APIRouter, HTTPException, Depends, Path
 from typing import List, Dict
 from app.database.connection import execute_sp
-from app.api.auth import get_current_user
+from app.utils.auth import get_current_user
 from app.models.auth import CurrentUser
 from app.models.product import (
     Product,

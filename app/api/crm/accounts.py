@@ -13,7 +13,7 @@ from app.models.crm import (
     AccountsListResponse, AccountResponse, AccountCreateRequest, 
     AccountUpdateRequest, CRMOperationResponse
 )
-from app.api.auth import get_current_user
+from app.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 

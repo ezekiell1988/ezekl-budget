@@ -8,7 +8,7 @@ from typing import Optional, Dict
 import json
 import logging
 from app.database.connection import execute_sp
-from app.api.auth import get_current_user
+from app.utils.auth import get_current_user
 from app.models.accounting_account import (
     AccountingAccount,
     AccountingAccountRequest,

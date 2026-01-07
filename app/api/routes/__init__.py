@@ -5,7 +5,6 @@ Estructura preparada para escalar con múltiples rutas organizadas.
 
 from fastapi import APIRouter
 from .email import router as email_router
-from ..auth import get_current_user
 from .queue import router as queue_router
 from .accounting_account import router as accounting_account_router
 from .company import router as company_router
