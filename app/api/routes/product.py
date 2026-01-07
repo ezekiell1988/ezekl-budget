@@ -8,7 +8,8 @@ import json
 from fastapi import APIRouter, HTTPException, Depends, Path
 from typing import List, Dict
 from app.database.connection import execute_sp
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
+from app.models.auth import CurrentUser
 from app.models.product import (
     Product,
     ProductCreateRequest,
@@ -167,13 +168,13 @@ async def get_products():
 )
 async def get_product(
     idProduct: int = Path(description="ID del producto", ge=1),
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Obtener el detalle completo de un producto específico por ID.
     """
     try:
-        logger.info(f"Usuario {current_user.get('idLogin')} solicitando producto {idProduct}")
+        logger.info(f"Usuario {current_user.user.idLogin} solicitando producto {idProduct}")
         
         # Preparar parámetros para el SP
         params = {
@@ -269,20 +270,20 @@ async def get_product(
 )
 async def create_product(
     product: ProductCreateRequest,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Crear un nuevo producto.
     """
     try:
-        logger.info(f"Usuario {current_user.get('idLogin')} creando producto: {product.nameProduct}")
+        logger.info(f"Usuario {current_user.user.idLogin} creando producto: {product.nameProduct}")
         
         # Preparar parámetros para el SP
         params = {
             "idProductFather": product.idProductFather,
             "nameProduct": product.nameProduct,
             "descriptionProduct": product.descriptionProduct,
-            "idCompany": current_user.get("idCompany")
+            "idCompany": current_user.user.idCompany
         }
         
         # Ejecutar stored procedure
@@ -353,18 +354,18 @@ async def create_product(
 async def update_product(
     idProduct: int = Path(description="ID del producto a actualizar", ge=1),
     product: ProductUpdateRequest = None,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Actualizar un producto existente.
     """
     try:
-        logger.info(f"Usuario {current_user.get('idLogin')} actualizando producto {idProduct}")
+        logger.info(f"Usuario {current_user.user.idLogin} actualizando producto {idProduct}")
         
         # Preparar parámetros para el SP (solo enviar campos que no sean None)
         params = {
             "idProduct": idProduct,
-            "idCompany": current_user.get("idCompany")
+            "idCompany": current_user.user.idCompany
         }
         
         if product.idProductFather is not None:
@@ -431,18 +432,18 @@ async def update_product(
 )
 async def delete_product(
     idProduct: int = Path(description="ID del producto a eliminar", ge=1),
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Eliminar un producto.
     """
     try:
-        logger.info(f"Usuario {current_user.get('idLogin')} eliminando producto {idProduct}")
+        logger.info(f"Usuario {current_user.user.idLogin} eliminando producto {idProduct}")
         
         # Preparar parámetros para el SP
         params = {
             "idProduct": idProduct,
-            "idCompany": current_user.get("idCompany")
+            "idCompany": current_user.user.idCompany
         }
         
         # Ejecutar stored procedure

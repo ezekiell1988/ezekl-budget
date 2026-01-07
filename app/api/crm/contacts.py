@@ -7,12 +7,13 @@ from fastapi import APIRouter, HTTPException, Query, Path, Depends
 from typing import Optional
 import logging
 
+from app.models.auth import CurrentUser
 from app.services.crm_service import crm_service
 from app.models.crm import (
     ContactsListResponse, ContactResponse, ContactCreateRequest, 
     ContactUpdateRequest, CRMOperationResponse
 )
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ router = APIRouter(prefix="/contacts", tags=["CRM - Contactos"])
     }
 )
 async def get_contacts(
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     top: Optional[int] = Query(
         10, 
         description="Número de registros a retornar", 
@@ -144,7 +145,7 @@ async def get_contacts_by_nextlink(
         description="URL completa del @odata.nextLink retornado por la primera llamada a get_contacts",
         examples=["/api/data/v9.2/contacts?$select=fullname&$skiptoken=%3Ccookie..."]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Obtiene la siguiente página de contactos usando el nextLink de D365."""
     
@@ -190,7 +191,7 @@ async def get_contact_by_id(
         description="GUID único del contacto en Dynamics 365",
         examples=["729ca2a0-024a-ea11-a815-000d3a591220"]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Obtiene un contacto específico por su ID."""
     
@@ -238,7 +239,7 @@ async def get_contact_by_id(
 )
 async def create_contact(
     contact_data: ContactCreateRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Crea un nuevo contacto en Dynamics 365."""
     
@@ -290,7 +291,7 @@ async def update_contact(
         examples=["729ca2a0-024a-ea11-a815-000d3a591220"]
     ),
     contact_data: ContactUpdateRequest = ...,
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Actualiza un contacto existente en Dynamics 365."""
     
@@ -336,7 +337,7 @@ async def delete_contact(
         description="GUID único del contacto a eliminar",
         examples=["729ca2a0-024a-ea11-a815-000d3a591220"]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Elimina un contacto de Dynamics 365."""
     

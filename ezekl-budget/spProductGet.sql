@@ -3,16 +3,20 @@ CREATE OR ALTER PROCEDURE spProductGet
 AS
 BEGIN
   SET NOCOUNT ON;
+  DECLARE @idCompany INT = JSON_VALUE(@json, '$.idCompany');
 
   -- Preparar query
   SET @json = JSON_QUERY((
-    SELECT idProduct, nameProduct, descriptionProduct
-    , JSON_QUERY(dbo.fnProductGet((
-      SELECT P.idProduct idProductFather
+    SELECT P.idProduct, P.nameProduct, P.descriptionProduct
+    , JSON_QUERY(dbo.fnProductGetByIdProductFather((
+      SELECT P.idProduct idProductFather, CP.idCompany
       FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
     ))) childrens
-    FROM tbProduct P
-    WHERE P.idProductFather IS NULL
+    FROM tbCompanyProduct CP
+    INNER JOIN tbProduct P
+    ON P.idProduct = CP.idProduct
+    WHERE CP.idCompany = @idCompany
+    AND P.idProductFather IS NULL
     FOR JSON PATH, INCLUDE_NULL_VALUES
   ));
   
@@ -21,4 +25,6 @@ END
 GO
 
 -- Probar el procedimiento corregido
-EXEC spProductGet @json = N'{}';
+EXEC spProductGet @json = N'{
+  "idCompany": 1
+}';

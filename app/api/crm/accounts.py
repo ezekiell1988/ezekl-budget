@@ -7,12 +7,13 @@ from fastapi import APIRouter, HTTPException, Query, Path, Depends
 from typing import Optional
 import logging
 
+from app.models.auth import CurrentUser
 from app.services.crm_service import crm_service
 from app.models.crm import (
     AccountsListResponse, AccountResponse, AccountCreateRequest, 
     AccountUpdateRequest, CRMOperationResponse
 )
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ router = APIRouter(prefix="/accounts", tags=["CRM - Cuentas"])
     }
 )
 async def get_accounts(
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     top: Optional[int] = Query(
         10, 
         description="Número de registros a retornar", 
@@ -147,7 +148,7 @@ async def get_accounts_by_nextlink(
             "/api/data/v9.2/accounts?$orderby=accountid&$top=25&$skiptoken=%3Ccookie..."
         ]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Obtiene la siguiente página de cuentas usando nextLink de Dynamics 365.
@@ -198,7 +199,7 @@ async def get_account_by_id(
         description="GUID único de la cuenta en Dynamics 365",
         examples=["629ca2a0-024a-ea11-a815-000d3a591218"]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Obtiene una cuenta específica por su ID."""
     
@@ -246,7 +247,7 @@ async def get_account_by_id(
 )
 async def create_account(
     account_data: AccountCreateRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Crea una nueva cuenta en Dynamics 365."""
     
@@ -296,7 +297,7 @@ async def update_account(
         examples=["629ca2a0-024a-ea11-a815-000d3a591218"]
     ),
     account_data: AccountUpdateRequest = ...,
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Actualiza una cuenta existente en Dynamics 365."""
     
@@ -342,7 +343,7 @@ async def delete_account(
         description="GUID único de la cuenta a eliminar",
         examples=["629ca2a0-024a-ea11-a815-000d3a591218"]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Elimina una cuenta de Dynamics 365."""
     

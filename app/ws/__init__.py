@@ -9,7 +9,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.core.config import settings
 
 # Router para WebSockets (estándar FastAPI)
-router = APIRouter()
+router = APIRouter(prefix="/ws")
 
 
 @router.websocket("/")

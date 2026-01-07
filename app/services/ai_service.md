@@ -406,7 +406,7 @@ ai_service.clear_history(phone_number)
 ### Autenticación
 Todos los endpoints manuales requieren autenticación:
 ```python
-current_user: dict = Depends(get_current_user)
+current_user: CurrentUser = Depends(get_current_user)
 ```
 
 ### Validación de Webhook

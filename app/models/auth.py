@@ -133,6 +133,18 @@ class UserData(BaseModel):
         description="Dirección de email del usuario",
         examples=["ezekiell1988@hotmail.com", "admin@ezekl.com", None]
     )
+    
+    idCompany: Optional[int] = Field(
+        default=None,
+        description="ID de la compañía asociada al usuario",
+        examples=[1, 2, None]
+    )
+    
+    email: Optional[str] = Field(
+        default=None,
+        description="Email del usuario (alias de emailLogin)",
+        examples=["ezekiell1988@hotmail.com", "admin@ezekl.com", None]
+    )
 
     class Config:
         """Configuración del modelo Pydantic."""
@@ -142,7 +154,49 @@ class UserData(BaseModel):
                 "codeLogin": "S",
                 "nameLogin": "Ezequiel Baltodano Cubillo",
                 "phoneLogin": "50683681485",
-                "emailLogin": "ezekiell1988@hotmail.com"
+                "emailLogin": "ezekiell1988@hotmail.com",
+                "idCompany": 1,
+                "email": "ezekiell1988@hotmail.com"
+            }
+        }
+
+
+class CurrentUser(BaseModel):
+    """
+    Modelo para el usuario actual autenticado con información del token.
+    
+    Incluye los datos del usuario más los timestamps del token JWE.
+    """
+    
+    user: UserData = Field(
+        description="Datos del usuario autenticado"
+    )
+    
+    exp: int = Field(
+        description="Timestamp de expiración del token (Unix timestamp)",
+        examples=[1704567890]
+    )
+    
+    iat: int = Field(
+        description="Timestamp de emisión del token (Unix timestamp)",
+        examples=[1704481490]
+    )
+
+    class Config:
+        """Configuración del modelo Pydantic."""
+        json_schema_extra = {
+            "example": {
+                "user": {
+                    "idLogin": 1,
+                    "codeLogin": "S",
+                    "nameLogin": "Ezequiel Baltodano Cubillo",
+                    "phoneLogin": "50683681485",
+                    "emailLogin": "ezekiell1988@hotmail.com",
+                    "idCompany": 1,
+                    "email": "ezekiell1988@hotmail.com"
+                },
+                "exp": 1704567890,
+                "iat": 1704481490
             }
         }
 

@@ -8,7 +8,7 @@ from typing import Optional, Dict
 import json
 import logging
 from app.database.connection import execute_sp
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
 from app.models.accounting_account import (
     AccountingAccount,
     AccountingAccountRequest,
@@ -18,6 +18,7 @@ from app.models.accounting_account import (
     AccountingAccountCreateResponse,
     AccountingAccountErrorResponse
 )
+from app.models.auth import CurrentUser
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -119,7 +120,7 @@ async def get_accounting_accounts(
         description="Incluir cuentas inactivas en los resultados",
         example=False
     ),
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Obtiene una lista paginada de cuentas contables con estructura jerárquica.
@@ -253,7 +254,7 @@ async def get_accounting_accounts(
 )
 async def get_accounting_account_by_id(
     account_id: int,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Obtiene una cuenta contable específica por su ID.
@@ -377,7 +378,7 @@ async def get_accounting_account_by_id(
 )
 async def create_accounting_account(
     account_data: AccountingAccountCreateRequest,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Crea una nueva cuenta contable.
@@ -506,7 +507,7 @@ async def create_accounting_account(
 async def update_accounting_account(
     account_id: int = Path(..., description="ID de la cuenta contable a actualizar"),
     account_data: AccountingAccountUpdateRequest = ...,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Actualiza una cuenta contable existente.
@@ -614,7 +615,7 @@ async def update_accounting_account(
 )
 async def delete_accounting_account(
     account_id: int = Path(..., description="ID de la cuenta contable a eliminar"),
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Elimina una cuenta contable.

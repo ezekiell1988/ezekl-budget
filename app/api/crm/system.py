@@ -6,10 +6,11 @@ Proporciona endpoints para health check, diagnóstico y información del token.
 from fastapi import APIRouter, HTTPException, Depends
 import logging
 
+from app.models.auth import CurrentUser
 from app.services.crm_service import crm_service
 from app.services.crm_auth import crm_auth_service
 from app.models.crm import CRMHealthResponse, CRMDiagnoseResponse, CRMTokenResponse
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ router = APIRouter(prefix="/system", tags=["CRM - Sistema"])
     }
 )
 async def health_check(
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Health check básico del servicio CRM."""
     
@@ -89,7 +90,7 @@ async def health_check(
     }
 )
 async def get_token_info(
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Obtiene información del token actual (para debugging)."""
     
@@ -155,7 +156,7 @@ async def get_token_info(
     }
 )
 async def diagnose_crm(
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Ejecuta un diagnóstico completo del servicio CRM."""
     
@@ -204,7 +205,7 @@ async def diagnose_crm(
     }
 )
 async def clear_token_cache(
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Limpia el caché del token CRM."""
     

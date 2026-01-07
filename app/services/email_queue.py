@@ -20,6 +20,7 @@ class EmailTask:
     subject: str
     message: str
     is_html: bool = False
+    text_message: Optional[str] = None  # Nueva: versión de texto plano
     cc: Optional[List[str]] = None
     bcc: Optional[List[str]] = None
     created_at: datetime = None
@@ -49,11 +50,12 @@ class EmailQueue:
     async def start(self):
         """Inicia el worker de la cola"""
         if self.is_running:
-            logger.warning("Email queue worker ya está ejecutándose")
+            logger.warning("⚠️ Email queue worker ya está ejecutándose")
             return
             
         self.is_running = True
         self.worker_task = asyncio.create_task(self._worker())
+        logger.info("✅ Email queue worker iniciado")
         
     async def stop(self):
         """Detiene el worker de la cola"""
@@ -83,6 +85,7 @@ class EmailQueue:
         try:
             # Usar put_nowait para no bloquear si la cola está llena
             self.queue.put_nowait(email_task)
+            logger.info(f"📬 Email {email_task.id} agregado a cola (tamaño: {self.queue.qsize()})")
             return True
         except asyncio.QueueFull:
             logger.error(f"❌ Cola de emails llena, no se puede agregar: {email_task.id}")
@@ -129,6 +132,7 @@ class EmailQueue:
         start_time = datetime.now()
         
         try:
+            logger.info(f"📤 Procesando email {email_task.id} para {email_task.to}")
             
             # Enviar email usando el servicio existente
             result = await send_notification_email(
@@ -136,6 +140,7 @@ class EmailQueue:
                 subject=email_task.subject,
                 message=email_task.message,
                 is_html=email_task.is_html,
+                text_message=email_task.text_message,
                 cc=email_task.cc,
                 bcc=email_task.bcc
             )
@@ -144,6 +149,7 @@ class EmailQueue:
             
             if result.success:
                 self.processed_count += 1
+                logger.info(f"✅ Email {email_task.id} enviado exitosamente ({duration:.2f}s)")
             else:
                 self.failed_count += 1
                 logger.error(f"❌ Error enviando email {email_task.id}: {result.message} ({duration:.2f}s)")
@@ -157,7 +163,8 @@ class EmailQueue:
 email_queue = EmailQueue()
 
 async def queue_email(to: List[str], subject: str, message: str, 
-                     is_html: bool = False, cc: Optional[List[str]] = None, 
+                     is_html: bool = False, text_message: Optional[str] = None,
+                     cc: Optional[List[str]] = None, 
                      bcc: Optional[List[str]] = None) -> str:
     """
     Función de conveniencia para agregar emails a la cola.
@@ -165,8 +172,9 @@ async def queue_email(to: List[str], subject: str, message: str,
     Args:
         to: Lista de destinatarios
         subject: Asunto del email
-        message: Contenido del email
+        message: Contenido del email (HTML si is_html=True)
         is_html: Si el contenido es HTML
+        text_message: Versión de texto plano (recomendado para evitar spam)
         cc: Lista de destinatarios en copia (opcional)
         bcc: Lista de destinatarios en copia oculta (opcional)
         
@@ -183,6 +191,7 @@ async def queue_email(to: List[str], subject: str, message: str,
         subject=subject,
         message=message,
         is_html=is_html,
+        text_message=text_message,
         cc=cc,
         bcc=bcc
     )

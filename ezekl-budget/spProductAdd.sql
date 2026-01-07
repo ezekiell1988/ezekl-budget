@@ -3,8 +3,9 @@ CREATE OR ALTER PROCEDURE spProductAdd
 AS
 BEGIN
   SET NOCOUNT ON;
+  DECLARE @idCompany INT = JSON_VALUE(@json, '$.idCompany');
   DECLARE @idProduct INT;
-  
+
   -- Crear producto
   INSERT INTO tbProduct (nameProduct, descriptionProduct, idProductFather)
   SELECT *
@@ -16,6 +17,10 @@ BEGIN
 
   -- idProduct
   SET @idProduct = SCOPE_IDENTITY();
+
+  -- Crear company
+  INSERT INTO tbCompanyProduct (idCompany, idProduct)
+  VALUES (@idCompany, @idProduct);
 
   -- Crear cuentas
   INSERT INTO tbProductAccountingAccount (idProduct, idAccountingAccount, effect, [percent])
@@ -39,6 +44,7 @@ GO
 -- 25 Tamaño TV
 -- Probar el procedimiento corregido
 EXEC spProductAdd @json = N'{
+  "idCompany": 1,
   "nameProduct": "TV nueva 60\"",
   "idProductFather": 24,
   "descriptionProduct": "TV nueva 60 pulgadas"

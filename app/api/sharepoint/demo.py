@@ -16,11 +16,11 @@ from app.models.sharepoint import (
     DrivesResponse, DriveItemsResponse, DriveItem,
     SearchResponse, SharePointOperationResponse, HealthCheckResponse
 )
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/sharepoint", tags=["SharePoint Online"])
+router = APIRouter(tags=["SharePoint - Demo"])
 
 
 # ==================== HEALTH CHECK ====================

@@ -8,7 +8,8 @@ import json
 from fastapi import APIRouter, HTTPException, Depends, Query, Path
 from typing import Optional, Dict
 from app.database.connection import execute_sp
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
+from app.models.auth import CurrentUser
 from app.models.company import (
     Company,
     CompanyCreateRequest,
@@ -109,7 +110,7 @@ async def get_companies(
         False,
         description="Si incluir compañías inactivas en el resultado"
     ),
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Obtiene una lista paginada de compañías.
@@ -238,7 +239,7 @@ async def get_companies(
 )
 async def get_company_by_id(
     company_id: int = Path(..., description="ID de la compañía a obtener", example=1),
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Obtiene una compañía específica por su ID.
@@ -351,7 +352,7 @@ async def get_company_by_id(
 )
 async def create_company(
     company: CompanyCreateRequest,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Crea una nueva compañía.
@@ -475,7 +476,7 @@ async def create_company(
 async def update_company(
     company_id: int = Path(..., description="ID de la compañía a actualizar", example=1),
     company: CompanyUpdateRequest = ...,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Actualiza una compañía existente.
@@ -595,7 +596,7 @@ async def update_company(
 )
 async def delete_company(
     company_id: int = Path(..., description="ID de la compañía a eliminar", example=1),
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Elimina una compañía (soft delete).

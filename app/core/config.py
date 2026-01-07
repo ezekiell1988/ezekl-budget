@@ -146,6 +146,18 @@ class Settings(BaseSettings):
         return "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
     
     @property
+    def idCompany(self) -> int:
+        """Retorna el ID de la compañía basado en la URL base efectiva."""
+        effective_url = self.effective_url_base
+        if effective_url in ["http://localhost:8000", "https://budget.ezekl.com"]:
+            return 1
+        elif effective_url == "http://localhost:8001":
+            return 2
+        else:
+            # Por defecto, usar idCompany = 1
+            return 1
+    
+    @property
     def effective_db_host(self) -> str:
         """Retorna el host efectivo de BD basado en el ambiente."""
         if self.is_production:

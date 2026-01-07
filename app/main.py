@@ -10,7 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.config import settings
-from app.api import api_router, websockets_router_with_prefix
+from app.api import api_router
+from app.ws import router as websockets_router
 from app.services.email_queue import email_queue
 import logging
 import sys
@@ -118,12 +119,15 @@ else:
     # Detectar automáticamente basado en la ubicación del archivo
     FRONTEND_BUILD_PATH = Path(__file__).parent.parent / "ezekl-budget-ionic" / "www"
 
-# Inicializar la aplicación FastAPI con lifespan
+# Inicializar la aplicación FastAPI con lifespan y configuración de seguridad
 app = FastAPI(
     title="Ezekl Budget API",
     description="API híbrida para gestión de presupuesto con frontend Ionic Angular y autenticación Microsoft",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    swagger_ui_parameters={
+        "persistAuthorization": True  # Mantener el token entre recargas
+    }
 )
 
 # Configurar CORS para permitir WebSockets desde localhost
@@ -148,8 +152,8 @@ app.add_middleware(
 app.add_middleware(CSPMiddleware)
 
 # 🔧 Configurar módulos de la API (estándar FastAPI)
-app.include_router(api_router)                    # ✅ HTTP endpoints con prefix="/api"
-app.include_router(websockets_router_with_prefix)  # ✅ WebSockets con prefix="/ws"
+app.include_router(api_router)           # ✅ HTTP endpoints con prefix="/api"
+app.include_router(websockets_router)    # ✅ WebSockets con prefix="/ws"
 
 # Servir archivos estáticos del frontend (CSS, JS, assets, etc.)
 if FRONTEND_BUILD_PATH.exists():

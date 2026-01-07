@@ -70,6 +70,9 @@ class AsyncDatabaseManager:
             Exception: Si hay error en la ejecución del stored procedure
         """
         try:
+            # Agregar idCompany al parámetro JSON desde settings
+            json_param["idCompany"] = settings.idCompany
+            
             # Convertir el diccionario a JSON string
             json_string = json.dumps(json_param, ensure_ascii=False)
             

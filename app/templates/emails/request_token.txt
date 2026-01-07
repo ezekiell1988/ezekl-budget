@@ -1,0 +1,22 @@
+Hola {{ user_name }},
+
+Has solicitado un código de acceso para iniciar sesión en Ezekl Budget.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tu código de acceso es:
+
+    {{ token }}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ingresa este código en la aplicación para completar tu inicio de sesión.
+
+⏰ IMPORTANTE: Este código es válido por 30 minutos y solo puede ser usado una vez.
+
+Si no solicitaste este código, puedes ignorar este mensaje de forma segura.
+
+
+Saludos,
+Equipo Ezekl Budget
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Este es un correo automático, por favor no respondas a este mensaje.

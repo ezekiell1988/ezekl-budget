@@ -10,7 +10,8 @@ import httpx
 import os
 from dotenv import load_dotenv
 
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
+from app.models.auth import CurrentUser
 
 # Cargar variables de entorno
 load_dotenv()
@@ -130,7 +131,7 @@ async def get_access_token() -> str:
         500: {"description": "Error al generar token"},
     },
 )
-async def get_directline_token(current_user: Dict = Depends(get_current_user)):
+async def get_directline_token(current_user: CurrentUser = Depends(get_current_user)):
     """
     Genera un token de conversación para autenticación con Copilot Studio SDK.
     

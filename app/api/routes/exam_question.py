@@ -8,7 +8,8 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends, Query, Path
 from typing import Optional, Dict
 from app.database.connection import execute_sp
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
+from app.models.auth import CurrentUser
 from app.models.exam_question import (
     ExamQuestionListResponse,
     ExamQuestionErrorResponse,
@@ -105,7 +106,7 @@ async def get_exam_questions(
         description="Número de elementos por página (máximo 100)",
         example=10
     ),
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Obtiene una lista paginada de preguntas de un examen específico.
@@ -245,7 +246,7 @@ async def get_exam_questions(
 )
 async def set_question(
     request: SetQuestionRequest,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Marca una pregunta como vista/completada por el usuario autenticado.
@@ -373,7 +374,7 @@ async def set_question(
 )
 async def set_to_question(
     request: SetToQuestionRequest,
-    current_user: Dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Marca preguntas hasta un número específico como leídas/completadas.

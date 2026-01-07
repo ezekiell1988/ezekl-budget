@@ -96,11 +96,19 @@ class EmailService:
             if bcc:
                 all_recipients.extend(bcc)
             
+            # Log de configuración SMTP (sin mostrar contraseña completa)
+            logger.info(f"🔧 Configuración SMTP: {settings.smtp_host}:{settings.smtp_port}")
+            logger.info(f"🔧 Usuario SMTP: {settings.smtp_user}")
+            logger.info(f"🔧 Remitente: {sender_address}")
+            
             # Conectar y enviar email
             with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as server:
-                server.set_debuglevel(0)
+                server.set_debuglevel(1)  # Activar debug para ver más detalles
+                logger.info("🔄 Iniciando TLS...")
                 server.starttls()
+                logger.info("🔄 Autenticando con SMTP...")
                 server.login(settings.smtp_user, settings.smtp_password)
+                logger.info("🔄 Enviando mensaje...")
                 server.send_message(msg, to_addrs=all_recipients)
             
             logger.info(f"✅ Email enviado a {', '.join(to)} | Subject: {subject}")
@@ -210,6 +218,7 @@ async def send_notification_email(
     subject: str,
     message: str,
     is_html: bool = False,
+    text_message: Optional[str] = None,
     cc: Optional[List[str]] = None,
     bcc: Optional[List[str]] = None
 ) -> EmailSendResponse:
@@ -219,15 +228,28 @@ async def send_notification_email(
     Args:
         to: Lista de destinatarios
         subject: Asunto del email
-        message: Contenido del mensaje
+        message: Contenido del mensaje (HTML si is_html=True, texto plano si False)
         is_html: Si True, trata el mensaje como HTML; si False, como texto plano
+        text_message: Versión de texto plano adicional (recomendado cuando is_html=True)
         cc: Lista de destinatarios en copia (opcional)
         bcc: Lista de destinatarios en copia oculta (opcional)
         
     Returns:
         EmailSendResponse: Resultado del envío
+        
+    Note:
+        Para evitar filtros de spam, se recomienda enviar AMBAS versiones:
+        - message con HTML (is_html=True)
+        - text_message con texto plano
     """
-    if is_html:
-        return await send_email(to=to, subject=subject, html_content=message, cc=cc, bcc=bcc)
-    else:
-        return await send_email(to=to, subject=subject, text_content=message, cc=cc, bcc=bcc)
+    html_content = message if is_html else None
+    text_content = text_message if text_message else (None if is_html else message)
+    
+    return await send_email(
+        to=to,
+        subject=subject,
+        html_content=html_content,
+        text_content=text_content,
+        cc=cc,
+        bcc=bcc
+    )

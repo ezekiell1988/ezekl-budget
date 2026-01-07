@@ -13,6 +13,7 @@ from app.models.whatsapp import (
     WhatsAppMessageSendResponse,
 )
 from app.models.auth import (
+    CurrentUser,
     WhatsAppAuthTokenRequest,
     WhatsAppAuthTokenResponse,
     WhatsAppAuthStatusResponse,
@@ -20,7 +21,7 @@ from app.models.auth import (
 from app.services.whatsapp_service import whatsapp_service
 from app.services.ai_service import ai_service
 from app.core.config import settings
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -409,7 +410,7 @@ async def whatsapp_status():
 )
 async def send_whatsapp_message(
     message_request: WhatsAppMessageSendRequest,
-    current_user: Dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """
     Envía un mensaje de WhatsApp.
@@ -467,7 +468,7 @@ async def send_text_message(
         description="Contenido del mensaje", example="Hola, ¿cómo estás?"
     ),
     preview_url: bool = Query(default=False, description="Mostrar preview de URLs"),
-    current_user: Dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """
     Envía un mensaje de texto simple.
@@ -523,7 +524,7 @@ async def send_image_message(
     ),
     image_id: Optional[str] = Query(default=None, description="ID de imagen subida"),
     caption: Optional[str] = Query(default=None, description="Caption de la imagen"),
-    current_user: Dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """Envía una imagen."""
 
@@ -561,7 +562,7 @@ async def send_document(
     link: str = Query(..., description="URL del documento"),
     caption: Optional[str] = Query(None, description="Texto descriptivo opcional"),
     filename: Optional[str] = Query(None, description="Nombre del archivo"),
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """Envía un documento a un número de WhatsApp."""
     try:
@@ -625,7 +626,7 @@ async def ai_chat(
     audio_id: Optional[str] = Query(
         None, description="ID de audio de WhatsApp para procesar"
     ),
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """Genera una respuesta de IA sin enviarla por WhatsApp. Soporta multimedia."""
     try:
@@ -701,7 +702,7 @@ async def ai_reply(
     audio_id: Optional[str] = Query(
         None, description="ID de audio de WhatsApp para procesar"
     ),
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """Genera y envía una respuesta de IA por WhatsApp. Soporta multimedia."""
     try:
@@ -752,7 +753,7 @@ async def ai_reply(
     },
 )
 async def clear_ai_history(
-    phone_number: str, current_user: dict = Depends(get_current_user)
+    phone_number: str, current_user: CurrentUser = Depends(get_current_user)
 ):
     """Limpia el historial de conversación de un usuario."""
     ai_service.clear_history(phone_number)
@@ -776,7 +777,7 @@ async def clear_ai_history(
         401: {"description": "No autorizado"},
     },
 )
-async def get_ai_statistics(current_user: dict = Depends(get_current_user)):
+async def get_ai_statistics(current_user: CurrentUser = Depends(get_current_user)):
     """Obtiene estadísticas del servicio de IA."""
     return ai_service.get_statistics()
 
@@ -797,7 +798,7 @@ async def send_document_message(
     ),
     filename: Optional[str] = Query(default=None, description="Nombre del archivo"),
     caption: Optional[str] = Query(default=None, description="Caption del documento"),
-    current_user: Dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """Envía un documento."""
 
@@ -837,7 +838,7 @@ async def send_location_message(
     longitude: float = Query(description="Longitud"),
     name: Optional[str] = Query(default=None, description="Nombre del lugar"),
     address: Optional[str] = Query(default=None, description="Dirección"),
-    current_user: Dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """Envía una ubicación."""
 
@@ -878,7 +879,7 @@ async def send_template_message(
     to: str = Query(description="Número de teléfono del destinatario"),
     template_name: str = Query(description="Nombre de la plantilla aprobada"),
     language_code: str = Query(default="es", description="Código de idioma"),
-    current_user: Dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     """Envía una plantilla aprobada."""
 

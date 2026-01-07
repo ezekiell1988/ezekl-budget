@@ -7,12 +7,13 @@ from fastapi import APIRouter, HTTPException, Query, Path, Depends
 from typing import Optional
 import logging
 
+from app.models.auth import CurrentUser
 from app.services.crm_service import crm_service
 from app.models.crm import (
     CasesListResponse, CaseResponse, CaseCreateRequest, 
     CaseUpdateRequest, CRMOperationResponse
 )
-from app.api.routes.auth import get_current_user
+from app.api.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ router = APIRouter(prefix="/cases", tags=["CRM - Casos"])
     }
 )
 async def get_cases(
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     top: Optional[int] = Query(
         10, 
         description="Número de registros a retornar", 
@@ -145,7 +146,7 @@ async def get_cases_by_nextlink(
             "/api/data/v9.2/incidents?$orderby=incidentid&$top=25&$skiptoken=%3Ccookie..."
         ]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Obtiene la siguiente página de casos usando nextLink de Dynamics 365.
@@ -196,7 +197,7 @@ async def get_case_by_id(
         description="GUID único del caso en Dynamics 365",
         examples=["4bb40b00-024b-ea11-a815-000d3a591219"]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Obtiene un caso específico por su ID."""
     
@@ -240,7 +241,7 @@ async def get_case_by_id(
 )
 async def create_case(
     case_data: CaseCreateRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Crea un nuevo caso en Dynamics 365."""
     
@@ -297,7 +298,7 @@ async def update_case(
         examples=["4bb40b00-024b-ea11-a815-000d3a591219"]
     ),
     case_data: CaseUpdateRequest = ...,
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Actualiza un caso existente en Dynamics 365."""
     
@@ -343,7 +344,7 @@ async def delete_case(
         description="GUID único del caso a eliminar",
         examples=["4bb40b00-024b-ea11-a815-000d3a591219"]
     ),
-    current_user: dict = Depends(get_current_user)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """Elimina un caso de Dynamics 365."""
     
