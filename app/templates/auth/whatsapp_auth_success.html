@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Autenticación Exitosa - Ezekl Budget</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 {
+            color: #27ae60;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s ease infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .user-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .user-name {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .user-email {
+            color: #666;
+            font-size: 14px;
+        }
+        .phone {
+            background: #e8f5e9;
+            padding: 10px 20px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 15px;
+            font-family: monospace;
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .instruction {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 2px solid #eee;
+            color: #666;
+            font-size: 15px;
+        }
+        .whatsapp-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: #25D366;
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+            transition: all 0.3s ease;
+        }
+        .whatsapp-button:hover {
+            background: #20BA5A;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+        }
+        .whatsapp-icon {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">✅</div>
+        <h1>¡Autenticación Exitosa!</h1>
+        <p>Tu cuenta de WhatsApp ha sido autenticada correctamente.</p>
+        
+        <div class="user-info">
+            <div class="user-name">{{ user_name }}</div>
+            <div class="user-email">{{ user_email }}</div>
+        </div>
+        
+        <p>WhatsApp asociado:</p>
+        <div class="phone">+{{ phone_number }}</div>
+        
+        <div class="instruction">
+            <p><strong>¡Todo listo!</strong></p>
+            <p>Ahora puedes usar el bot sin restricciones. Tu sesión es válida por 24 horas.</p>
+            <a href="https://wa.me/{{ wa_number }}?text=Hola" class="whatsapp-button">
+                <span class="whatsapp-icon">💬</span>
+                Volver a WhatsApp
+            </a>
+        </div>
+    </div>
+</body>
+</html>

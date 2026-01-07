@@ -4,14 +4,16 @@ Maneja el flujo de login de 2 pasos con tokens temporales y JWE.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Header, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.templating import Jinja2Templates
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 import logging
 import json
 import aiohttp
 import base64
+from pathlib import Path
 from urllib.parse import urlencode, urlparse, parse_qs, urljoin
 from jose import jwe
 from app.core.config import settings
@@ -35,6 +37,10 @@ from app.models.auth import (
 
 # Configurar logging
 logger = logging.getLogger(__name__)
+
+# Configurar Jinja2 Templates
+templates_dir = Path(__file__).parent.parent.parent / "templates"
+templates = Jinja2Templates(directory=str(templates_dir))
 
 # Router para endpoints de autenticación
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -775,52 +781,17 @@ async def microsoft_login():
 def _create_whatsapp_error_page(
     error_title: str, error_message: str, status_code: int = 400
 ):
-    """Crea una página HTML de error para el flujo de WhatsApp."""
-    from fastapi.responses import HTMLResponse
-
-    return HTMLResponse(
-        content=f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>{error_title} - Ezekl Budget</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {{
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                }}
-                .container {{
-                    background: white;
-                    padding: 40px;
-                    border-radius: 12px;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-                    text-align: center;
-                    max-width: 500px;
-                }}
-                h1 {{ color: #e74c3c; }}
-                p {{ color: #555; line-height: 1.6; }}
-                .icon {{ font-size: 60px; margin-bottom: 20px; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="icon">❌</div>
-                <h1>{error_title}</h1>
-                <p>{error_message}</p>
-                <p>Por favor, intenta nuevamente desde WhatsApp.</p>
-            </div>
-        </body>
-        </html>
-        """,
-        status_code=status_code,
-    )
+    """Crea una página HTML de error para el flujo de WhatsApp usando template."""
+    html_content = templates.TemplateResponse(
+        "auth/whatsapp_error.html",
+        {
+            "request": {},
+            "error_title": error_title,
+            "error_message": error_message,
+        },
+    ).body.decode("utf-8")
+    
+    return HTMLResponse(content=html_content, status_code=status_code)
 
 
 async def microsoft_callback_normal(
@@ -1010,73 +981,23 @@ async def microsoft_callback_redirect(
         # 1. Manejo de errores de OAuth
         if error:
             logger.error(f"Error de Microsoft OAuth: {error} - {error_description}")
-            return HTMLResponse(
-                content=f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Error de Autenticación - Ezekl Budget</title>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        body {{
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            min-height: 100vh;
-                            margin: 0;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        }}
-                        .container {{
-                            background: white;
-                            padding: 40px;
-                            border-radius: 12px;
-                            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-                            text-align: center;
-                            max-width: 500px;
-                        }}
-                        h1 {{ color: #e74c3c; }}
-                        p {{ color: #555; line-height: 1.6; }}
-                        .icon {{ font-size: 60px; margin-bottom: 20px; }}
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="icon">❌</div>
-                        <h1>Error de Autenticación</h1>
-                        <p>No se pudo completar la autenticación con Microsoft.</p>
-                        <p><strong>Error:</strong> {error_description or error}</p>
-                    </div>
-                </body>
-                </html>
-                """,
-                status_code=400,
-            )
+            html_content = templates.TemplateResponse(
+                "auth/microsoft_oauth_error.html",
+                {
+                    "request": {},
+                    "error_description": error_description or error,
+                },
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content, status_code=400)
 
         # 2. Validar que tenemos el código de autorización
         if not code:
             logger.error("No se recibió código de autorización de Microsoft")
-            return HTMLResponse(
-                content="""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Error - Ezekl Budget</title>
-                    <meta charset="UTF-8">
-                    <style>
-                        body { font-family: Arial; text-align: center; padding: 50px; }
-                        h1 { color: #e74c3c; }
-                    </style>
-                </head>
-                <body>
-                    <h1>❌ Error</h1>
-                    <p>No se recibió código de autorización.</p>
-                </body>
-                </html>
-                """,
-                status_code=400,
-            )
+            html_content = templates.TemplateResponse(
+                "auth/microsoft_no_code.html",
+                {"request": {}},
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content, status_code=400)
 
         # 3. Recuperar URL de redirección desde Redis
         redis_key = f"microsoft_redirect:{flow_id}"
@@ -1084,26 +1005,11 @@ async def microsoft_callback_redirect(
 
         if not redirect_data:
             logger.error(f"No se encontró URL de redirección para flow_id: {flow_id}")
-            return HTMLResponse(
-                content="""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Sesión Expirada - Ezekl Budget</title>
-                    <meta charset="UTF-8">
-                    <style>
-                        body { font-family: Arial; text-align: center; padding: 50px; }
-                        h1 { color: #e74c3c; }
-                    </style>
-                </head>
-                <body>
-                    <h1>⏰ Sesión Expirada</h1>
-                    <p>La sesión de autenticación ha expirado. Por favor, intenta nuevamente.</p>
-                </body>
-                </html>
-                """,
-                status_code=400,
-            )
+            html_content = templates.TemplateResponse(
+                "auth/microsoft_session_expired.html",
+                {"request": {}},
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content, status_code=400)
 
         redirect_url = redirect_data.get("redirect_url")
 
@@ -1123,19 +1029,14 @@ async def microsoft_callback_redirect(
                 if token_response.status != 200:
                     error_text = await token_response.text()
                     logger.error(f"Error obteniendo access token: {error_text}")
-                    return HTMLResponse(
-                        content=f"""
-                        <!DOCTYPE html>
-                        <html>
-                        <head><title>Error - Ezekl Budget</title></head>
-                        <body style="font-family: Arial; text-align: center; padding: 50px;">
-                            <h1>❌ Error</h1>
-                            <p>No se pudo obtener el token de acceso.</p>
-                        </body>
-                        </html>
-                        """,
-                        status_code=500,
-                    )
+                    html_content = templates.TemplateResponse(
+                        "auth/microsoft_generic_error.html",
+                        {
+                            "request": {},
+                            "error_message": "No se pudo obtener el token de acceso.",
+                        },
+                    ).body.decode("utf-8")
+                    return HTMLResponse(content=html_content, status_code=500)
 
                 token_json = await token_response.json()
 
@@ -1150,19 +1051,14 @@ async def microsoft_callback_redirect(
                 if user_response.status != 200:
                     error_text = await user_response.text()
                     logger.error(f"Error obteniendo datos de usuario: {error_text}")
-                    return HTMLResponse(
-                        content="""
-                        <!DOCTYPE html>
-                        <html>
-                        <head><title>Error - Ezekl Budget</title></head>
-                        <body style="font-family: Arial; text-align: center; padding: 50px;">
-                            <h1>❌ Error</h1>
-                            <p>No se pudieron obtener los datos del usuario.</p>
-                        </body>
-                        </html>
-                        """,
-                        status_code=500,
-                    )
+                    html_content = templates.TemplateResponse(
+                        "auth/microsoft_generic_error.html",
+                        {
+                            "request": {},
+                            "error_message": "No se pudieron obtener los datos del usuario.",
+                        },
+                    ).body.decode("utf-8")
+                    return HTMLResponse(content=html_content, status_code=500)
 
                 user_data = await user_response.json()
 
@@ -1194,39 +1090,28 @@ async def microsoft_callback_redirect(
         # Verificar resultado - el SP retorna success=1 y associationStatus
         if not result:
             logger.error(f"❌ spLoginMicrosoftAddOrEdit retornó None o vacío")
-            return HTMLResponse(
-                content="""
-                <!DOCTYPE html>
-                <html>
-                <head><title>Error - Ezekl Budget</title></head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1>❌ Error</h1>
-                    <p>No se pudo procesar la autenticación (respuesta vacía del servidor).</p>
-                </body>
-                </html>
-                """,
-                status_code=500,
-            )
+            html_content = templates.TemplateResponse(
+                "auth/microsoft_generic_error.html",
+                {
+                    "request": {},
+                    "error_message": "No se pudo procesar la autenticación (respuesta vacía del servidor).",
+                },
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content, status_code=500)
 
         # Verificar success (puede ser 1, True, "success", etc.)
         success = result.get("success")
         if not success or (isinstance(success, (int, bool)) and not success):
             error_msg = result.get("message", "Error desconocido")
             logger.error(f"❌ Error en spLoginMicrosoftAddOrEdit: {error_msg}")
-            return HTMLResponse(
-                content=f"""
-                <!DOCTYPE html>
-                <html>
-                <head><title>Error - Ezekl Budget</title></head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1>❌ Error</h1>
-                    <p>No se pudo procesar la autenticación.</p>
-                    <p><small>{error_msg}</small></p>
-                </body>
-                </html>
-                """,
-                status_code=500,
-            )
+            html_content = templates.TemplateResponse(
+                "auth/microsoft_generic_error.html",
+                {
+                    "request": {},
+                    "error_message": f"No se pudo procesar la autenticación. {error_msg}",
+                },
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content, status_code=500)
 
         # Verificar el estado de asociación
         association_status = result.get("associationStatus")
@@ -1244,49 +1129,14 @@ async def microsoft_callback_redirect(
                 f"⚠️ Usuario Microsoft no asociado a cuenta del sistema: {microsoft_user.get('email')}"
             )
 
-            return HTMLResponse(
-                content=f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Asociación Requerida - Ezekl Budget</title>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        body {{
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            min-height: 100vh;
-                            margin: 0;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        }}
-                        .container {{
-                            background: white;
-                            padding: 40px;
-                            border-radius: 12px;
-                            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-                            text-align: center;
-                            max-width: 500px;
-                        }}
-                        h1 {{ color: #f39c12; }}
-                        p {{ color: #555; line-height: 1.6; }}
-                        .icon {{ font-size: 60px; margin-bottom: 20px; }}
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="icon">⚠️</div>
-                        <h1>Cuenta No Asociada</h1>
-                        <p>Tu cuenta de Microsoft ({microsoft_user.get('email')}) no está asociada a ninguna cuenta del sistema.</p>
-                        <p>Por favor, contacta al administrador para asociar tu cuenta.</p>
-                    </div>
-                </body>
-                </html>
-                """,
-                status_code=403,
-            )
+            html_content = templates.TemplateResponse(
+                "auth/microsoft_needs_association.html",
+                {
+                    "request": {},
+                    "user_email": microsoft_user.get("email", ""),
+                },
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content, status_code=403)
 
         logger.info(f"👤 Datos del usuario para token: {user_login_data}")
 
@@ -1294,19 +1144,14 @@ async def microsoft_callback_redirect(
             logger.error(
                 f"❌ No se obtuvieron datos válidos del usuario. Tipo: {type(user_login_data)}, Valor: {user_login_data}"
             )
-            return HTMLResponse(
-                content="""
-                <!DOCTYPE html>
-                <html>
-                <head><title>Error - Ezekl Budget</title></head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1>❌ Error</h1>
-                    <p>No se pudieron obtener los datos del usuario.</p>
-                </body>
-                </html>
-                """,
-                status_code=500,
-            )
+            html_content = templates.TemplateResponse(
+                "auth/microsoft_generic_error.html",
+                {
+                    "request": {},
+                    "error_message": "No se pudieron obtener los datos del usuario.",
+                },
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content, status_code=500)
 
         # Crear token JWE
         token_jwe, expiry = create_jwe_token(user_login_data)
@@ -1342,19 +1187,14 @@ async def microsoft_callback_redirect(
 
     except Exception as e:
         logger.error(f"Error en microsoft_callback_redirect: {str(e)}")
-        return HTMLResponse(
-            content="""
-            <!DOCTYPE html>
-            <html>
-            <head><title>Error - Ezekl Budget</title></head>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h1>❌ Error del Servidor</h1>
-                <p>Ocurrió un error inesperado. Por favor, intenta nuevamente.</p>
-            </body>
-            </html>
-            """,
-            status_code=500,
-        )
+        html_content = templates.TemplateResponse(
+            "auth/microsoft_generic_error.html",
+            {
+                "request": {},
+                "error_message": "Ocurrió un error inesperado. Por favor, intenta nuevamente.",
+            },
+        ).body.decode("utf-8")
+        return HTMLResponse(content=html_content, status_code=500)
 
 
 async def microsoft_callback_whatsapp(
@@ -1500,234 +1340,19 @@ async def microsoft_callback_whatsapp(
 
         if association_status == "needs_association":
             # Usuario Microsoft no asociado - mostrar formulario de asociación
-            return HTMLResponse(
-                content=f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Asociar Cuenta - Ezekl Budget</title>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    body {{
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        min-height: 100vh;
-                        margin: 0;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    }}
-                    .container {{
-                        background: white;
-                        padding: 40px;
-                        border-radius: 12px;
-                        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-                        text-align: center;
-                        max-width: 500px;
-                        width: 90%;
-                    }}
-                    .icon {{ font-size: 60px; margin-bottom: 20px; }}
-                    h1 {{
-                        color: #333;
-                        margin-bottom: 10px;
-                        font-size: 28px;
-                    }}
-                    .user-info {{
-                        background: #f8f9fa;
-                        padding: 20px;
-                        border-radius: 8px;
-                        margin: 20px 0;
-                    }}
-                    .user-name {{
-                        font-size: 20px;
-                        font-weight: 600;
-                        color: #2c3e50;
-                        margin-bottom: 5px;
-                    }}
-                    .user-email {{
-                        color: #7f8c8d;
-                        font-size: 14px;
-                    }}
-                    .form-group {{
-                        margin: 25px 0;
-                        text-align: left;
-                    }}
-                    label {{
-                        display: block;
-                        margin-bottom: 8px;
-                        color: #555;
-                        font-weight: 500;
-                    }}
-                    input {{
-                        width: 100%;
-                        padding: 12px;
-                        border: 2px solid #e0e0e0;
-                        border-radius: 8px;
-                        font-size: 16px;
-                        box-sizing: border-box;
-                        transition: border-color 0.3s;
-                    }}
-                    input:focus {{
-                        outline: none;
-                        border-color: #667eea;
-                    }}
-                    .button-group {{
-                        display: flex;
-                        gap: 10px;
-                        margin-top: 25px;
-                    }}
-                    button {{
-                        flex: 1;
-                        padding: 15px 30px;
-                        border: none;
-                        border-radius: 8px;
-                        font-size: 16px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-                    }}
-                    .btn-primary {{
-                        background: #667eea;
-                        color: white;
-                    }}
-                    .btn-primary:hover {{
-                        background: #5568d3;
-                        transform: translateY(-2px);
-                        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-                    }}
-                    .btn-secondary {{
-                        background: #95a5a6;
-                        color: white;
-                    }}
-                    .btn-secondary:hover {{
-                        background: #7f8c8d;
-                    }}
-                    .error {{
-                        color: #e74c3c;
-                        font-size: 14px;
-                        margin-top: 10px;
-                        display: none;
-                    }}
-                    .info {{
-                        background: #e3f2fd;
-                        color: #1976d2;
-                        padding: 15px;
-                        border-radius: 8px;
-                        margin-bottom: 20px;
-                        font-size: 14px;
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="icon">🔗</div>
-                    <h1>Asociar Cuenta</h1>
-                    
-                    <div class="user-info">
-                        <div class="user-name">{display_name}</div>
-                        <div class="user-email">{email}</div>
-                    </div>
-                    
-                    <div class="info">
-                        <strong>Primera vez con Microsoft</strong><br>
-                        Ingresa tu código de usuario existente para vincular tu cuenta de Microsoft.
-                    </div>
-                    
-                    <form id="associateForm">
-                        <div class="form-group">
-                            <label for="codeLogin">Código de Usuario:</label>
-                            <input 
-                                type="text" 
-                                id="codeLogin" 
-                                name="codeLogin" 
-                                placeholder="Ej: USR001"
-                                required
-                                autofocus
-                            >
-                        </div>
-                        
-                        <div class="error" id="errorMessage"></div>
-                        
-                        <div class="button-group">
-                            <button type="button" class="btn-secondary" onclick="window.location.href='https://wa.me/{wa_number}'">
-                                Cancelar
-                            </button>
-                            <button type="submit" class="btn-primary">
-                                Asociar Cuenta
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                
-                <script>
-                    document.getElementById('associateForm').addEventListener('submit', async function(e) {{
-                        e.preventDefault();
-                        
-                        const codeLogin = document.getElementById('codeLogin').value.trim();
-                        const errorDiv = document.getElementById('errorMessage');
-                        const submitBtn = e.target.querySelector('.btn-primary');
-                        
-                        if (!codeLogin) {{
-                            errorDiv.textContent = 'Por favor ingresa tu código de usuario';
-                            errorDiv.style.display = 'block';
-                            return;
-                        }}
-                        
-                        // Deshabilitar botón durante la petición
-                        submitBtn.disabled = true;
-                        submitBtn.textContent = 'Asociando...';
-                        errorDiv.style.display = 'none';
-                        
-                        try {{
-                            const response = await fetch('/api/auth/microsoft/associate/whatsapp', {{
-                                method: 'POST',
-                                headers: {{
-                                    'Content-Type': 'application/json'
-                                }},
-                                body: JSON.stringify({{
-                                    codeLogin: codeLogin,
-                                    codeLoginMicrosoft: '{code_login_microsoft}',
-                                    phoneNumber: '{phone_number}',
-                                    whatsappToken: '{whatsapp_token}'
-                                }})
-                            }});
-                            
-                            const data = await response.json();
-                            
-                            if (response.ok && data.success) {{
-                                // Mostrar éxito y redirigir a WhatsApp
-                                document.querySelector('.container').innerHTML = `
-                                    <div class="icon">✅</div>
-                                    <h1>¡Cuenta Asociada!</h1>
-                                    <div class="user-info">
-                                        <div class="user-name">${{data.user.name || '{display_name}'}}</div>
-                                        <div class="user-email">${{data.user.email || '{email}'}}</div>
-                                    </div>
-                                    <p>Tu cuenta de Microsoft está ahora vinculada.</p>
-                                    <p>Tu sesión es válida por 24 horas.</p>
-                                    <button onclick="window.location.href='https://wa.me/{wa_number}?text=Hola'" class="btn-primary" style="margin-top: 20px;">
-                                        Volver a WhatsApp
-                                    </button>
-                                `;
-                            }} else {{
-                                errorDiv.textContent = data.message || data.detail || 'Error al asociar la cuenta';
-                                errorDiv.style.display = 'block';
-                                submitBtn.disabled = false;
-                                submitBtn.textContent = 'Asociar Cuenta';
-                            }}
-                        }} catch (error) {{
-                            errorDiv.textContent = 'Error de conexión. Por favor intenta nuevamente.';
-                            errorDiv.style.display = 'block';
-                            submitBtn.disabled = false;
-                            submitBtn.textContent = 'Asociar Cuenta';
-                        }}
-                    }});
-                </script>
-            </body>
-            </html>
-            """
-            )
+            html_content = templates.TemplateResponse(
+                "auth/whatsapp_association_form.html",
+                {
+                    "request": {},
+                    "display_name": display_name,
+                    "email": email,
+                    "wa_number": wa_number,
+                    "code_login_microsoft": code_login_microsoft,
+                    "phone_number": phone_number,
+                    "whatsapp_token": whatsapp_token,
+                },
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content)
 
         elif association_status == "associated":
             # Usuario ya asociado - guardar sesión y mostrar página de éxito
@@ -1750,181 +1375,25 @@ async def microsoft_callback_whatsapp(
             )
 
             # Mostrar página de éxito
-            return HTMLResponse(
-                content=f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Autenticación Exitosa - Ezekl Budget</title>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    body {{
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        min-height: 100vh;
-                        margin: 0;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    }}
-                    .container {{
-                        background: white;
-                        padding: 40px;
-                        border-radius: 12px;
-                        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-                        text-align: center;
-                        max-width: 500px;
-                    }}
-                    h1 {{
-                        color: #27ae60;
-                        margin-bottom: 20px;
-                    }}
-                    p {{
-                        color: #555;
-                        line-height: 1.6;
-                        margin-bottom: 15px;
-                    }}
-                    .icon {{
-                        font-size: 80px;
-                        margin-bottom: 20px;
-                        animation: bounce 1s ease infinite;
-                    }}
-                    @keyframes bounce {{
-                        0%, 100% {{ transform: translateY(0); }}
-                        50% {{ transform: translateY(-10px); }}
-                    }}
-                    .user-info {{
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 8px;
-                        margin: 20px 0;
-                    }}
-                    .user-name {{
-                        font-weight: bold;
-                        color: #667eea;
-                        font-size: 18px;
-                        margin-bottom: 5px;
-                    }}
-                    .user-email {{
-                        color: #666;
-                        font-size: 14px;
-                    }}
-                    .phone {{
-                        background: #e8f5e9;
-                        padding: 10px 20px;
-                        border-radius: 6px;
-                        display: inline-block;
-                        margin-top: 15px;
-                        font-family: monospace;
-                        color: #27ae60;
-                        font-weight: bold;
-                    }}
-                    .instruction {{
-                        margin-top: 25px;
-                        padding-top: 25px;
-                        border-top: 2px solid #eee;
-                        color: #666;
-                        font-size: 15px;
-                    }}
-                    .whatsapp-button {{
-                        display: inline-block;
-                        margin-top: 20px;
-                        padding: 15px 30px;
-                        background: #25D366;
-                        color: white;
-                        text-decoration: none;
-                        border-radius: 50px;
-                        font-weight: bold;
-                        font-size: 16px;
-                        box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
-                        transition: all 0.3s ease;
-                    }}
-                    .whatsapp-button:hover {{
-                        background: #20BA5A;
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
-                    }}
-                    .whatsapp-icon {{
-                        display: inline-block;
-                        margin-right: 8px;
-                        font-size: 20px;
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="icon">✅</div>
-                    <h1>¡Autenticación Exitosa!</h1>
-                    <p>Tu cuenta de WhatsApp ha sido autenticada correctamente.</p>
-                    
-                    <div class="user-info">
-                        <div class="user-name">{user_login_data.get('name', 'Usuario')}</div>
-                        <div class="user-email">{user_login_data.get('email', '')}</div>
-                    </div>
-                    
-                    <p>WhatsApp asociado:</p>
-                    <div class="phone">+{phone_number}</div>
-                    
-                    <div class="instruction">
-                        <p><strong>¡Todo listo!</strong></p>
-                        <p>Ahora puedes usar el bot sin restricciones. Tu sesión es válida por 24 horas.</p>
-                        <a href="https://wa.me/{wa_number}?text=Hola" class="whatsapp-button">
-                            <span class="whatsapp-icon">💬</span>
-                            Volver a WhatsApp
-                        </a>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
-            )
+            html_content = templates.TemplateResponse(
+                "auth/whatsapp_auth_success.html",
+                {
+                    "request": {},
+                    "user_name": user_login_data.get('name', 'Usuario'),
+                    "user_email": user_login_data.get('email', ''),
+                    "phone_number": phone_number,
+                    "wa_number": wa_number,
+                },
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content)
 
         else:
             logger.error(f"Estado de asociación desconocido: {association_status}")
-            return HTMLResponse(
-                content="""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Error - Ezekl Budget</title>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        min-height: 100vh;
-                        margin: 0;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    }
-                    .container {
-                        background: white;
-                        padding: 40px;
-                        border-radius: 12px;
-                        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-                        text-align: center;
-                        max-width: 500px;
-                    }
-                    h1 { color: #e74c3c; }
-                    p { color: #555; line-height: 1.6; }
-                    .icon { font-size: 60px; margin-bottom: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="icon">❌</div>
-                    <h1>Error de Autenticación</h1>
-                    <p>No se pudo completar la autenticación.</p>
-                    <p>Por favor, contacta al administrador del sistema.</p>
-                </div>
-            </body>
-            </html>
-            """,
-                status_code=500,
-            )
+            html_content = templates.TemplateResponse(
+                "auth/whatsapp_unknown_error.html",
+                {"request": {}},
+            ).body.decode("utf-8")
+            return HTMLResponse(content=html_content, status_code=500)
 
     except Exception as e:
         logger.error(f"Error en microsoft_callback_whatsapp: {str(e)}")
