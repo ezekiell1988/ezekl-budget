@@ -20,7 +20,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de Copilot Studio
-router = APIRouter()
+router = APIRouter(prefix="/copilot", tags=["Copilot Studio"])
 
 # Configuración de Copilot Studio desde variables de entorno
 COPILOT_ENVIRONMENT_ID = os.getenv("COPILOT_ENVIRONMENT_ID", "")

@@ -44,7 +44,7 @@ templates_dir = Path(__file__).parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 # Router para endpoints de autenticación
-router = APIRouter(tags=["Autenticación"])
+router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 
 @router.post(

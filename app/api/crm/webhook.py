@@ -10,7 +10,7 @@ from app.models.webhook import WebhookPayload, WebhookLogResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["CRM - Webhook"])
 
 
 @router.post("/webhook", response_model=WebhookLogResponse)

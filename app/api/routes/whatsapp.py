@@ -27,7 +27,7 @@ from app.utils.auth import get_current_user
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de WhatsApp
-router = APIRouter()
+router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
 
 # Token de verificación del webhook desde settings
 WEBHOOK_VERIFY_TOKEN = settings.whatsapp_verify_token

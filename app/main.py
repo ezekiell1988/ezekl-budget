@@ -10,8 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.config import settings
-from app.api import api_router
-from app.ws import router as websockets_router
+from app.api import router as api_router
+from app.ws import router as ws_router
 from app.services.email_queue import email_queue
 import logging
 import sys
@@ -153,7 +153,7 @@ app.add_middleware(CSPMiddleware)
 
 # 🔧 Configurar módulos de la API (estándar FastAPI)
 app.include_router(api_router)           # ✅ HTTP endpoints con prefix="/api"
-app.include_router(websockets_router)    # ✅ WebSockets con prefix="/ws"
+app.include_router(ws_router)    # ✅ WebSockets con prefix="/ws"
 
 # Servir archivos estáticos del frontend (CSS, JS, assets, etc.)
 if FRONTEND_BUILD_PATH.exists():

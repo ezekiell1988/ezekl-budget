@@ -4,13 +4,12 @@ Proporciona funcionalidad para consultar el catálogo de cuentas contables con p
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Path
-from typing import Optional, Dict
+from typing import Optional
 import json
 import logging
 from app.database.connection import execute_sp
 from app.utils.auth import get_current_user
 from app.models.accounting_account import (
-    AccountingAccount,
     AccountingAccountRequest,
     AccountingAccountResponse,
     AccountingAccountCreateRequest,
@@ -24,7 +23,7 @@ from app.models.auth import CurrentUser
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de cuentas contables
-router = APIRouter()
+router = APIRouter(prefix="/accounting-accounts", tags=["Cuentas Contables"])
 
 
 @router.get(

@@ -3,9 +3,9 @@ Endpoints para gestión de emails recibidos a través de Azure Event Grid.
 Maneja la recepción de emails entrantes y reportes de entrega.
 """
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime
 import email
 from email import policy
@@ -13,24 +13,32 @@ import logging
 import re
 from bs4 import BeautifulSoup
 from app.core.http_request import get_text
-from app.services.email_service import email_service
-from app.services.email_queue import queue_email, EmailTask, email_queue
-from app.models.requests import EmailSendRequest
-from app.models.responses import EmailSendResponse, WebhookEventResponse
+from app.models.auth import CurrentUser
+from app.services.email_queue import queue_email
 from app.database.connection import execute_sp
+from app.utils.auth import get_current_user
 
 # Configurar logging
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de email
-router = APIRouter()
+router = APIRouter(prefix="/email", tags=["Correo Electrónico"])
 
 
 class EmailSendRequestLocal(BaseModel):
     """Modelo para envío de email"""
-    to: str = Field(..., description="Email del destinatario", example="ebaltodano@itqscr.com")
-    subject: str = Field(..., description="Asunto del email", example="Bienvenido a Ezekl Budget")
-    body: str = Field(..., description="Contenido del email (HTML o texto plano)", example="<h1>¡Hola!</h1><p>Gracias por registrarte.</p>")
+
+    to: str = Field(
+        ..., description="Email del destinatario", example="ebaltodano@itqscr.com"
+    )
+    subject: str = Field(
+        ..., description="Asunto del email", example="Bienvenido a Ezekl Budget"
+    )
+    body: str = Field(
+        ...,
+        description="Contenido del email (HTML o texto plano)",
+        example="<h1>¡Hola!</h1><p>Gracias por registrarte.</p>",
+    )
 
 
 @router.post(
@@ -54,33 +62,38 @@ class EmailSendRequestLocal(BaseModel):
         "body": "<h1>¡Hola!</h1><p>Gracias por registrarte.</p>"
     }
     ```
-    """
+    """,
 )
-async def send_email(request: EmailSendRequestLocal) -> Dict[str, Any]:
+async def send_email(
+    request: EmailSendRequestLocal,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> Dict[str, Any]:
     """
     Encola un email para envío en background.
-    
+
     Args:
         request: Datos del email a enviar (to, subject, body)
-        
+
     Returns:
         Dict con success, message, taskId y timestamp
     """
     try:
         # Detectar si es HTML o texto plano
-        is_html = request.body.strip().startswith('<')
-        
+        is_html = request.body.strip().startswith("<")
+
         # Agregar email a la cola de envío
         task_id = await queue_email(
             to=[request.to],
             subject=request.subject,
             message=request.body,
-            is_html=is_html
+            is_html=is_html,
         )
-        
+
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logger.info(f"📬 Email encolado para {request.to} | Task ID: {task_id} | Subject: {request.subject}")
-        
+        logger.info(
+            f"📬 Email encolado para {request.to} | Task ID: {task_id} | Subject: {request.subject}"
+        )
+
         return {
             "success": True,
             "message": f"Email encolado para envío a {request.to}",
@@ -88,9 +101,9 @@ async def send_email(request: EmailSendRequestLocal) -> Dict[str, Any]:
             "subject": request.subject,
             "taskId": task_id,
             "status": "queued",
-            "timestamp": timestamp
+            "timestamp": timestamp,
         }
-        
+
     except Exception as e:
         error_msg = f"Error al encolar email: {str(e)}"
         logger.error(f"❌ {error_msg}")
@@ -132,12 +145,12 @@ async def send_email(request: EmailSendRequestLocal) -> Dict[str, Any]:
         "attachments": []
     }
     ```
-    """
+    """,
 )
 async def email_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Webhook para recibir emails entrantes y guardarlos en BD.
-    
+
     Similar a receive_webhook pero específico para emails.
     Extrae el mensaje limpio del body HTML y guarda en la base de datos.
 
@@ -150,30 +163,29 @@ async def email_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Generar timestamp
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         # Extraer el mensaje limpio del body HTML si existe
         body_html = payload.get("body", "")
         if body_html:
             message_content = _extract_last_message_from_html(body_html)
             # Agregar el campo "message" al payload
             payload["message"] = message_content
-        
+
         # Preparar datos para el stored procedure
-        sp_params = {
-            "typeLog": "Email Inbound",
-            "log": payload
-        }
-        
+        sp_params = {"typeLog": "Email Inbound", "log": payload}
+
         # Ejecutar stored procedure
         result = await execute_sp("spLogAdd", sp_params)
-        
+
         id_log = result.get("idLog")
         from_address = payload.get("from", "N/A")
         subject = payload.get("subject", "N/A")
         message_content = payload.get("message", "")
-        
-        logger.info(f"✅ Email recibido y guardado en BD con ID: {id_log} | From: {from_address} | Subject: {subject}")
-        
+
+        logger.info(
+            f"✅ Email recibido y guardado en BD con ID: {id_log} | From: {from_address} | Subject: {subject}"
+        )
+
         # Enviar copia de confirmación de recepción
         try:
             confirmation_subject = f"✅ Recibido: {subject}"
@@ -204,33 +216,36 @@ async def email_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
                 </body>
             </html>
             """
-            
+
             # Encolar email de confirmación
             task_id = await queue_email(
                 to=[from_address],
                 subject=confirmation_subject,
                 message=confirmation_body,
-                is_html=True
+                is_html=True,
             )
-            
-            logger.info(f"📧 Confirmación encolada para {from_address} | Task ID: {task_id}")
-            
+
+            logger.info(
+                f"📧 Confirmación encolada para {from_address} | Task ID: {task_id}"
+            )
+
         except Exception as email_error:
             # No fallar el webhook si el envío de confirmación falla
-            logger.error(f"⚠️ Error al encolar confirmación de recepción: {str(email_error)}")
-        
+            logger.error(
+                f"⚠️ Error al encolar confirmación de recepción: {str(email_error)}"
+            )
+
         return {
             "success": True,
             "message": "Email recibido y guardado en base de datos",
             "idLog": id_log,
-            "timestamp": timestamp
+            "timestamp": timestamp,
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Error al procesar email webhook: {str(e)}")
         raise HTTPException(
-            status_code=500, 
-            detail=f"Error al procesar email: {str(e)}"
+            status_code=500, detail=f"Error al procesar email: {str(e)}"
         )
 
 
@@ -240,7 +255,7 @@ async def _process_inbound_email(data: Dict[str, Any]) -> int | None:
 
     Args:
         data: Datos del evento de email entrante
-        
+
     Returns:
         ID del log creado en BD o None si falla
     """
@@ -255,10 +270,10 @@ async def _process_inbound_email(data: Dict[str, Any]) -> int | None:
             received_date = data.get("receivedDate")
             body_html = data.get("body", "")
             attachments = data.get("attachments", [])
-            
+
             # Extraer solo el último mensaje del HTML (sin cadena de respuestas)
             message_content = _extract_last_message_from_html(body_html)
-            
+
             # Preparar payload para guardar en BD
             email_data = {
                 "messageId": message_id,
@@ -268,20 +283,19 @@ async def _process_inbound_email(data: Dict[str, Any]) -> int | None:
                 "receivedDate": received_date,
                 "message": message_content,  # Solo el último mensaje limpio
                 "body": body_html,  # Body completo para referencia
-                "attachments": attachments
+                "attachments": attachments,
             }
-            
+
             # Guardar en base de datos usando spLogAdd
-            sp_params = {
-                "typeLog": "Email Inbound",
-                "log": email_data
-            }
-            
+            sp_params = {"typeLog": "Email Inbound", "log": email_data}
+
             result = await execute_sp("spLogAdd", sp_params)
-            id_log = result.get('idLog')
-            logger.info(f"✅ Email guardado en BD con ID: {id_log} | From: {from_address} | Subject: {subject}")
+            id_log = result.get("idLog")
+            logger.info(
+                f"✅ Email guardado en BD con ID: {id_log} | From: {from_address} | Subject: {subject}"
+            )
             return id_log
-            
+
         # Formato de Azure Event Grid con MIME URL
         elif "emailContentUrl" in data:
             mime_url = data.get("emailContentUrl")
@@ -299,9 +313,13 @@ async def _process_inbound_email(data: Dict[str, Any]) -> int | None:
 
                 # Extraer cuerpo de texto y HTML
                 text_body, html_body = _extract_email_body(msg)
-                
+
                 # Extraer solo el último mensaje
-                message_content = _extract_last_message_from_html(html_body) if html_body else text_body
+                message_content = (
+                    _extract_last_message_from_html(html_body)
+                    if html_body
+                    else text_body
+                )
 
                 # Preparar payload para guardar en BD
                 email_data = {
@@ -310,23 +328,22 @@ async def _process_inbound_email(data: Dict[str, Any]) -> int | None:
                     "subject": subject,
                     "message": message_content,
                     "text_body": text_body,
-                    "html_body": html_body
+                    "html_body": html_body,
                 }
-                
+
                 # Procesar adjuntos si existen
                 attachments = list(msg.iter_attachments())
                 if attachments:
                     email_data["attachments_count"] = len(attachments)
-                
+
                 # Guardar en base de datos
-                sp_params = {
-                    "typeLog": "Email Inbound MIME",
-                    "log": email_data
-                }
-                
+                sp_params = {"typeLog": "Email Inbound MIME", "log": email_data}
+
                 result = await execute_sp("spLogAdd", sp_params)
-                id_log = result.get('idLog')
-                logger.info(f"✅ Email MIME guardado en BD con ID: {id_log} | From: {from_address}")
+                id_log = result.get("idLog")
+                logger.info(
+                    f"✅ Email MIME guardado en BD con ID: {id_log} | From: {from_address}"
+                )
                 return id_log
             else:
                 logger.warning("No se proporcionó URL de contenido MIME")
@@ -334,7 +351,7 @@ async def _process_inbound_email(data: Dict[str, Any]) -> int | None:
         else:
             logger.warning(f"Formato de email no reconocido: {data.keys()}")
             return None
-            
+
     except Exception as e:
         logger.error(f"Error procesando email entrante: {str(e)}")
         return None
@@ -358,55 +375,55 @@ async def _process_delivery_report(data: Dict[str, Any]) -> None:
 def _extract_last_message_from_html(html_content: str) -> str:
     """
     Extrae solo el último mensaje de un email HTML, eliminando la cadena de respuestas.
-    
+
     Args:
         html_content: Contenido HTML completo del email
-        
+
     Returns:
         Texto del último mensaje sin la cadena de respuestas
     """
     if not html_content:
         return ""
-    
+
     try:
         # Parsear HTML con BeautifulSoup
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
+        soup = BeautifulSoup(html_content, "html.parser")
+
         # Buscar el separador de respuestas (común en Outlook y otros clientes)
         # Puede ser <hr>, <div id="divRplyFwdMsg">, etc.
         separators = [
-            soup.find('hr'),  # Separador horizontal
-            soup.find('div', id='divRplyFwdMsg'),  # Outlook
-            soup.find('div', class_='gmail_quote'),  # Gmail
-            soup.find('blockquote')  # Quotes generales
+            soup.find("hr"),  # Separador horizontal
+            soup.find("div", id="divRplyFwdMsg"),  # Outlook
+            soup.find("div", class_="gmail_quote"),  # Gmail
+            soup.find("blockquote"),  # Quotes generales
         ]
-        
+
         # Encontrar el primer separador válido
         first_separator = None
         for sep in separators:
             if sep:
                 first_separator = sep
                 break
-        
+
         if first_separator:
             # Eliminar todo después del separador (incluido el separador)
             for element in [first_separator] + list(first_separator.find_all_next()):
                 if element.parent:
                     element.extract()
-        
+
         # Obtener el texto limpio
-        text = soup.get_text(separator='\n', strip=True)
-        
+        text = soup.get_text(separator="\n", strip=True)
+
         # Limpiar líneas vacías múltiples
-        text = re.sub(r'\n\s*\n+', '\n\n', text)
-        
+        text = re.sub(r"\n\s*\n+", "\n\n", text)
+
         return text.strip()
-        
+
     except Exception as e:
         logger.error(f"Error extrayendo último mensaje del HTML: {str(e)}")
         # Fallback: intentar extraer texto básico
         try:
-            soup = BeautifulSoup(html_content, 'html.parser')
+            soup = BeautifulSoup(html_content, "html.parser")
             return soup.get_text(strip=True)[:500]  # Limitar a 500 caracteres
         except:
             return "[Error al procesar contenido del email]"

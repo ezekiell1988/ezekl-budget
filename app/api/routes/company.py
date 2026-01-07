@@ -24,7 +24,7 @@ from app.models.company import (
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de compañías
-router = APIRouter()
+router = APIRouter(prefix="/companies", tags=["Compañías"])
 
 
 @router.get(

@@ -14,7 +14,7 @@ from app.services.ai_service import ai_service
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de IA
-router = APIRouter()
+router = APIRouter(prefix="/ai", tags=["IA"])
 
 
 # ============== ENDPOINTS DE IA ==============

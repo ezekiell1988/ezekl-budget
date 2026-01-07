@@ -12,7 +12,7 @@ from app.services.email_queue import email_queue
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["Cola de Emails"])
+router = APIRouter(prefix="/queue", tags=["Cola de Emails"])
 
 
 @router.get(

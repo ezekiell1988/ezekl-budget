@@ -8,7 +8,7 @@ from app.models.auth import CurrentUser
 from app.models.responses import CredentialsResponse, RealtimeCredentialsResponse
 from app.utils.auth import get_current_user
 
-router = APIRouter(tags=["Credenciales"])
+router = APIRouter(prefix="/credentials", tags=["Credenciales"])
 
 
 @router.get(

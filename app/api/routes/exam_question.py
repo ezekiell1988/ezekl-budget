@@ -23,7 +23,7 @@ from app.models.exam_question import (
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de preguntas de examen
-router = APIRouter()
+router = APIRouter(prefix="/exam-questions", tags=["Preguntas de Examen"])
 
 
 @router.get(

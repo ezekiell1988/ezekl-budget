@@ -25,7 +25,7 @@ from app.utils.auth import get_current_user, create_jwe_token, execute_stored_pr
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/microsoft", tags=["Autenticación - Microsoft"])
+router = APIRouter(prefix="/auth/microsoft",tags=["Autenticación - Microsoft"])
 
 
 # ==================== INICIAR AUTENTICACIÓN ====================

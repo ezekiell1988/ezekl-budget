@@ -22,7 +22,7 @@ from app.models.product import (
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de productos
-router = APIRouter()
+router = APIRouter(prefix="/products", tags=["Productos"])
 
 
 @router.get(
