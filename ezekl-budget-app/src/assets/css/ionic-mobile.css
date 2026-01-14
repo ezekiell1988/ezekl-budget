@@ -340,7 +340,7 @@ body.ionic-mode ion-footer {
 }
 
 /* =====================================================
-   SIDEBAR/MENU - ESTILOS ESPECÍFICOS
+   Z-INDEX - MENÚ Y OVERLAY
    ===================================================== */
 
 /* Z-index para el menú */
@@ -357,85 +357,6 @@ body.ionic-mode ion-menu::part(backdrop) {
 
 body.ionic-mode ion-menu::part(container) {
   pointer-events: auto !important;
-}
-
-/* Perfil de usuario en menú móvil */
-body.ionic-mode .user-profile-mobile {
-  display: flex;
-  align-items: center;
-  padding: 20px 16px;
-  gap: 16px;
-  background: linear-gradient(135deg, var(--app-theme, #348fe2), #1e5aa8);
-  color: white;
-}
-
-body.ionic-mode .user-profile-mobile .profile-avatar {
-  flex-shrink: 0;
-}
-
-body.ionic-mode .user-profile-mobile .profile-avatar img {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  object-fit: cover;
-}
-
-body.ionic-mode .user-profile-mobile .profile-info {
-  flex: 1;
-  min-width: 0;
-}
-
-body.ionic-mode .user-profile-mobile .profile-info h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: white;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-body.ionic-mode .user-profile-mobile .profile-info p {
-  margin: 4px 0 0 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.8);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Marca del menú activo */
-body.ionic-mode ion-menu ion-item.selected {
-  --background: rgba(var(--ion-color-primary-rgb), 0.08);
-  border-left: 3px solid var(--app-theme, #348fe2);
-  font-weight: 500;
-}
-
-body.ionic-mode ion-menu ion-item.selected ion-label {
-  color: var(--app-theme, #348fe2);
-}
-
-body.ionic-mode ion-menu ion-item.selected ion-icon[slot="start"] {
-  color: var(--app-theme, #348fe2);
-}
-
-/* Dark Mode - Sidebar/Menu */
-body.ionic-mode[data-bs-theme="dark"] .user-profile-mobile {
-  background: linear-gradient(135deg, #1e3a5f, #0f1f33);
-}
-
-body.ionic-mode[data-bs-theme="dark"] ion-menu ion-item.selected {
-  --background: rgba(var(--ion-color-primary-rgb), 0.15);
-  border-left: 3px solid var(--app-theme, #348fe2);
-}
-
-body.ionic-mode[data-bs-theme="dark"] ion-menu ion-item.selected ion-label {
-  color: var(--app-theme, #5ba3f5);
-}
-
-body.ionic-mode[data-bs-theme="dark"] ion-menu ion-item.selected ion-icon[slot="start"] {
-  color: var(--app-theme, #5ba3f5);
 }
 
 /* =====================================================

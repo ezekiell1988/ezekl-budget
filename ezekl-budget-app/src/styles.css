@@ -1,17 +1,9 @@
-/* You can add global styles to this file, and also import other style files */
+/* Estilos globales - FontAwesome */
 @import '~@fortawesome/fontawesome-free/css/all.css';
 
 /**
- * NOTA: Los estilos de Ionic se cargan dinámicamente solo en móvil
- * mediante PlatformDetectorService para evitar conflictos en desktop.
- * Ver: platform-detector.service.ts
- */
-
-/**
  * Variables de color de Ionic en :root
- * -----------------------------------------------------
- * Necesarias para que los overlays (action-sheets, alerts, modals)
- * que se renderizan fuera del body tengan acceso a las variables.
+ * Necesarias para overlays (action-sheets, alerts, modals) que se renderizan fuera del body
  */
 :root {
   --ion-color-primary: #348fe2;
