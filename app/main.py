@@ -136,6 +136,8 @@ from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        f"https://localhost:4200",
+        f"http://localhost:4200",
         f"https://localhost:{settings.port}",
         f"http://localhost:{settings.port}",
         f"http://127.0.0.1:{settings.port}",

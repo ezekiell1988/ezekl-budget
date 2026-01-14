@@ -4,7 +4,9 @@ import {
   Output,
   EventEmitter,
   Renderer2,
+  OnInit,
   OnDestroy,
+  ChangeDetectorRef,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { 
@@ -19,6 +21,7 @@ import {
 import { addIcons } from 'ionicons';
 import { notificationsOutline, menuOutline } from 'ionicons/icons';
 import { AppSettings } from "../../service/app-settings.service";
+import { AuthService } from '../../service';
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 declare var slideToggle: any;
@@ -38,12 +41,15 @@ declare var slideToggle: any;
     IonIcon
   ],
 })
-export class HeaderComponent extends ResponsiveComponent implements OnDestroy {
+export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDestroy {
   @Input() appSidebarTwo;
-  @Input() pageTitle = 'EzekL Budget'; // Para versión móvil
+  @Input() pageTitle = 'Ezekl Budget'; // Para versión móvil
+  @Input() color = 'theme'; // Color del toolbar para versión móvil
   @Output() appSidebarEndToggled = new EventEmitter<boolean>();
   @Output() appSidebarMobileToggled = new EventEmitter<boolean>();
   @Output() appSidebarEndMobileToggled = new EventEmitter<boolean>();
+  
+  currentUser: any = null;
 
   toggleAppSidebarMobile() {
     this.appSidebarMobileToggled.emit(true);
@@ -69,12 +75,42 @@ export class HeaderComponent extends ResponsiveComponent implements OnDestroy {
       !this.appSettings.appHeaderMegaMenuMobileToggled;
   }
 
+  isAuthenticated(): boolean {
+    return this.authService.isAuthenticated();
+  }
+
+  logout(): void {
+    this.authService.logout().subscribe({
+      next: () => {
+        console.log('Sesión cerrada exitosamente desde header');
+      },
+      error: (error) => {
+        console.error('Error al cerrar sesión desde header:', error);
+        this.authService.clearSession();
+      }
+    });
+  }
+
   override ngOnDestroy() {
     this.appSettings.appHeaderMegaMenuMobileToggled = false;
     super.ngOnDestroy();
   }
 
-  constructor(private renderer: Renderer2, public appSettings: AppSettings) {
+  ngOnInit() {
+    // Suscribirse a cambios en el usuario autenticado
+    this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+      // Forzar detección de cambios
+      this.cdr.detectChanges();
+    });
+  }
+
+  constructor(
+    private renderer: Renderer2, 
+    public appSettings: AppSettings,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {
     super();
     
     // Registrar íconos de Ionicons para el header móvil

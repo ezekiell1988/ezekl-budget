@@ -95,7 +95,7 @@ export class DesktopLayoutComponent implements OnInit {
   onAppSidebarMinifiedToggled(val: boolean) {
     this.appSettings.appSidebarMinified = val;
     if (localStorage) {
-      localStorage["appSidebarMinified"] = val;
+      localStorage["appSidebarMinified"] = val.toString();
     }
   }
 
@@ -123,7 +123,6 @@ export class DesktopLayoutComponent implements OnInit {
   }
 
   onAppThemeChanged(val: string) {
-    this.appSettings.appTheme = val;
     const newTheme = "theme-" + this.appSettings.appTheme;
     for (let x = 0; x < document.body.classList.length; x++) {
       if (

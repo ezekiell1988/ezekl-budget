@@ -1,189 +1,31 @@
 /* You can add global styles to this file, and also import other style files */
 @import '~@fortawesome/fontawesome-free/css/all.css';
 
-/* =====================================================
-   RESPONSIVE PLATFORM STYLES
-   ===================================================== */
+/**
+ * Ionic CSS
+ * -----------------------------------------------------
+ * Estilos core de Ionic necesarios para que los componentes
+ * funcionen correctamente (incluye toasts, modals, etc.)
+ */
+@import '~@ionic/angular/css/core.css';
+@import '~@ionic/angular/css/normalize.css';
+@import '~@ionic/angular/css/structure.css';
+@import '~@ionic/angular/css/typography.css';
+
+/* Optional CSS utils that can be commented out */
+@import '~@ionic/angular/css/padding.css';
+@import '~@ionic/angular/css/float-elements.css';
+@import '~@ionic/angular/css/text-alignment.css';
+@import '~@ionic/angular/css/text-transformation.css';
+@import '~@ionic/angular/css/flex-utils.css';
 
 /**
- * Clases utilitarias para mostrar/ocultar contenido
- * según el modo de plataforma activo
+ * Ionic Dark Palette
+ * -----------------------------------------------------
+ * DEBE estar aquí (no en ionic-mobile.css) porque los @import
+ * solo funcionan en archivos compilados directamente por Angular.
+ * ionic-mobile.css se carga dinámicamente y sus @import no se procesan.
+ * 
+ * El overhead de cargar esto en desktop es mínimo (~4KB gzipped).
  */
-
-/* Ocultar en modo móvil (Ionic) */
-body.ionic-mode .desktop-only {
-  display: none !important;
-}
-
-/* Ocultar en modo desktop (Color-Admin) */
-body.desktop-mode .ionic-only,
-body.desktop-mode .mobile-only {
-  display: none !important;
-}
-
-/* Mostrar solo en móvil */
-body.ionic-mode .ionic-only,
-body.ionic-mode .mobile-only {
-  display: block !important;
-}
-
-/* Mostrar solo en desktop */
-body.desktop-mode .desktop-only {
-  display: block !important;
-}
-
-/* =====================================================
-   PREVENIR CONFLICTOS DE ESTILOS
-   ===================================================== */
-
-/**
- * Cuando estamos en modo desktop, asegurarnos que
- * los estilos de Ionic no afecten nada
- */
-body.desktop-mode {
-  /* Ionic components should be hidden */
-  ion-app,
-  ion-router-outlet,
-  ion-menu,
-  ion-header,
-  ion-footer,
-  ion-content,
-  ion-toolbar,
-  ion-tab-bar {
-    display: none !important;
-  }
-}
-
-/**
- * Cuando estamos en modo móvil, los estilos de
- * Color-Admin se ocultan mediante el CSS dinámico
- * que se carga en ionic-mobile.css
- */
-
-/* =====================================================
-   SIDEBAR - MENÚ LATERAL MOBILE (IONIC)
-   ===================================================== */
-
-/**
- * Estilos para el menú lateral recursivo en Ionic
- * Indentación visual para niveles de menú anidados
- */
-
-ion-menu .menu-level-0 {
-  --padding-start: 16px;
-}
-
-ion-menu .menu-level-1 {
-  --padding-start: 32px;
-}
-
-ion-menu .menu-level-1 ion-label {
-  font-size: 0.95rem;
-}
-
-ion-menu .menu-level-2 {
-  --padding-start: 48px;
-}
-
-ion-menu .menu-level-2 ion-label {
-  font-size: 0.9rem;
-}
-
-ion-menu .menu-level-3 {
-  --padding-start: 64px;
-}
-
-ion-menu .menu-level-3 ion-label {
-  font-size: 0.85rem;
-}
-
-/* Item seleccionado actualmente */
-ion-menu ion-item.selected {
-  font-weight: 600;
-}
-
-ion-menu ion-item.selected ion-label {
-  font-weight: 600;
-}
-
-/* Ícono del item seleccionado */
-ion-menu ion-item.selected ion-icon[slot="start"] {
-  color: var(--ion-color-primary);
-}
-
-/* Animación suave para submenús */
-ion-menu .submenu-container {
-  animation: slideDown 0.3s ease-out;
-  overflow: hidden;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    max-height: 0;
-  }
-  to {
-    opacity: 1;
-    max-height: 1000px;
-  }
-}
-
-/* Footer del menú lateral móvil */
-ion-menu .menu-footer {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  padding: 10px 0;
-  border-top: 1px solid var(--ion-color-light);
-}
-
-/* Header del menú lateral móvil */
-ion-menu ion-header ion-toolbar {
-  --background: var(--ion-color-primary);
-  --color: white;
-}
-
-ion-menu ion-header ion-title {
-  color: white;
-  font-weight: 600;
-}
-
-ion-menu ion-header ion-button {
-  --color: white;
-}
-
-ion-menu ion-header ion-icon {
-  color: white;
-  font-size: 24px;
-}
-
-/* =====================================================
-   HEADER - BARRA SUPERIOR MOBILE (IONIC)
-   ===================================================== */
-
-/**
- * Asegurar que los íconos del header sean visibles
- */
-
-ion-header ion-toolbar {
-  --background: var(--ion-color-primary);
-  --color: var(--ion-color-primary-contrast);
-}
-
-ion-header ion-title {
-  color: var(--ion-color-primary-contrast);
-  font-weight: 600;
-}
-
-ion-header ion-button {
-  --color: var(--ion-color-primary-contrast);
-}
-
-ion-header ion-icon {
-  color: var(--ion-color-primary-contrast);
-  font-size: 24px;
-}
-
-ion-header ion-menu-button {
-  --color: var(--ion-color-primary-contrast);
-}
+@import '~@ionic/angular/css/palettes/dark.class.css';

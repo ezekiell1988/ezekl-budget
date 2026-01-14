@@ -8,6 +8,9 @@
 
 <!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
 @if (isMobile()) {
+<header [pageTitle]="getPageTitle()"></header>
+
+<ion-content class="ion-padding">
   <div class="ion-padding">
     <!-- Tarjeta de Balance Principal -->
     <ion-card class="balance-card">
@@ -72,6 +75,9 @@
       Nueva Transacción
     </ion-button>
   </div>
+</ion-content>
+
+<app-footer translucent="true" footerText="© {{ appSettings.nameCompany }} BackOffice" />
 }
 
 <!-- ========== VERSIÓN DESKTOP (COLOR-ADMIN) ========== -->

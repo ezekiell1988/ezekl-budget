@@ -1,0 +1,666 @@
+
+/* =====================================================
+   IONIC MOBILE STYLES
+   Cargado dinámicamente por PlatformDetectorService
+   
+   Este archivo se carga SOLO en modo móvil (≤768px)
+   ===================================================== */
+
+/* Ocultar elementos de Color-Admin en modo móvil */
+body.ionic-mode #header.app-header,
+body.ionic-mode #sidebar.app-sidebar,
+body.ionic-mode .app-sidebar-end,
+body.ionic-mode #footer.app-footer,
+body.ionic-mode .theme-panel,
+body.ionic-mode .top-menu,
+body.ionic-mode .float-sub-menu-container {
+  display: none !important;
+}
+
+body.ionic-mode #app,
+body.ionic-mode #content.app-content {
+  display: none !important;
+}
+
+body.ionic-mode {
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+body.ionic-mode ion-app {
+  display: block !important;
+  width: 100%;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+body.ionic-mode ion-content {
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --background: var(--ion-background-color);
+}
+
+body.ionic-mode .ion-padding {
+  padding: 16px;
+}
+
+/**
+ * Color personalizado "theme" para Ionic
+ * -----------------------------------------------------
+ * DEBE estar en styles.css (no ionic-mobile.css) para que esté
+ * disponible cuando Ionic inicializa.
+ * Los valores se actualizan dinámicamente vía JavaScript.
+ */
+:root {
+  --ion-color-theme-contrast: #ffffff;
+  --ion-color-theme-contrast-rgb: 255, 255, 255;
+}
+
+.ion-color-theme {
+  --ion-color-base: var(--ion-color-theme) !important;
+  --ion-color-base-rgb: var(--ion-color-theme-rgb) !important;
+  --ion-color-contrast: var(--ion-color-theme-contrast) !important;
+  --ion-color-contrast-rgb: var(--ion-color-theme-contrast-rgb) !important;
+  --ion-color-shade: var(--ion-color-theme-shade) !important;
+  --ion-color-tint: var(--ion-color-theme-tint) !important;
+}
+
+/* Variables de tema para Ionic */
+body.ionic-mode {
+  --ion-background-color: var(--bs-body-bg, #ffffff);
+  --ion-text-color: var(--bs-body-color, #212529);
+  --ion-font-family: var(--bs-font-sans-serif, system-ui, -apple-system, sans-serif);
+  --ion-color-primary: var(--app-theme, #348fe2);
+  --ion-color-primary-rgb: 52, 143, 226;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #2e7ec7;
+  --ion-color-primary-tint: #489ae5;
+}
+
+/* Componentes de Ionic */
+body.ionic-mode ion-toolbar {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+}
+
+body.ionic-mode ion-title {
+  font-weight: 600;
+}
+
+body.ionic-mode ion-tab-bar {
+  --background: var(--bs-body-bg, #ffffff);
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+body.ionic-mode ion-tab-button {
+  --color: var(--bs-secondary-color, #6c757d);
+  --color-selected: var(--app-theme, #348fe2);
+}
+
+body.ionic-mode ion-menu {
+  --background: var(--bs-body-bg, #ffffff);
+}
+
+body.ionic-mode ion-menu ion-content {
+  --background: var(--bs-body-bg, #ffffff);
+}
+
+body.ionic-mode ion-item {
+  --background: transparent;
+  --color: var(--bs-body-color, #212529);
+  --border-color: var(--bs-border-color, #dee2e6);
+}
+
+body.ionic-mode ion-card {
+  --background: var(--bs-body-bg, #ffffff);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  margin: 16px;
+}
+
+body.ionic-mode ion-card img {
+  width: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  display: block !important;
+}
+
+body.ionic-mode ion-card-header {
+  padding: 1rem;
+}
+
+body.ionic-mode ion-card-content {
+  padding: 1rem;
+}
+
+body.ionic-mode ion-list {
+  --background: transparent;
+}
+
+body.ionic-mode ion-button {
+  --border-radius: 0.375rem;
+  font-weight: 500;
+}
+
+body.ionic-mode ion-input,
+body.ionic-mode ion-textarea,
+body.ionic-mode ion-select {
+  --background: var(--bs-body-bg, #ffffff);
+  --color: var(--bs-body-color, #212529);
+  --placeholder-color: var(--bs-secondary-color, #6c757d);
+}
+
+body.ionic-mode ion-fab-button {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+}
+
+body.ionic-mode ion-spinner {
+  --color: var(--app-theme, #348fe2);
+}
+
+body.ionic-mode ion-badge {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+}
+
+/* =====================================================
+   HOME PAGE - ESTILOS ESPECÍFICOS
+   ===================================================== */
+
+/* Balance Card */
+body.ionic-mode .balance-card {
+  background: linear-gradient(135deg, var(--app-theme, #348fe2), #1e5aa8);
+  color: white;
+}
+
+body.ionic-mode .balance-card ion-card-header {
+  color: white;
+}
+
+body.ionic-mode .balance-card ion-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+body.ionic-mode .balance-card ion-card-content {
+  color: white;
+}
+
+body.ionic-mode .balance-amount {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+body.ionic-mode .balance-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.ionic-mode .balance-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+body.ionic-mode .balance-item ion-icon {
+  font-size: 1.2rem;
+}
+
+body.ionic-mode .balance-item.income ion-icon {
+  color: #4ade80 !important;
+}
+
+body.ionic-mode .balance-item.expense ion-icon {
+  color: #f87171 !important;
+}
+
+/* =====================================================
+   LOGIN PAGE - ESTILOS ESPECÍFICOS
+   ===================================================== */
+
+/* Añadir estilos específicos del login aquí si los hay */
+
+/* =====================================================
+   DARK MODE - CONFIGURACIÓN GENERAL
+   ===================================================== */
+
+body.ionic-mode[data-bs-theme="dark"] {
+  --ion-background-color: var(--bs-body-bg, #212529);
+  --ion-text-color: var(--bs-body-color, #dee2e6);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-toolbar {
+  --background: var(--bs-dark, #1a1d20);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-tab-bar {
+  --background: var(--bs-dark, #1a1d20);
+  border-top-color: var(--bs-border-color, #495057);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-card {
+  --background: var(--bs-dark, #2b2f32);
+}
+
+/* Dark Mode - Home Page */
+body.ionic-mode[data-bs-theme="dark"] .balance-card {
+  background: linear-gradient(135deg, #1e3a5f, #0f1f33);
+}
+
+/* =====================================================
+   FOOTER - ESTILOS GENERALES
+   ===================================================== */
+
+/* Footer general */
+body.ionic-mode ion-footer {
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+body.ionic-mode ion-footer ion-toolbar {
+  --background: var(--bs-body-bg, #ffffff);
+  --color: var(--bs-body-color, #212529);
+}
+
+/* Dark Mode - Footer General */
+body.ionic-mode[data-bs-theme="dark"] ion-footer {
+  border-top-color: var(--bs-border-color, #495057);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-footer ion-toolbar {
+  --background: var(--bs-dark, #2b2f32);
+  --color: var(--bs-body-color, #dee2e6);
+}
+
+/* =====================================================
+   LAYOUT - ESTRUCTURA DE PÁGINA
+   ===================================================== */
+
+/* Estructura de página con footer - Selector específico para ion-page */
+body.ionic-mode .ion-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ion-router-outlet debe ser transparente para que sus hijos sean hijos directos del ion-page */
+body.ionic-mode ion-router-outlet {
+  display: contents;
+}
+
+/* Los componentes de página renderizados por el router también deben ser transparentes */
+body.ionic-mode ion-router-outlet > * {
+  display: contents;
+}
+
+/* ion-header se posiciona fixed por Ionic */
+body.ionic-mode ion-header {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ion-content toma el espacio restante */
+body.ionic-mode ion-content {
+  flex: 1;
+  position: relative;
+}
+
+/* ion-footer se posiciona al final */
+body.ionic-mode ion-footer {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+/* =====================================================
+   SIDEBAR/MENU - ESTILOS ESPECÍFICOS
+   ===================================================== */
+
+/* Z-index para el menú */
+body.ionic-mode ion-menu {
+  z-index: 10000 !important;
+}
+
+body.ionic-mode ion-menu::part(backdrop) {
+  z-index: 9999 !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  pointer-events: none !important;
+}
+
+body.ionic-mode ion-menu::part(container) {
+  pointer-events: auto !important;
+}
+
+/* Perfil de usuario en menú móvil */
+body.ionic-mode .user-profile-mobile {
+  display: flex;
+  align-items: center;
+  padding: 20px 16px;
+  gap: 16px;
+  background: linear-gradient(135deg, var(--app-theme, #348fe2), #1e5aa8);
+  color: white;
+}
+
+body.ionic-mode .user-profile-mobile .profile-avatar {
+  flex-shrink: 0;
+}
+
+body.ionic-mode .user-profile-mobile .profile-avatar img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  object-fit: cover;
+}
+
+body.ionic-mode .user-profile-mobile .profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+body.ionic-mode .user-profile-mobile .profile-info h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.ionic-mode .user-profile-mobile .profile-info p {
+  margin: 4px 0 0 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Marca del menú activo */
+body.ionic-mode ion-menu ion-item.selected {
+  --background: rgba(var(--ion-color-primary-rgb), 0.08);
+  border-left: 3px solid var(--app-theme, #348fe2);
+  font-weight: 500;
+}
+
+body.ionic-mode ion-menu ion-item.selected ion-label {
+  color: var(--app-theme, #348fe2);
+}
+
+body.ionic-mode ion-menu ion-item.selected ion-icon[slot="start"] {
+  color: var(--app-theme, #348fe2);
+}
+
+/* Dark Mode - Sidebar/Menu */
+body.ionic-mode[data-bs-theme="dark"] .user-profile-mobile {
+  background: linear-gradient(135deg, #1e3a5f, #0f1f33);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-menu ion-item.selected {
+  --background: rgba(var(--ion-color-primary-rgb), 0.15);
+  border-left: 3px solid var(--app-theme, #348fe2);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-menu ion-item.selected ion-label {
+  color: var(--app-theme, #5ba3f5);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-menu ion-item.selected ion-icon[slot="start"] {
+  color: var(--app-theme, #5ba3f5);
+}
+
+/* =====================================================
+   THEME PANEL - PANEL DE CONFIGURACIÓN MÓVIL
+   ===================================================== */
+
+/* Selector de colores en grid */
+body.ionic-mode .color-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+body.ionic-mode .color-option {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+body.ionic-mode .color-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+body.ionic-mode .color-circle:active {
+  transform: scale(0.95);
+}
+
+body.ionic-mode .color-circle ion-icon {
+  color: white;
+  font-size: 28px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* Efecto de selección en color circle */
+body.ionic-mode .color-circle::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+body.ionic-mode .color-circle:has(ion-icon)::after {
+  border-color: currentColor;
+}
+
+/* Ion List Headers más estéticos */
+body.ionic-mode ion-list-header {
+  padding-top: 24px;
+  padding-bottom: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ion-color-medium);
+}
+
+body.ionic-mode ion-list-header ion-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Mejorar items de configuración */
+body.ionic-mode ion-item ion-icon[slot="start"] {
+  font-size: 24px;
+  margin-inline-end: 16px;
+}
+
+body.ionic-mode ion-item ion-label h2 {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ion-text-color);
+  margin-bottom: 2px;
+}
+
+body.ionic-mode ion-item ion-label p {
+  font-size: 0.875rem;
+  color: var(--ion-color-medium);
+  margin-top: 2px;
+}
+
+body.ionic-mode ion-item ion-badge {
+  font-size: 0.625rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Toggles con color theme */
+body.ionic-mode ion-toggle {
+  --background: var(--ion-color-light);
+  --background-checked: var(--ion-color-theme);
+  --handle-background: white;
+  --handle-background-checked: white;
+}
+
+/* Botones más estéticos */
+body.ionic-mode ion-button {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  --border-radius: 12px;
+  height: 48px;
+}
+
+body.ionic-mode ion-button ion-icon[slot="start"] {
+  font-size: 20px;
+  margin-inline-end: 8px;
+}
+
+/* Dark Mode - Theme Panel */
+body.ionic-mode[data-bs-theme="dark"] .color-circle {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-list-header {
+  color: var(--ion-color-step-400);
+}
+
+body.ionic-mode[data-bs-theme="dark"] ion-toggle {
+  --background: var(--ion-color-step-150);
+}
+
+/* =====================================================
+   VOICE SHOPPING PAGE - ESTILOS ESPECÍFICOS
+   ===================================================== */
+
+/* Configuración de teléfono */
+body.ionic-mode .phone-setup-container {
+  padding: 16px;
+}
+
+body.ionic-mode .phone-setup-container .start-button {
+  margin-top: 16px;
+}
+
+/* Footer de controles de voz */
+body.ionic-mode ion-footer ion-toolbar {
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --min-height: auto;
+}
+
+body.ionic-mode .footer-content {
+  padding: 12px;
+  display: block;
+  min-height: 60px;
+}
+
+body.ionic-mode .status-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  min-height: 40px;
+}
+
+body.ionic-mode .status-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+body.ionic-mode .status-badges ion-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+body.ionic-mode .mic-indicator-compact {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.ionic-mode .mic-indicator-compact ion-icon {
+  font-size: 24px;
+  color: var(--ion-color-medium);
+  transition: color 0.3s ease;
+  z-index: 1;
+}
+
+body.ionic-mode .mic-indicator-compact.active ion-icon {
+  color: var(--ion-color-success);
+}
+
+body.ionic-mode .mic-indicator-compact.speaking ion-icon {
+  color: var(--ion-color-primary);
+}
+
+body.ionic-mode .audio-level-bar {
+  margin-bottom: 8px;
+}
+
+body.ionic-mode .audio-level-bar ion-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+}
+
+body.ionic-mode .control-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Dark Mode - Voice Shopping */
+body.ionic-mode[data-bs-theme="dark"] .voice-controls-footer {
+  border-top-color: var(--bs-border-color, #495057);
+}
+
+body.ionic-mode[data-bs-theme="dark"] .voice-controls-footer ion-toolbar {
+  --background: var(--bs-dark, #2b2f32);
+  --color: var(--bs-body-color, #dee2e6);
+}
+
+body.ionic-mode[data-bs-theme="dark"] .mic-indicator-compact ion-icon {
+  color: var(--ion-color-step-400);
+}
+
+body.ionic-mode[data-bs-theme="dark"] .mic-indicator-compact.active ion-icon {
+  color: var(--ion-color-success);
+}
+
+body.ionic-mode[data-bs-theme="dark"] .mic-indicator-compact.speaking ion-icon {
+  color: var(--ion-color-primary);
+}

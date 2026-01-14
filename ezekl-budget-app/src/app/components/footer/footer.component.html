@@ -1,0 +1,42 @@
+<!-- =====================================================
+     FOOTER COMPONENT - RESPONSIVE DUAL TEMPLATE
+     
+     Mobile: Ionic Footer
+     Desktop: Color-Admin Footer
+     ===================================================== -->
+
+<!-- ========== VERSIÓN MÓVIL (Ionic) ========== -->
+@if (isMobile()) {
+<ion-footer [translucent]="translucent">
+  <ion-toolbar [color]="color">
+    <!-- Contenido personalizado con selector -->
+    <ng-content select="[footerContent]"></ng-content>
+
+    <!-- Contenido por defecto si no hay contenido personalizado -->
+    @if (footerText) {
+    <ion-title class="ion-text-center" size="small">
+      {{ footerText }}
+    </ion-title>
+    }
+  </ion-toolbar>
+</ion-footer>
+}
+
+<!-- ========== VERSIÓN DESKTOP (Color-Admin) ========== -->
+@if (isDesktop()) {
+<div id="footer" class="app-footer" [class]="footerClass">
+  @if (hasCustomContent) {
+  <!-- Contenido personalizado -->
+  <ng-content></ng-content>
+  } @else {
+  <!-- Contenido por defecto -->
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12 text-center">
+        <small class="text-muted">{{ footerText }}</small>
+      </div>
+    </div>
+  </div>
+  }
+</div>
+}

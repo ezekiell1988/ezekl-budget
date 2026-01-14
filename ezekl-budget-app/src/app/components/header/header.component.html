@@ -8,16 +8,20 @@
 <!-- ========== VERSIÓN MÓVIL (Ionic) ========== -->
 @if (isMobile()) {
   <ion-header>
-    <ion-toolbar>
+    <ion-toolbar [color]="color">
+      @if (isAuthenticated()) {
       <ion-buttons slot="start">
-        <ion-menu-button></ion-menu-button>
+        <ion-menu-button menu="main-menu"></ion-menu-button>
       </ion-buttons>
+      }
       <ion-title>{{ pageTitle }}</ion-title>
+      @if (isAuthenticated()) {
       <ion-buttons slot="end">
         <ion-button>
           <ion-icon name="notifications-outline"></ion-icon>
         </ion-button>
       </ion-buttons>
+      }
     </ion-toolbar>
   </ion-header>
 }
@@ -35,7 +39,7 @@
         <span class="icon-bar"></span>
       </button>
       }
-      <a href="/" class="navbar-brand"><span class="navbar-logo"></span> <b>Color</b> Admin</a>
+      <a href="/" class="navbar-brand"><span class="navbar-logo"></span> <b>{{ appSettings.nameCompany }}</b>&nbsp;BackOffice</a>
       @if (this.appSettings.appTopMenu && !this.appSettings.appSidebarNone) {
       <button type="button" class="navbar-mobile-toggler" (click)="toggleAppTopMenuMobile()">
         <span class="fa-stack fa-lg text-inverse">
@@ -77,33 +81,33 @@
         <div class="navbar-item dropdown dropdown-lg">
           <a href="javascript:;" class="navbar-link dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
             <i class="fa fa-th-large fa-fw me-1"></i>
-            <span class="d-lg-inline d-md-none">Mega</span>
+            <span class="d-lg-inline d-md-none">Menú</span>
             <b class="caret ms-1"></b>
           </a>
           <div class="dropdown-menu dropdown-menu-lg">
-            Content here
+            Contenido aquí
           </div>
         </div>
         <div class="navbar-item">
           <a href="javascript:;" class="navbar-link d-flex align-items-center">
             <i class="fa fa-gem fa-fw me-1"></i>
-            <span class="d-lg-inline d-md-none">Client</span>
+            <span class="d-lg-inline d-md-none">Cliente</span>
           </a>
         </div>
         <div class="navbar-item dropdown">
           <a href="javascript:;" class="navbar-link dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
             <i class="fa fa-database fa-fw me-1"></i>
-            <span class="d-lg-inline d-md-none">New</span>
+            <span class="d-lg-inline d-md-none">Nuevo</span>
             <b class="caret ms-1"></b>
           </a>
           <div class="dropdown-menu">
-            <a href="javascript:;" class="dropdown-item">Action</a>
-            <a href="javascript:;" class="dropdown-item">Another action</a>
-            <a href="javascript:;" class="dropdown-item">Something else here</a>
+            <a href="javascript:;" class="dropdown-item">Acción</a>
+            <a href="javascript:;" class="dropdown-item">Otra acción</a>
+            <a href="javascript:;" class="dropdown-item">Algo más aquí</a>
             <div class="dropdown-divider"></div>
-            <a href="javascript:;" class="dropdown-item">Separated link</a>
+            <a href="javascript:;" class="dropdown-item">Enlace separado</a>
             <div class="dropdown-divider"></div>
-            <a href="javascript:;" class="dropdown-item">One more separated link</a>
+            <a href="javascript:;" class="dropdown-item">Un enlace más separado</a>
           </div>
         </div>
       </div>
@@ -116,7 +120,7 @@
       <div class="navbar-item navbar-form">
         <form action="" method="POST" name="search">
           <div class="form-group">
-            <input type="text" class="form-control" placeholder="Enter keyword" />
+            <input type="text" class="form-control" placeholder="Buscar..." />
             <button type="submit" class="btn btn-search"><i class="fa fa-search"></i></button>
           </div>
         </form>
@@ -127,38 +131,36 @@
           <span class="badge">0</span>
         </a>
         <div class="dropdown-menu media-list dropdown-menu-end">
-          <div class="dropdown-header">NOTIFICATIONS (0)</div>
+          <div class="dropdown-header">NOTIFICACIONES (0)</div>
           <div class="text-center w-300px py-3">
-            No notification found
+            No hay notificaciones
           </div>
           <div class="dropdown-footer text-center">
-            <a href="javascript:;" class="text-decoration-none">View more</a>
+            <a href="javascript:;" class="text-decoration-none">Ver más</a>
           </div>
         </div>
       </div>
       @if (this.appSettings.appHeaderLanguageBar) {
       <div class="navbar-item dropdown">
         <a href="javascript:;" class="navbar-link dropdown-toggle" data-bs-toggle="dropdown">
-          <span class="fi fi-us" title="us"></span>
-          <span class="d-none d-sm-inline ms-1">EN</span> <b class="caret"></b>
+          <span class="fi fi-es" title="es"></span>
+          <span class="d-none d-sm-inline ms-1">ES</span> <b class="caret"></b>
         </a>
         <div class="dropdown-menu">
-          <a href="javascript:;" class="dropdown-item"><span class="fi fi-us me-2" title="us"></span> English</a>
-          <a href="javascript:;" class="dropdown-item"><span class="fi fi-cn me-2" title="cn"></span> Chinese</a>
-          <a href="javascript:;" class="dropdown-item"><span class="fi fi-jp me-2" title="jp"></span> Japanese</a>
-          <a href="javascript:;" class="dropdown-item"><span class="fi fi-be me-2" title="be"></span> Belgium</a>
+          <a href="javascript:;" class="dropdown-item"><span class="fi fi-es me-2" title="es"></span> Español</a>
+          <a href="javascript:;" class="dropdown-item"><span class="fi fi-us me-2" title="us"></span> Inglés</a>
+          <a href="javascript:;" class="dropdown-item"><span class="fi fi-fr me-2" title="fr"></span> Francés</a>
+          <a href="javascript:;" class="dropdown-item"><span class="fi fi-de me-2" title="de"></span> Alemán</a>
           <div class="dropdown-divider"></div>
-          <a href="javascript:;" class="dropdown-item text-center">more options</a>
+          <a href="javascript:;" class="dropdown-item text-center">más opciones</a>
         </div>
       </div>
       }
       <div class="navbar-item navbar-user dropdown">
         <a href="javascript:;" class="navbar-link dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown">
-          <div class="image image-icon bg-gray-800 text-gray-600">
-            <i class="fa fa-user"></i>
-          </div>
+          <div class="image bg-gray-800 text-gray-600" style="background-image: url('assets/img/user.png'); background-size: cover; background-position: center;"></div>
           <span>
-            <span class="d-none d-md-inline fw-bold">Adam Schwartz</span>
+            <span class="d-none d-md-inline fw-bold">{{ currentUser?.nameLogin || currentUser?.emailLogin || 'Usuario' }}</span>
             <b class="caret"></b>
           </span>
         </a>
@@ -171,7 +173,7 @@
           <a href="javascript:;" class="dropdown-item">Calendario</a>
           <a href="javascript:;" class="dropdown-item">Configuración</a>
           <div class="dropdown-divider"></div>
-          <a href="javascript:;" class="dropdown-item">Cerrar Sesión</a>
+          <a href="javascript:;" class="dropdown-item" (click)="logout()">Cerrar Sesión</a>
         </div>
       </div>
       @if (this.appSidebarTwo) {

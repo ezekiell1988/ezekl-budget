@@ -5,5 +5,8 @@
 
 export const environment = {
   production: false,
-  apiUrl: ''
+  apiUrl: 'http://localhost:8880/1/v1/',
+  // WebSocket en desarrollo usa localhost:9001 (Docker)
+  wsProtocol: 'ws',
+  wsBaseUrl: 'localhost:9001'
 };

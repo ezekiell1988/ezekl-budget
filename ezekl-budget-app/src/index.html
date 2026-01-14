@@ -4,13 +4,13 @@
 <head>
 	<meta charset="utf-8" />
 	<meta http-equiv="content-type" content="text/html; charset=UTF8">
-	<title>ezekl Budget</title>
+	<title>Voice BOT</title>
 	<base href="/">
 	<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
 	<meta content="" name="description" />
 	<meta content="" name="author" />
 
-	<link rel="icon" type="image/x-icon" href="favicon.ico" />
+	<link rel="icon" type="image/x-icon" href="/assets/ico/favicon.ico" />
 	
 	<!-- Ionicons CDN para cargar los íconos -->
 	<script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.2.2/dist/ionicons/ionicons.esm.js"></script>
@@ -18,13 +18,52 @@
 </head>
 
 <body detect-scroll (onScroll)="handleScroll($event)">
-	<app-root>
-		<!-- BEGIN #loader -->
-		<div id="loader" class="app-loader">
-			<span class="spinner"></span>
-		</div>
-		<!-- END #loader -->
-	</app-root>
+	<!-- BEGIN #loader (FUERA de app-root para que Angular no lo elimine) -->
+	<div id="app-loader" style="
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		z-index: 9999;
+		transition: opacity 0.5s ease-out;
+	">
+		<!-- Spinner -->
+		<div style="
+			width: 60px;
+			height: 60px;
+			border: 4px solid rgba(255, 255, 255, 0.3);
+			border-top: 4px solid white;
+			border-radius: 50%;
+			animation: spin 1s linear infinite;
+		"></div>
+		
+		<!-- Texto -->
+		<p style="
+			color: white;
+			margin-top: 20px;
+			font-size: 16px;
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			font-weight: 500;
+			opacity: 0.9;
+		">Cargando...</p>
+	</div>
+	<!-- END #loader -->
+	
+	<!-- Animación del spinner -->
+	<style>
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+	</style>
+	
+	<app-root></app-root>
 </body>
 
 </html>

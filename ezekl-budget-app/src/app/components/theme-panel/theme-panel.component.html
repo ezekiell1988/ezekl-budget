@@ -1,10 +1,95 @@
-<!-- =====================================================
-     THEME-PANEL COMPONENT - SOLO DESKTOP
-     Panel de configuración de temas
-     ===================================================== -->
+<!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
+@if (isMobile()) {
+<!-- Botón flotante -->
+@if (showFab) {
+<ion-fab slot="fixed" vertical="center" horizontal="end">
+	<ion-fab-button (click)="openMobileSettings()" color="theme">
+		<ion-icon name="settings-outline"></ion-icon>
+	</ion-fab-button>
+</ion-fab>
+}
 
+<!-- Menú lateral derecho -->
+<ion-menu contentId="main-content" menuId="settings-menu" side="end" type="overlay" [swipeGesture]="false">
+	<ion-header>
+		<ion-toolbar color="theme">
+			<ion-title>Configuración</ion-title>
+			<ion-buttons slot="end">
+				<ion-button (click)="closeMobileSettings()">
+					<ion-icon name="close-outline" slot="icon-only"></ion-icon>
+				</ion-button>
+			</ion-buttons>
+		</ion-toolbar>
+	</ion-header>
+
+	<ion-content>
+		<!-- Selector de Color -->
+		<ion-list>
+			<ion-list-header>
+				<ion-label>Color del Tema</ion-label>
+			</ion-list-header>
+			
+			<div class="color-selector-grid ion-padding">
+				@for (theme of themes; track $index) {
+				<div class="color-option" (click)="toggleTheme(theme, $event)">
+					<div class="color-circle" [ngClass]="'bg-' + theme">
+						@if (selectedTheme === theme) {
+							<ion-icon name="checkmark-outline"></ion-icon>
+						}
+					</div>
+				</div>
+				}
+			</div>
+		</ion-list>
+
+		<!-- Opciones de Configuración -->
+		<ion-list>
+			<ion-list-header>
+				<ion-label>Apariencia</ion-label>
+			</ion-list-header>
+
+			<!-- Modo Oscuro -->
+			<ion-item>
+				<ion-icon name="moon-outline" slot="start" color="medium"></ion-icon>
+				<ion-label>
+					<h2>Modo Oscuro</h2>
+					<p>Reduce el brillo de la pantalla</p>
+				</ion-label>
+				<ion-toggle slot="end" [(ngModel)]="appThemeDarkModeCheckbox"
+					(ionChange)="toggleDarkMode($event)" color="theme"></ion-toggle>
+			</ion-item>
+
+			<!-- Modo RTL -->
+			<ion-item lines="none">
+				<ion-icon name="text-outline" slot="start" color="medium"></ion-icon>
+				<ion-label>
+					<h2>Modo RTL</h2>
+					<p>Texto de derecha a izquierda</p>
+				</ion-label>
+				<ion-toggle slot="end" [(ngModel)]="appRtlEnabledCheckbox"
+					(ionChange)="toggleRtlEnabled($event)" color="theme"></ion-toggle>
+			</ion-item>
+		</ion-list>
+
+		<!-- Botones de Acción -->
+		<div class="ion-padding">
+			<ion-button expand="block" (click)="closeMobileSettings()" color="theme" size="large">
+				<ion-icon name="checkmark-outline" slot="start"></ion-icon>
+				Aplicar Cambios
+			</ion-button>
+			
+			<ion-button expand="block" (click)="resetLocalStorage()" color="medium" size="large" fill="outline">
+				<ion-icon name="refresh-outline" slot="start"></ion-icon>
+				Restaurar Configuración
+			</ion-button>
+		</div>
+	</ion-content>
+</ion-menu>
+}
+
+<!-- ========== VERSIÓN DESKTOP ========== -->
 @if (isDesktop()) {
-  <div class="theme-panel" [ngClass]="{ 'active': active }">
+<div class="theme-panel" [ngClass]="{ 'active': active }">
 	<a href="javascript:;" (click)="toggleThemePanel()" class="theme-collapse-btn"><i class="fa fa-cog"></i></a>
 	<ng-scrollbar class="h-100">
 		<div class="theme-panel-content">
@@ -28,7 +113,7 @@
 			<div class="row mt-10px">
 				<div class="col-8 control-label text-dark fw-bold">
 					<div class="d-flex">Modo Oscuro <span
-							class="badge bg-primary ms-1 py-2px position-relative d-flex align-items-center">NUEVO</span>
+							class="badge bg-theme ms-1 py-2px position-relative d-flex align-items-center">NUEVO</span>
 					</div>
 					<div class="lh-14">
 						<small class="text-dark opacity-50">
@@ -93,19 +178,18 @@
 				<div class="col-md-4 d-flex">
 					<div class="form-check form-switch ms-auto mb-0">
 						<input type="checkbox" class="form-check-input" name="app-gradient-enabled"
-							id="appGradientEnabled" (change)="toggleGradientEnabled($event)" value="1"
+							id="appGradientEnabled" value="1" (change)="toggleGradientEnabled($event)"
 							[checked]="appGradientEnabledCheckbox" />
 						<label class="form-check-label" for="appGradientEnabled"></label>
 					</div>
 				</div>
 			</div>
 			<div class="row mt-10px align-items-center">
-				<div class="col-md-8 control-label text-dark fw-bold d-flex">RTL Habilitado <span
-						class="badge bg-primary ms-1 position-relative d-flex align-items-center">NUEVO</span></div>
+				<div class="col-md-8 control-label text-dark fw-bold">Dirección de Derecha a Izquierda (RTL)</div>
 				<div class="col-md-4 d-flex">
 					<div class="form-check form-switch ms-auto mb-0">
 						<input type="checkbox" class="form-check-input" name="app-rtl-enabled" id="appRtlEnabled"
-							(change)="toggleRtlEnabled($event)" value="1" [checked]="appRtlEnabledCheckbox" />
+							value="1" (change)="toggleRtlEnabled($event)" [checked]="appRtlEnabledCheckbox" />
 						<label class="form-check-label" for="appRtlEnabled"></label>
 					</div>
 				</div>
@@ -114,11 +198,13 @@
 
 			<div class="theme-panel-divider"></div>
 
+			<!-- BEGIN btn-row -->
 			<a href="https://seantheme.com/color-admin/documentation/"
 				class="btn btn-dark d-block w-100 rounded-pill mb-10px" target="_blank"><b>Documentación</b></a>
 			<a href="javascript:;" class="btn btn-default d-block w-100 rounded-pill"
-				data-toggle="reset-local-storage"><b>Restablecer Almacenamiento Local</b></a>
+				(click)="resetLocalStorage()"><b>Restablecer Configuración</b></a>
+			<!-- END btn-row -->
 		</div>
-  </ng-scrollbar>
-  </div>
+	</ng-scrollbar>
+</div>
 }

@@ -8,17 +8,17 @@
      ===================================================== -->
 
 <ion-app>
+  <!-- Página principal - DEBE ir primero para estar en el DOM cuando carguen los menús -->
+  <div class="ion-page" id="main-content">
+    <ion-router-outlet></ion-router-outlet>
+  </div>
+
   <!-- Menú lateral de Ionic -->
   <sidebar></sidebar>
 
-  <!-- Contenido principal -->
-  <div class="ion-page" id="main-content">
-    <!-- Header de la app móvil -->
-    <header [pageTitle]="pageTitle"></header>
-
-    <!-- Contenido - donde se renderizan las páginas -->
-    <ion-content>
-      <router-outlet></router-outlet>
-    </ion-content>
-  </div>
+  <!-- Theme Panel -->
+  <theme-panel
+    (appDarkModeChanged)="onAppDarkModeChanged($event)"
+    (appThemeChanged)="onAppThemeChanged($event)">
+  </theme-panel>
 </ion-app>

@@ -1,11 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { 
   IonApp,
-  IonContent
+  IonRouterOutlet
 } from '@ionic/angular/standalone';
-import { HeaderComponent, SidebarComponent } from '../../components';
+import { SidebarComponent, ThemePanelComponent } from '../../components';
+import { AppSettings, AppVariablesService } from '../../service';
 
 @Component({
   selector: 'app-mobile-layout',
@@ -14,15 +16,77 @@ import { HeaderComponent, SidebarComponent } from '../../components';
     CommonModule,
     RouterModule,
     IonApp,
-    IonContent,
-    HeaderComponent,
-    SidebarComponent
+    IonRouterOutlet,
+    SidebarComponent,
+    ThemePanelComponent
   ],
   templateUrl: './mobile-layout.component.html',
   styleUrls: ['./mobile-layout.component.scss']
 })
-export class MobileLayoutComponent {
-  pageTitle = 'EzekL Budget';
+export class MobileLayoutComponent implements OnInit {
+  pageTitle = 'Ezekl Budget';
+  appVariables: any;
 
-  constructor() {}
+  constructor(
+    private router: Router,
+    public appSettings: AppSettings,
+    private appVariablesService: AppVariablesService
+  ) {
+    this.appVariables = this.appVariablesService.getAppVariables();
+  }
+
+  ngOnInit() {
+    // Aplicar dark mode inicial si está activado
+    if (this.appSettings.appDarkMode) {
+      document.documentElement.setAttribute('data-bs-theme', 'dark');
+    }
+    
+    // Actualizar título según la ruta
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe(() => {
+      this.updatePageTitle();
+    });
+    
+    // Establecer título inicial
+    this.updatePageTitle();
+  }
+
+  private updatePageTitle() {
+    const url = this.router.url;
+    if (url.includes('/login')) {
+      this.pageTitle = 'Iniciar Sesión';
+    } else if (url.includes('/home')) {
+      this.pageTitle = this.appSettings.nameCompany || 'Ezekl Budget';
+    } else if (url.includes('/dashboard')) {
+      this.pageTitle = 'Dashboard';
+    } else if (url.includes('/users')) {
+      this.pageTitle = 'Usuarios';
+    } else {
+      this.pageTitle = this.appSettings.nameCompany || 'Ezekl Budget';
+    }
+  }
+
+  onAppDarkModeChanged(val: boolean): void {
+    if (this.appSettings.appDarkMode) {
+      document.documentElement.setAttribute('data-bs-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-bs-theme');
+    }
+    this.appVariables = this.appVariablesService.getAppVariables();
+    this.appVariablesService.variablesReload.emit();
+    document.dispatchEvent(new CustomEvent('theme-change'));
+  }
+
+  onAppThemeChanged(val: boolean): void {
+    const newTheme = 'theme-' + this.appSettings.appTheme;
+    for (let x = 0; x < document.body.classList.length; x++) {
+      if ((document.body.classList[x]).indexOf('theme-') > -1 && document.body.classList[x] !== newTheme) {
+        document.body.classList.remove(document.body.classList[x]);
+      }
+    }
+    document.body.classList.add(newTheme);
+    this.appVariables = this.appVariablesService.getAppVariables();
+    this.appVariablesService.variablesReload.emit();
+  }
 }

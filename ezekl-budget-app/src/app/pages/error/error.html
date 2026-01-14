@@ -1,3 +1,43 @@
+<!-- =====================================================
+     ERROR PAGE - RESPONSIVE DUAL TEMPLATE
+     
+     Template condicional según plataforma:
+     - Mobile: Ionic Cards y componentes
+     - Desktop: Color-Admin error layout
+     ===================================================== -->
+
+<!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
+@if (isMobile()) {
+<header [pageTitle]="getPageTitle()"></header>
+
+<ion-content class="ion-padding">
+  <div class="ion-padding ion-text-center" style="margin-top: 20%;">
+    <ion-card>
+      <ion-card-content>
+        <div style="font-size: 120px; font-weight: 700; color: var(--ion-color-medium); margin: 20px 0;">
+          404
+        </div>
+        <h2 style="color: var(--ion-color-dark); margin-bottom: 16px;">
+          No pudimos encontrarlo...
+        </h2>
+        <p style="color: var(--ion-color-medium); margin-bottom: 24px;">
+          La página que estás buscando no existe.<br />
+          Quizás, estas páginas te ayudarán a encontrar lo que buscas.
+        </p>
+        <ion-button expand="block" routerLink="/" color="theme">
+          <ion-icon name="home-outline" slot="start"></ion-icon>
+          Ir al Inicio
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
+
+<app-footer translucent="true" footerText="© {{ appSettings.nameCompany }} BackOffice" />
+}
+
+<!-- ========== VERSIÓN DESKTOP (COLOR-ADMIN) ========== -->
+@if (isDesktop()) {
 <!-- BEGIN error -->
 <div class="error">
 	<div class="error-code">404</div>
@@ -8,8 +48,11 @@
 			Quizás, estas páginas te ayudarán a encontrar lo que buscas.
 		</div>
 		<div>
-			<a routerLink="/" class="btn btn-success px-3">Ir al Inicio</a>
+			<a routerLink="/" class="btn btn-theme px-3">
+				<i class="fa fa-home me-2"></i>Ir al Inicio
+			</a>
 		</div>
 	</div>
 </div>
 <!-- END error -->
+}

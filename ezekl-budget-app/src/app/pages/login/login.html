@@ -1,0 +1,273 @@
+<!-- =====================================================
+     LOGIN PAGE - RESPONSIVE DUAL TEMPLATE
+     
+     Template condicional según plataforma:
+     - Mobile: Ionic Cards y componentes
+     - Desktop: Color-Admin login-v3
+     ===================================================== -->
+
+<!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
+@if (isMobile()) {
+<header [pageTitle]="getPageTitle()"></header>
+
+<ion-content class="ion-padding">
+  <ion-card>
+    <img [alt]="appSettings.nameCompany" [src]="bgImageUrl" />
+
+    <!-- Paso 1: Solicitar PIN -->
+    @if (step === 'request') {
+    <ion-card-header>
+      <ion-card-title>{{ appSettings.nameCompany }}</ion-card-title>
+      <ion-card-subtitle>{{ appSettings.sloganCompany }}</ion-card-subtitle>
+    </ion-card-header>
+
+    <ion-card-content>
+      <form (ngSubmit)="requestPin()">
+        <ion-item lines="none">
+          <ion-label position="stacked">Código de Usuario</ion-label>
+          <ion-input type="text" [(ngModel)]="codeLogin" name="codeLogin" placeholder="Ingresa tu código"
+            [disabled]="loading" required>
+          </ion-input>
+        </ion-item>
+
+        @if (errorMessage) {
+        <ion-text color="danger" class="error-message">
+          <p>{{ errorMessage }}</p>
+        </ion-text>
+        }
+
+        @if (successMessage) {
+        <ion-text color="success" class="success-message">
+          <p>{{ successMessage }}</p>
+        </ion-text>
+        }
+
+        <ion-button color="theme" expand="block" type="submit" class="action-button" [disabled]="loading || !codeLogin">
+          @if (!loading) {
+          <span>Solicitar PIN</span>
+          } @else {
+          <ion-spinner name="crescent"></ion-spinner>
+          <span>Enviando...</span>
+          }
+        </ion-button>
+      </form>
+    </ion-card-content>
+    }
+
+    <!-- Paso 2: Verificar PIN -->
+    @if (step === 'verify') {
+    <ion-card-header>
+      <ion-card-title>Verifica tu PIN</ion-card-title>
+      <ion-card-subtitle>Ingresa el PIN de 5 dígitos que recibiste</ion-card-subtitle>
+    </ion-card-header>
+
+    <ion-card-content>
+      <form (ngSubmit)="verifyPin()">
+        <ion-item lines="none" class="pin-input">
+          <ion-label position="stacked">PIN de 5 dígitos</ion-label>
+          <ion-input type="tel" [(ngModel)]="token" name="token" placeholder="00000" maxlength="5" inputmode="numeric"
+            [disabled]="loading" (ionInput)="onPinInput($event)" required>
+          </ion-input>
+        </ion-item>
+
+        @if (errorMessage) {
+        <ion-text color="danger" class="error-message">
+          <p>{{ errorMessage }}</p>
+        </ion-text>
+        }
+
+        @if (successMessage) {
+        <ion-text color="success" class="success-message">
+          <p>{{ successMessage }}</p>
+        </ion-text>
+        }
+
+        <ion-button color="theme" expand="block" type="submit" class="action-button"
+          [disabled]="loading || token.length !== 5">
+          @if (!loading) {
+          <span>Verificar e Ingresar</span>
+          } @else {
+          <ion-spinner name="crescent"></ion-spinner>
+          <span>Verificando...</span>
+          }
+        </ion-button>
+
+        <div class="secondary-actions">
+          <ion-button color="theme" fill="clear" size="small" (click)="backToRequest()" [disabled]="loading">
+            <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+            Volver
+          </ion-button>
+
+          <ion-button color="theme" fill="clear" size="small" (click)="resendPin()" [disabled]="loading || resendTimer > 0">
+            <ion-icon name="refresh-outline" slot="end"></ion-icon>
+            @if (resendTimer > 0) {
+            <span>Reenviar en {{ resendTimer }}s</span>
+            } @else {
+            <span>Reenviar PIN</span>
+            }
+          </ion-button>
+        </div>
+      </form>
+    </ion-card-content>
+    }
+  </ion-card>
+</ion-content>
+
+<app-footer translucent="true" footerText="© {{ appSettings.nameCompany }} BackOffice" />
+}
+
+
+
+<!-- ========== VERSIÓN DESKTOP (COLOR-ADMIN) ========== -->
+@if (isDesktop()) {
+<!-- BEGIN login -->
+<div class="login login-with-news-feed">
+  <!-- BEGIN news-feed -->
+  <div class="news-feed">
+    <div class="news-image" [style.background-image]="'url(' + bgImageUrl + ')'"></div>
+    <div class="news-caption">
+      <h4 class="caption-title"><b>{{ appSettings.nameCompany }}</b>&nbsp; BackOffice</h4>
+      <p>{{ appSettings.sloganCompany }}</p>
+    </div>
+  </div>
+  <!-- END news-feed -->
+
+  <!-- BEGIN login-container -->
+  <div class="login-container">
+    <!-- BEGIN login-header -->
+    <div class="login-header mb-30px">
+      <div class="brand">
+        <div class="d-flex align-items-center">
+          <span class="logo"></span>
+          <b>{{ appSettings.nameCompany }}</b>
+        </div>
+        <small>Sistema de Gestión de Voz</small>
+      </div>
+      <div class="icon">
+        <i class="fa fa-sign-in-alt"></i>
+      </div>
+    </div>
+    <!-- END login-header -->
+
+    <!-- BEGIN login-content -->
+    <div class="login-content">
+      <!-- Paso 1: Solicitar PIN -->
+      @if (step === 'request') {
+      <form class="fs-13px" (ngSubmit)="requestPin()">
+        <div class="mb-20px">
+          <p class="text-gray-600 mb-0">
+            Ingresa tu código de usuario para recibir un PIN de 5 dígitos por SMS y correo electrónico.
+          </p>
+        </div>
+
+        <div class="form-floating mb-15px">
+          <input type="text" class="form-control h-45px fs-13px" placeholder="Código de Usuario" id="codeLogin"
+            [(ngModel)]="codeLogin" name="codeLogin" [disabled]="loading" required />
+          <label for="codeLogin" class="d-flex align-items-center fs-13px text-gray-600">Código de Usuario</label>
+        </div>
+
+        <!-- Mensajes -->
+        @if (errorMessage) {
+        <div class="alert alert-danger mb-15px fs-13px">
+          {{ errorMessage }}
+        </div>
+        }
+
+        @if (successMessage) {
+        <div class="alert alert-success mb-15px fs-13px">
+          {{ successMessage }}
+        </div>
+        }
+
+        <div class="mb-15px">
+          <button type="submit" class="btn btn-theme d-block h-45px w-100 btn-lg fs-14px"
+            [disabled]="loading || !codeLogin">
+            @if (!loading) {
+            <span>Solicitar PIN</span>
+            } @else {
+            <span>
+              <i class="fa fa-spinner fa-spin me-2"></i>Enviando...
+            </span>
+            }
+          </button>
+        </div>
+
+        <hr class="bg-gray-600 opacity-2" />
+        <div class="text-gray-600 text-center mb-0 fs-13px">
+          &copy; {{ appSettings.nameCompany }} BackOffice
+        </div>
+      </form>
+      }
+
+      <!-- Paso 2: Verificar PIN -->
+      @if (step === 'verify') {
+      <form class="fs-13px" (ngSubmit)="verifyPin()">
+        <div class="mb-20px">
+          <p class="text-gray-600 mb-0">
+            Ingresa el PIN de 5 dígitos que recibiste por SMS y correo electrónico.
+          </p>
+        </div>
+
+        <div class="form-floating mb-15px">
+          <input type="tel" class="form-control h-45px fs-13px text-center" placeholder="00000" id="token"
+            [(ngModel)]="token" name="token" maxlength="5" inputmode="numeric" [disabled]="loading"
+            (input)="onPinInput($event)" required style="letter-spacing: 0.5em; font-size: 1.5rem;" />
+          <label for="token" class="d-flex align-items-center fs-13px text-gray-600">PIN de 5 dígitos</label>
+        </div>
+
+        <!-- Mensajes -->
+        @if (errorMessage) {
+        <div class="alert alert-danger mb-15px fs-13px">
+          {{ errorMessage }}
+        </div>
+        }
+
+        @if (successMessage) {
+        <div class="alert alert-success mb-15px fs-13px">
+          {{ successMessage }}
+        </div>
+        }
+
+        <div class="mb-15px">
+          <button type="submit" class="btn btn-theme d-block h-45px w-100 btn-lg fs-14px"
+            [disabled]="loading || token.length !== 5">
+            @if (!loading) {
+            <span>Verificar e Ingresar</span>
+            } @else {
+            <span>
+              <i class="fa fa-spinner fa-spin me-2"></i>Verificando...
+            </span>
+            }
+          </button>
+        </div>
+
+        <div class="mb-15px d-flex justify-content-between">
+          <button type="button" class="btn btn-link text-decoration-none fs-13px p-0" (click)="backToRequest()"
+            [disabled]="loading">
+            <i class="fa fa-arrow-left me-1"></i> Volver
+          </button>
+
+          <button type="button" class="btn btn-link text-decoration-none fs-13px p-0" (click)="resendPin()"
+            [disabled]="loading || resendTimer > 0">
+            <i class="fa fa-redo me-1"></i>
+            @if (resendTimer > 0) {
+            <span>Reenviar en {{ resendTimer }}s</span>
+            } @else {
+            <span>Reenviar PIN</span>
+            }
+          </button>
+        </div>
+
+        <hr class="bg-gray-600 opacity-2" />
+        <div class="text-gray-600 text-center mb-0 fs-13px">
+          ¿Necesitas ayuda? Contacta al administrador
+        </div>
+      </form>
+      }
+    </div>
+    <!-- END login-content -->
+  </div>
+  <!-- END login-container -->
+</div>
+<!-- END login -->
+}

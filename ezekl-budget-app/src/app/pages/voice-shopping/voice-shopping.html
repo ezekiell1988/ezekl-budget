@@ -1,0 +1,235 @@
+<!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
+@if (isMobile()) {
+<header pageTitle="Asistente de Voz" color="theme"></header>
+
+<ion-content class="voice-shopping-content">
+  <!-- Configuración inicial de teléfono -->
+  @if (!isInitialized) {
+  <div class="phone-setup-container">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Configuración</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item lines="none">
+          <ion-label position="floating">Número de Teléfono</ion-label>
+          <ion-input [(ngModel)]="phone" type="tel" placeholder="50688888888"></ion-input>
+        </ion-item>
+        <ion-button expand="block" color="theme" (click)="startConversation()" [disabled]="!canStart"
+          class="start-button">
+          <ion-icon slot="start" name="play-outline"></ion-icon>
+          Iniciar Conversación
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Instrucciones</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-text color="medium">
+          <ol>
+            <li>Ingresa tu número de teléfono</li>
+            <li>Presiona "Iniciar Conversación"</li>
+            <li>Permite el acceso al micrófono cuando se solicite</li>
+            <li>Habla naturalmente - el sistema detectará cuando terminas de hablar</li>
+            <li>Puedes pausar la escucha mientras el bot habla</li>
+            <li>Usa "Descartar Audio" para cancelar lo que estés diciendo</li>
+          </ol>
+        </ion-text>
+      </ion-card-content>
+    </ion-card>
+  </div>
+  }
+
+  <!-- Historial de mensajes - Ocupa todo el espacio disponible -->
+  @if (isInitialized && messages.length > 0) {
+  <div class="chat-container">
+    <div class="messages-container" #messagesContainer>
+      @for (message of messages; track message.timestamp) {
+      <div class="message" [class.user]="message.type === 'user'" [class.bot]="message.type === 'bot'"
+        [class.system]="message.type === 'system'" [class.error]="message.isError"
+        [class.has-details]="message.executionDetails && message.executionDetails.length > 0"
+        (click)="message.executionDetails && message.executionDetails.length > 0 ? openExecutionDetails(message.executionDetails) : null">
+        <div class="message-header">
+          @if (message.type === 'user') {
+          <ion-icon name="person-outline"></ion-icon>
+          } @else if (message.type === 'bot') {
+          <ion-icon name="chatbubble-outline"></ion-icon>
+          } @else if (message.type === 'system') {
+          <ion-icon [name]="message.isError ? 'close-circle-outline' : 'checkmark-circle-outline'"></ion-icon>
+          }
+          <span class="message-type">
+            {{ message.type === 'user' ? 'Tú' : message.type === 'bot' ? 'Bot' : 'Sistema' }}
+          </span>
+          <span class="message-time">
+            {{ message.timestamp | date: 'HH:mm:ss' }}
+          </span>
+          @if (message.executionDetails && message.executionDetails.length > 0) {
+          <ion-icon name="analytics-outline" class="details-icon"></ion-icon>
+          }
+        </div>
+        <div class="message-text">{{ message.text }}</div>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Placeholder cuando no hay mensajes pero está inicializado -->
+  @if (isInitialized && messages.length === 0) {
+  <div class="empty-chat">
+    <ion-icon name="chatbubble-outline" size="large"></ion-icon>
+    <p>Comienza a hablar para iniciar la conversación</p>
+  </div>
+  }
+</ion-content>
+
+<!-- Footer con controles de voz - Solo visible cuando el chat está activo -->
+@if (isInitialized) {
+<app-footer color="light" footerText="">
+  <div footerContent class="footer-content">
+    <!-- Estado compacto -->
+    <div class="status-compact">
+      <div class="status-badges">
+        <ion-badge [color]="wsStateColor" size="small">
+          <ion-icon name="wifi-outline"></ion-icon>
+          {{ wsStateText }}
+        </ion-badge>
+        <ion-badge [color]="statusColor" size="small">
+          {{ statusText }}
+        </ion-badge>
+      </div>
+
+      <!-- Indicador de micrófono -->
+      <div class="mic-indicator-compact" [class.active]="isListening" [class.speaking]="isSpeaking">
+        <ion-icon [name]="isListening ? 'mic-outline' : 'mic-off-outline'"></ion-icon>
+        @if (isListening) {
+        <div class="pulse-ring"></div>
+        }
+      </div>
+    </div>
+
+    <!-- Nivel de audio -->
+    @if (isListening) {
+    <div class="audio-level-bar">
+      <ion-progress-bar [value]="audioLevel / 255"
+        [color]="audioLevel > 30 ? 'success' : 'medium'"></ion-progress-bar>
+    </div>
+    }
+
+    <!-- Botones de control - Siempre 3 botones visibles -->
+    <div class="control-buttons">
+      <!-- Botón Mute: Solo habilitado cuando el bot está hablando -->
+      <ion-button 
+        size="small" 
+        [color]="isMuted ? 'danger' : 'warning'" 
+        [class.button-inactive]="!canMute"
+        (click)="canMute ? toggleMute() : null"
+        title="Silenciar micrófono (solo durante bot)">
+        <ion-icon slot="icon-only" [name]="isMuted ? 'mic-off-outline' : 'volume-mute-outline'"></ion-icon>
+      </ion-button>
+
+      <!-- Bot\u00f3n Stop: Siempre habilitado, limpia audio sin enviar -->
+      <ion-button 
+        size="small" 
+        color="medium" 
+        (click)="stopAndDiscard()"
+        title="Detener y descartar audio">
+        <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+      </ion-button>
+
+      <!-- Bot\u00f3n Finalizar: Siempre habilitado, termina conversaci\u00f3n -->
+      <ion-button 
+        size="small" 
+        color="danger" 
+        (click)="stopConversation()"
+        title="Finalizar conversaci\u00f3n">
+        <ion-icon slot="start" name="call-outline"></ion-icon>
+        Colgar
+      </ion-button>
+    </div>
+  </div>
+</app-footer>
+
+<!-- Modal de Detalles de Ejecución -->
+<ion-modal [isOpen]="showExecutionDetailsModal" (didDismiss)="closeExecutionDetails()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar color="theme">
+        <ion-title>Detalles de Ejecución</ion-title>
+        <ion-button slot="end" fill="clear" color="light" (click)="closeExecutionDetails()">
+          <ion-icon slot="icon-only" name="close-outline" size="large"></ion-icon>
+        </ion-button>
+      </ion-toolbar>
+    </ion-header>
+    
+    <ion-content class="execution-details-content">
+      <!-- Resumen de tiempo total -->
+      <ion-card class="total-duration-card">
+        <ion-card-header>
+          <ion-card-title>Tiempo Total de Ejecución</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <div class="total-duration-value">
+            {{ formatDuration(getTotalDuration()) }}
+          </div>
+          <div class="total-operations">
+            {{ selectedExecutionDetails.length }} operación{{ selectedExecutionDetails.length !== 1 ? 'es' : '' }}
+          </div>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Lista de operaciones -->
+      @for (detail of selectedExecutionDetails; track $index) {
+      <ion-card class="operation-card">
+        <ion-card-header>
+          <ion-card-title>{{ detail.operation }}</ion-card-title>
+          <div class="duration-bar">
+            <ion-progress-bar 
+              [value]="getDurationPercentage(detail.duration_ms) / 100"
+              [color]="getProgressBarColor(getDurationPercentage(detail.duration_ms))">
+            </ion-progress-bar>
+            <span class="percentage-label">{{ getDurationPercentage(detail.duration_ms).toFixed(1) }}%</span>
+          </div>
+        </ion-card-header>
+        <ion-card-content>
+          <div class="operation-info">
+            <div class="info-row">
+              <span class="info-label">Tipo:</span>
+              <span class="info-value">{{ detail.operation_type }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Duración:</span>
+              <span class="info-value">{{ formatDuration(detail.duration_ms) }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Caller:</span>
+              <span class="info-value">{{ detail.caller }}</span>
+            </div>
+          </div>
+          
+          @if (hasDetails(detail.details)) {
+          <div class="details-section">
+            <div class="details-header">Detalles:</div>
+            @for (entry of getDetailsEntries(detail.details); track entry.key) {
+            <ion-card class="detail-card">
+              <ion-card-content>
+                <div class="detail-entry">
+                  <span class="detail-key">{{ entry.key }}</span>
+                  <span class="detail-value">{{ formatValue(entry.value) }}</span>
+                </div>
+              </ion-card-content>
+            </ion-card>
+            }
+          </div>
+          }
+        </ion-card-content>
+      </ion-card>
+      }
+    </ion-content>
+  </ng-template>
+</ion-modal>
+}
+}

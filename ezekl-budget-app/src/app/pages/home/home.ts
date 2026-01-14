@@ -1,6 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { addIcons } from 'ionicons';
+import { AppSettings } from '../../service';
+import { HeaderComponent, FooterComponent } from '../../components';
 import { 
   walletOutline, 
   trendingUpOutline, 
@@ -9,6 +11,7 @@ import {
   arrowForwardOutline
 } from 'ionicons/icons';
 import { 
+  IonContent,
   IonCard, 
   IonCardHeader, 
   IonCardTitle, 
@@ -29,7 +32,10 @@ import { PanelComponent } from '../../components';
   standalone: true,
   imports: [
     CommonModule,
+    HeaderComponent,
+    FooterComponent,
     PanelComponent,
+    IonContent,
     IonCard,
     IonCardHeader,
     IonCardTitle,
@@ -58,7 +64,7 @@ export class HomePage extends ResponsiveComponent {
     { id: 4, description: 'Transferencia recibida', amount: 500.00, date: new Date(), type: 'income' },
   ];
 
-  constructor() {
+  constructor(public appSettings: AppSettings) {
     super();
     // Registrar íconos de Ionic
     addIcons({
@@ -68,6 +74,11 @@ export class HomePage extends ResponsiveComponent {
       cashOutline,
       arrowForwardOutline
     });
+  }
+  
+  // Retorna el título de la página para el header móvil
+  getPageTitle(): string {
+    return 'Inicio';
   }
   
   // Métodos compartidos (misma lógica para ambos layouts)

@@ -6,6 +6,7 @@ Modelos Pydantic para requests y responses de la API.
 from .auth import *
 from .requests import *
 from .responses import *
+from .system import *
 from .accounting_account import *
 from .product import *
 
@@ -18,7 +19,10 @@ __all__ = [
     
     # Modelos de requests y responses generales
     "EmailSendRequest", "EmailSendResponse",
-    "CredentialsResponse", "RealtimeCredentialsResponse", "HealthCheckResponse",
+    "CredentialsResponse", "RealtimeCredentialsResponse",
+    
+    # Modelos de sistema
+    "ConfigResponse", "HealthCheckResponse",
     
     # Modelos de cuentas contables
     "AccountingAccount", "AccountingAccountRequest", "AccountingAccountResponse", "AccountingAccountErrorResponse",

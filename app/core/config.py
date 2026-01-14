@@ -146,6 +146,14 @@ class Settings(BaseSettings):
         return "https://login.microsoftonline.com/common/oauth2/v2.0/logout"
     
     @property
+    def effective_db_host(self) -> str:
+        """Retorna el host efectivo de BD basado en el ambiente."""
+        if self.is_production:
+            return "localhost"
+        else:
+            return self.db_host
+
+    @property
     def idCompany(self) -> int:
         """Retorna el ID de la compañía basado en la URL base efectiva."""
         effective_url = self.effective_url_base
@@ -158,12 +166,28 @@ class Settings(BaseSettings):
             return 1
     
     @property
-    def effective_db_host(self) -> str:
-        """Retorna el host efectivo de BD basado en el ambiente."""
-        if self.is_production:
-            return "localhost"
+    def nameCompany(self) -> str:
+        """Retorna el nombre de la compañía basado en la URL base efectiva."""
+        effective_url = self.effective_url_base
+        if effective_url in ["http://localhost:8000", "https://budget.ezekl.com"]:
+            return "Ezekl Budget"
+        elif effective_url == "http://localhost:8001":
+            return "Demo"
         else:
-            return self.db_host
+            # Por defecto, usar nombre de compañía = "Ezekl Budget"
+            return "Ezekl Budget"
+    
+    @property
+    def sloganCompany(self) -> str:
+        """Retorna el slogan de la compañía basado en la URL base efectiva."""
+        effective_url = self.effective_url_base
+        if effective_url in ["http://localhost:8000", "https://budget.ezekl.com"]:
+            return "Presupuestos simplificados para todos"
+        elif effective_url == "http://localhost:8001":
+            return "Muchas demos de productos de Azure"
+        else:
+            # Por defecto, usar slogan de compañía = "Presupuestos simplificados para todos"
+            return "Presupuestos simplificados para todos"
     
     @property
     def db_connection_string(self) -> str:

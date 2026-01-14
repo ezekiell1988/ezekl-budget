@@ -1,2 +1,5 @@
-export { HomePage } from './home/home';
-export { ErrorPage } from './error/error';
+export { HomePage } from './home';
+export { ErrorPage } from './error';
+export { LoginPage } from './login';
+export { AddressPage } from './address';
+export { VoiceShoppingPage } from './voice-shopping';

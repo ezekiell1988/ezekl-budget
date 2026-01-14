@@ -22,7 +22,7 @@
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
-            "tsConfig": "src/tsconfig.app.json",
+            "tsConfig": "tsconfig.app.json",
             "assets": [
               "src/assets",
               "src/favicon.ico"
@@ -41,7 +41,7 @@
             	"src/app/composables/iconify.js"
             ],
             "allowedCommonJsDependencies": [
-            	"lodash", "lity", "jquery", "quill", "bezier-easing", "ev-emitter", "moment", "apexcharts", "jsvectormap", "rfdc", "@yaireo/tagify"
+            	"lodash", "lity", "jquery", "quill", "bezier-easing", "ev-emitter", "moment", "apexcharts", "jsvectormap", "rfdc", "@yaireo/tagify", "sweetalert2"
             ]
           },
           "configurations": {

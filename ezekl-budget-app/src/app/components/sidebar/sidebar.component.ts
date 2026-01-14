@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ElementRef, HostListener, ViewChild, OnInit, AfterViewChecked, AfterViewInit } 		 from '@angular/core';
+import { Component, Input, Output, EventEmitter, ElementRef, HostListener, ViewChild, OnInit, AfterViewChecked, AfterViewInit, ChangeDetectorRef } 		 from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { NgScrollbarModule } from 'ngx-scrollbar';
@@ -39,8 +39,11 @@ import { slideUp } from '../../composables/slideUp.js';
 import { slideToggle } from '../../composables/slideToggle.js';
 import { AppMenuService } from '../../service/app-menus.service';
 import { AppSettings } from '../../service/app-settings.service';
+import { AuthService } from '../../service/auth.service';
+import { MenuStateService } from '../../service/menu-state.service';
 import { FloatSubMenuComponent } from '../float-sub-menu/float-sub-menu.component';
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
+import { PlatformMode } from '../../service/platform-detector.service';
 
 @Component({
   selector: 'sidebar',
@@ -68,6 +71,11 @@ import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 export class SidebarComponent extends ResponsiveComponent implements AfterViewChecked {
 	menus: any[] = [];
+	currentUser: any = null;
+	// Flag para controlar el renderizado del ion-menu
+	showIonMenu = false;
+	// Flag para indicar si el componente está inicializado
+	private isInitialized = false;
 	
   @ViewChild('sidebarScrollbar', { static: false }) private sidebarScrollbar: ElementRef;
 	@Output() appSidebarMinifiedToggled = new EventEmitter<boolean>();
@@ -117,7 +125,8 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
   }
 
 	toggleAppSidebarMinified() {
-		this.appSidebarMinifiedToggled.emit(true);
+		// Alternar el estado actual en lugar de siempre emitir true
+		this.appSidebarMinifiedToggled.emit(!this.appSettings.appSidebarMinified);
 		this.scrollTop = 40;
 	}
 	
@@ -370,6 +379,27 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 	ngOnInit() {
 		this.menus = this.appMenuService.getAppMenus();
 		this.initializeMobileMenuState(this.menus);
+		
+		// Suscribirse a cambios en el usuario autenticado
+		this.authService.currentUser$.subscribe(user => {
+			this.currentUser = user;
+			// Forzar detección de cambios para actualizar la vista
+			this.cdr.detectChanges();
+		});
+		
+		// Notificar al servicio cuando el menú del sidebar se abre/cierra
+		// Usamos los eventos del DOM de ion-menu
+		document.addEventListener('ionDidOpen', (event: any) => {
+			if (event.target.menuId === 'main-menu') {
+				this.menuStateService.setSidebarMenuState(true);
+			}
+		});
+		
+		document.addEventListener('ionDidClose', (event: any) => {
+			if (event.target.menuId === 'main-menu') {
+				this.menuStateService.setSidebarMenuState(false);
+			}
+		});
 	}
 
 	private initializeMobileMenuState(items: any[]): void {
@@ -387,9 +417,29 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 		item.expanded = !item.expanded;
 	}
 
+	expandCollapseSubmenu(currentMenu: any, allMenus: any[], rla: any): void {
+		// Colapsar todos los otros menús del mismo nivel
+		allMenus.forEach(menu => {
+			if (menu !== currentMenu && menu.state !== 'active') {
+				menu.state = 'collapsed';
+			}
+		});
+
+		// Alternar el estado del menú actual
+		if (currentMenu.state === 'expand' || (rla.isActive && currentMenu.state !== 'collapsed')) {
+			currentMenu.state = 'collapsed';
+		} else {
+			currentMenu.state = 'expand';
+		}
+	}
+
 	async closeMenu(): Promise<void> {
 		// Cerrar el menú lateral
 		await this.menuController.close('main-menu');
+	}
+
+	isAuthenticated(): boolean {
+		return this.authService.isAuthenticated();
 	}
 
 	private mapIconToIonic(colorAdminIcon: string): string {
@@ -412,11 +462,29 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 	}
 
 	logout(): void {
-		// Implementar lógica de logout
-		console.log('Logout clicked');
+		// Llamar al servicio de autenticación para cerrar sesión
+		this.authService.logout().subscribe({
+			next: () => {
+				console.log('Sesión cerrada exitosamente');
+				// El servicio ya redirige al login
+			},
+			error: (error) => {
+				console.error('Error al cerrar sesión:', error);
+				// Cerrar sesión localmente aunque falle el backend
+				this.authService.clearSession();
+			}
+		});
 	}
 
-  constructor(private eRef: ElementRef, public appSettings: AppSettings, private appMenuService: AppMenuService, private menuController: MenuController) {
+  constructor(
+    private eRef: ElementRef, 
+    public appSettings: AppSettings, 
+    private appMenuService: AppMenuService, 
+    private menuController: MenuController, 
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef,
+    private menuStateService: MenuStateService
+  ) {
     super();
     
     // Registrar íconos de Ionicons
@@ -443,6 +511,50 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
     } else {
       this.mobileMode = false;
       this.desktopMode = true;
+    }
+    
+    // Suscribirse a cambios de usuario autenticado
+    this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+      this.updateIonMenuVisibility();
+    });
+    
+    // Marcar como inicializado después de completar el constructor
+    this.isInitialized = true;
+    
+    // Actualizar visibilidad inicial
+    this.updateIonMenuVisibility();
+  }
+  
+  /**
+   * Hook sobrescrito para actualizar visibilidad del menú al cambiar modo
+   */
+  protected override onPlatformModeChange(mode: PlatformMode): void {
+    // Solo actualizar si el componente está inicializado
+    if (this.isInitialized) {
+      this.updateIonMenuVisibility();
+    }
+  }
+  
+  /**
+   * Actualiza la visibilidad del ion-menu según autenticación y modo de plataforma
+   */
+  private updateIonMenuVisibility(): void {
+    // Verificar que authService esté disponible
+    if (!this.authService) {
+      return;
+    }
+    
+    const isMobileMode = this.platformMode() === 'mobile';
+    const isAuthenticated = this.authService.isAuthenticated();
+    
+    if (isMobileMode && isAuthenticated) {
+      // Retrasar el renderizado del ion-menu para asegurar que main-content exista
+      setTimeout(() => {
+        this.showIonMenu = true;
+      }, 100);
+    } else {
+      this.showIonMenu = false;
     }
   }
 }

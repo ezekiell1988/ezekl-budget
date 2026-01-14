@@ -5,7 +5,7 @@ Endpoints de sistema y monitoreo.
 from fastapi import APIRouter, HTTPException, Request
 from app.core.config import settings
 from app.database.connection import test_db_connection
-from app.models.responses import HealthCheckResponse
+from app.models.system import ConfigResponse, HealthCheckResponse
 
 router = APIRouter(tags=["Sistema"])
 
@@ -123,4 +123,39 @@ async def health_check(request: Request):
             "database": db_status,
             "email_queue": email_queue_status
         },
+    }
+
+@router.get(
+    "/config.json",
+    response_model=ConfigResponse,
+    summary="Obtener configuración de la aplicación",
+    description="""Retorna la configuración actual de la aplicación.
+    
+    Este endpoint proporciona información básica que necesita el frontend
+    Angular para inicializarse correctamente.
+    
+    **Información devuelta:**
+    - Estado de la operación (success)
+    - Nombre y slogan de la compañía
+    - Versión de la API
+    
+    **Uso recomendado:**
+    - Inicialización del frontend Angular
+    - Verificación de versión desplegada
+    - Sincronización de configuración con frontend
+    """,
+    response_description="Configuración actual de la aplicación",
+)
+async def get_config():
+    """
+    Endpoint para obtener la configuración actual de la aplicación.
+
+    Returns:
+        ConfigResponse: Configuración básica de la aplicación
+    """
+    return {
+        "success": True,
+        "nameCompany": settings.nameCompany,
+        "sloganCompany": settings.sloganCompany,
+        "apiVersion": "1.0.0"
     }
