@@ -25,19 +25,4 @@
       box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
     }
   }
-  
-  /* Header sticky en tabla */
-  .voice-questions-table {
-    thead th {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: var(--bs-body-bg, #fff);
-    }
-  }
-  
-  /* Dark mode - Asegurar fondo sólido en sticky header */
-  @at-root [data-bs-theme="dark"] & .voice-questions-table thead th {
-    background: var(--bs-dark, #212529);
-  }
 }

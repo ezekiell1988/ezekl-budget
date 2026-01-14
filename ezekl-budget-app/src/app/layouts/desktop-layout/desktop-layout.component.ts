@@ -26,6 +26,7 @@ import { ThemePanelComponent } from '../../components/theme-panel/theme-panel.co
 })
 export class DesktopLayoutComponent implements OnInit {
   appHasScroll = false;
+  hasScrolled = false;
   appVariables;
 
   constructor(
@@ -90,6 +91,7 @@ export class DesktopLayoutComponent implements OnInit {
     } else {
       this.appHasScroll = false;
     }
+    this.hasScrolled = top > 0;
   }
 
   onAppSidebarMinifiedToggled(val: boolean) {
@@ -139,5 +141,9 @@ export class DesktopLayoutComponent implements OnInit {
     document.body.classList.add(newTheme);
     this.appVariables = this.appVariablesService.getAppVariables();
     this.appVariablesService.variablesReload.emit();
+  }
+
+  scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }

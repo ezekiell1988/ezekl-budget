@@ -21,9 +21,11 @@
             
             @if (!noButton) {
               <div style="display: flex; gap: 4px;">
+                @if (showReloadButton) {
                 <ion-button fill="clear" size="small" (click)="panelReload()">
                   <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
                 </ion-button>
+                }
                 <ion-button fill="clear" size="small" (click)="panelCollapse()">
                   <ion-icon slot="icon-only" [name]="collapse ? 'chevron-down-outline' : 'chevron-up-outline'"></ion-icon>
                 </ion-button>
@@ -83,8 +85,10 @@
         <div class="panel-heading-btn">
           <a href="javascript:;" class="btn btn-xs btn-icon btn-circle btn-default" (click)="panelExpand()"><i
               class="fa fa-expand"></i></a>
+          @if (showReloadButton) {
           <a href="javascript:;" class="btn btn-xs btn-icon btn-circle btn-success" (click)="panelReload()"><i
               class="fa fa-redo"></i></a>
+          }
           <a href="javascript:;" class="btn btn-xs btn-icon btn-circle btn-warning" (click)="panelCollapse()"><i
               class="fa fa-minus"></i></a>
           <a href="javascript:;" class="btn btn-xs btn-icon btn-circle btn-danger" (click)="panelRemove()"><i

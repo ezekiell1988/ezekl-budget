@@ -71,5 +71,12 @@
       (appThemeChanged)="onAppThemeChanged($event)">
     </theme-panel>
   }
+
+  @if (hasScrolled && !appSettings.appEmpty) {
+  <!-- Botón flotante scroll to top -->
+  <button class="btn btn-theme scroll-to-top-btn" (click)="scrollToTop()" title="Ir arriba">
+    <i class="fa fa-arrow-up fa-lg"></i>
+  </button>
+  }
 </div>
 <!-- END #app -->

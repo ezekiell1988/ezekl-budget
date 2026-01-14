@@ -1,4 +1,4 @@
-import { Component, ViewChild, AfterViewInit, Input } from "@angular/core";
+import { Component, ViewChild, AfterViewInit, Input, Output, EventEmitter } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { 
   IonCard,
@@ -46,10 +46,15 @@ export class PanelComponent extends ResponsiveComponent implements AfterViewInit
   @Input() bodyClass?: string;
   @Input() footerClass?: string;
   @Input() panelClass?: string;
+  @Input() showReloadButton: boolean = false; // Mostrar botón de reload
+  @Input() reload: boolean = false; // Estado de loading que puede modificarse desde el padre
+  
+  // Outputs para eventos
+  @Output() reloadChange = new EventEmitter<boolean>(); // Para two-way binding
+  @Output() onReload = new EventEmitter<void>();
   
   // Estado del panel
   expand = false;
-  reload = false;
   collapse = false;
   remove = false;
   showFooter = false;
@@ -80,11 +85,8 @@ export class PanelComponent extends ResponsiveComponent implements AfterViewInit
   }
   
   panelReload() {
-    this.reload = true;
-
-    setTimeout(() => {
-      this.reload = false;
-    }, 1500);
+    // Solo emitir evento, el padre maneja el estado de loading
+    this.onReload.emit();
   }
   
   panelCollapse() {

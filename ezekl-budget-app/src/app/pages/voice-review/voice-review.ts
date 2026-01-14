@@ -349,10 +349,18 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
    */
   async reloadQuestions() {
     if (this.selectedExam) {
+      // Mantener initialLoadComplete en true para que no se oculte la tabla
+      // Solo limpiar las preguntas y el estado del servicio
+      const previousQuestions = [...this.questions];
       this.questions = [];
-      this.initialLoadComplete = false;
       this.examQuestionService.clearState();
-      await this.loadAllQuestions(this.selectedExam.id);
+      
+      try {
+        await this.loadAllQuestions(this.selectedExam.id);
+      } catch (error) {
+        // Si falla, restaurar las preguntas anteriores
+        this.questions = previousQuestions;
+      }
     }
   }
 
@@ -794,14 +802,34 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
       }
     }
 
-    // Verificar si hay algo reproduciéndose actualmente
-    const isCurrentlySpeaking = this.speechSynthesis.speaking && !this.speechSynthesis.paused;
-    this.logger.debug('isCurrentlySpeaking:', isCurrentlySpeaking);
+    // Verificar si hay algo reproduciéndose actualmente o pausado
+    const isSpeaking = this.speechSynthesis.speaking && !this.speechSynthesis.paused;
+    const isPaused = this.speechSynthesis.paused;
+    this.logger.debug('isSpeaking:', isSpeaking, 'isPaused:', isPaused);
 
-    if (isCurrentlySpeaking) {
+    if (isSpeaking) {
+      // Está hablando activamente, pausar
       this.pauseSpeech();
+    } else if (isPaused) {
+      // Está pausado, reanudar
+      this.resumeSpeech();
     } else {
+      // No está hablando ni pausado, iniciar nuevo
       this.startSpeech();
+    }
+  }
+
+  /**
+   * Reanudar lectura de voz pausada
+   */
+  private resumeSpeech() {
+    if (!this.speechSynthesis) return;
+
+    if (this.speechSynthesis.paused) {
+      this.logger.debug('Resuming speech');
+      this.speechSynthesis.resume();
+      this.isSpeaking = true;
+      this.cdr.detectChanges();
     }
   }
 
@@ -811,16 +839,9 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
   private startSpeech() {
     if (!this.speechSynthesis || !this.currentQuestion) return;
 
-    // Si ya hay una utterance pausada, continuar
-    if (this.currentUtterance && this.speechSynthesis.paused) {
-      this.speechSynthesis.resume();
-      this.isSpeaking = true;
-      this.cdr.detectChanges();
-      return;
-    }
-
     // Si ya está hablando, no hacer nada
-    if (this.speechSynthesis.speaking && !this.speechSynthesis.paused) {
+    if (this.speechSynthesis.speaking) {
+      this.logger.debug('Already speaking, ignoring startSpeech');
       return;
     }
 
@@ -883,7 +904,8 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
   private pauseSpeech() {
     if (!this.speechSynthesis) return;
 
-    if (this.speechSynthesis.speaking) {
+    if (this.speechSynthesis.speaking && !this.speechSynthesis.paused) {
+      this.logger.debug('Pausing speech');
       this.speechSynthesis.pause();
       this.isSpeaking = false;
       this.cdr.detectChanges();
