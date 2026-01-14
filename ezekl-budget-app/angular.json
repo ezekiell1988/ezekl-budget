@@ -28,9 +28,21 @@
               "src/favicon.ico"
             ],
             "styles": [
-              "src/styles.css",
-              "src/scss/angular.scss",
-            	"node_modules/angular-calendar/css/angular-calendar.css",
+              {
+                "input": "src/styles.css",
+                "bundleName": "styles",
+                "inject": true
+              },
+              {
+                "input": "src/scss/angular.scss",
+                "bundleName": "desktop",
+                "inject": false
+              },
+              {
+                "input": "src/scss/ionic.scss",
+                "bundleName": "mobile",
+                "inject": false
+              }
             ],
             "scripts": [
             	"node_modules/jquery/dist/jquery.min.js",

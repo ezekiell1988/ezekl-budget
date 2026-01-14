@@ -23,8 +23,14 @@ export class PlatformDetectorService implements OnDestroy {
   
   private platformModeSubject = new BehaviorSubject<PlatformMode>(this.getInitialMode());
   private ionicStylesLoaded = false;
-  private ionicStyleElement: HTMLLinkElement | null = null;
+  private desktopStylesLoaded = false;
+  private ionicStyleElements: HTMLLinkElement[] = [];
+  private desktopStyleElements: HTMLLinkElement[] = [];
   private subscription: Subscription;
+
+  // Archivos CSS compilados que se cargan dinámicamente
+  private readonly DESKTOP_CSS_FILES = ['desktop.css'];
+  private readonly IONIC_CSS_FILES = ['mobile.css'];
 
   /**
    * Observable que emite el modo actual de la plataforma
@@ -52,15 +58,22 @@ export class PlatformDetectorService implements OnDestroy {
     private appSettings: AppSettings,
     private logger: LoggerService
   ) {
-    // Cargar estilos inmediatamente si el modo inicial es móvil
+    this.logger.debug('PlatformDetectorService initialized');
+    
+    // Limpiar TODOS los estilos que puedan existir
+    this.cleanAllStyles();
+    
+    // Cargar estilos según el modo inicial
     const initialMode = this.getInitialMode();
+    this.logger.debug(`Initial platform mode: ${initialMode}`);
+    
+    this.updateBodyClasses(initialMode);
+    
+    // Cargar CSS inmediatamente
     if (initialMode === 'mobile') {
-      this.updateBodyClasses('mobile');
       this.loadIonicStyles();
     } else {
-      this.updateBodyClasses('desktop');
-      // En desktop, marcar estilos como listos inmediatamente
-      this.appSettings.stylesLoaded = true;
+      this.loadDesktopStyles();
     }
     
     this.initializeBreakpointObserver();
@@ -99,10 +112,19 @@ export class PlatformDetectorService implements OnDestroy {
   }
 
   private handleStylesChange(mode: PlatformMode): void {
+    this.logger.debug(`Platform mode changed to: ${mode}`);
+    
+    // Limpiar TODOS los estilos antes de cargar nuevos
+    this.cleanAllStyles();
+    
+    // Resetear flag de estilos cargados
+    this.appSettings.stylesLoaded = false;
+    
+    // Cargar estilos según el nuevo modo
     if (mode === 'mobile') {
       this.loadIonicStyles();
     } else {
-      this.unloadIonicStyles();
+      this.loadDesktopStyles();
     }
   }
 
@@ -110,25 +132,47 @@ export class PlatformDetectorService implements OnDestroy {
    * Carga dinámicamente los estilos de Ionic
    */
   private loadIonicStyles(): void {
-    if (this.ionicStylesLoaded) return;
+    if (this.ionicStylesLoaded) {
+      this.logger.debug('Ionic styles already loaded, skipping...');
+      return;
+    }
 
-    // Cargar archivo CSS externo en lugar de inline styles
-    this.ionicStyleElement = document.createElement('link');
-    this.ionicStyleElement.id = 'ionic-dynamic-styles';
-    this.ionicStyleElement.rel = 'stylesheet';
-    this.ionicStyleElement.href = 'assets/css/ionic-mobile.css';
+    this.logger.debug('Loading Ionic CSS files dynamically...');
+    this.logger.debug(`Files to load: ${JSON.stringify(this.IONIC_CSS_FILES)}`);
     
-    // Esperar a que el CSS se cargue completamente
-    this.ionicStyleElement.onload = () => {
-      this.appSettings.stylesLoaded = true;
-    };
-    
-    this.ionicStyleElement.onerror = () => {
-      this.logger.error('Error al cargar estilos de Ionic');
-      this.appSettings.stylesLoaded = true; // Marcar como listo para no bloquear
-    };
-    
-    document.head.appendChild(this.ionicStyleElement);
+    let loadedCount = 0;
+    const totalFiles = this.IONIC_CSS_FILES.length;
+
+    this.IONIC_CSS_FILES.forEach((href, index) => {
+      const linkElement = document.createElement('link');
+      linkElement.id = `ionic-dynamic-styles-${index}`;
+      linkElement.rel = 'stylesheet';
+      linkElement.href = href;
+      
+      this.logger.debug(`Creating link for: ${href}`);
+      
+      linkElement.onload = () => {
+        loadedCount++;
+        this.logger.debug(`Loaded ${loadedCount}/${totalFiles}: ${href}`);
+        if (loadedCount === totalFiles) {
+          this.appSettings.stylesLoaded = true;
+          this.logger.debug('All Ionic CSS files loaded successfully');
+        }
+      };
+      
+      linkElement.onerror = (error) => {
+        this.logger.error(`Failed to load Ionic CSS: ${href}`, error);
+        loadedCount++;
+        if (loadedCount === totalFiles) {
+          this.logger.warn('Some CSS files failed to load, but continuing...');
+          this.appSettings.stylesLoaded = true;
+        }
+      };
+      
+      document.head.appendChild(linkElement);
+      this.ionicStyleElements.push(linkElement);
+    });
+
     this.ionicStylesLoaded = true;
   }
 
@@ -136,13 +180,95 @@ export class PlatformDetectorService implements OnDestroy {
    * Descarga los estilos de Ionic
    */
   private unloadIonicStyles(): void {
-    if (!this.ionicStylesLoaded || !this.ionicStyleElement) return;
+    if (!this.ionicStylesLoaded || this.ionicStyleElements.length === 0) return;
 
-    this.ionicStyleElement.remove();
-    this.ionicStyleElement = null;
+    this.logger.debug('Unloading Ionic CSS files...');
+    this.ionicStyleElements.forEach(element => element.remove());
+    this.ionicStyleElements = [];
     this.ionicStylesLoaded = false;
     
-    this.logger.debug('Ionic styles unloaded');
+    this.logger.debug('All Ionic CSS files unloaded');
+  }
+
+  /**
+   * Carga dinámicamente los estilos de Desktop (Color-Admin)
+   */
+  private loadDesktopStyles(): void {
+    if (this.desktopStylesLoaded) {
+      this.logger.debug('Desktop styles already loaded, skipping...');
+      return;
+    }
+
+    this.logger.debug('Loading Desktop CSS files dynamically...');
+    this.logger.debug(`Files to load: ${JSON.stringify(this.DESKTOP_CSS_FILES)}`);
+    
+    let loadedCount = 0;
+    const totalFiles = this.DESKTOP_CSS_FILES.length;
+
+    this.DESKTOP_CSS_FILES.forEach((href, index) => {
+      const linkElement = document.createElement('link');
+      linkElement.id = `desktop-dynamic-styles-${index}`;
+      linkElement.rel = 'stylesheet';
+      linkElement.href = href;
+      
+      this.logger.debug(`Creating link for: ${href}`);
+      
+      linkElement.onload = () => {
+        loadedCount++;
+        this.logger.debug(`Loaded ${loadedCount}/${totalFiles}: ${href}`);
+        if (loadedCount === totalFiles) {
+          this.appSettings.stylesLoaded = true;
+          this.logger.debug('All Desktop CSS files loaded successfully');
+        }
+      };
+      
+      linkElement.onerror = (error) => {
+        this.logger.error(`Failed to load Desktop CSS: ${href}`, error);
+        loadedCount++;
+        if (loadedCount === totalFiles) {
+          this.logger.warn('Some CSS files failed to load, but continuing...');
+          this.appSettings.stylesLoaded = true;
+        }
+      };
+      
+      document.head.appendChild(linkElement);
+      this.desktopStyleElements.push(linkElement);
+    });
+
+    this.desktopStylesLoaded = true;
+  }
+
+  /**
+   * Descarga los estilos de Desktop
+   */
+  private unloadDesktopStyles(): void {
+    if (!this.desktopStylesLoaded || this.desktopStyleElements.length === 0) return;
+
+    this.logger.debug('Unloading Desktop CSS files...');
+    this.desktopStyleElements.forEach(element => element.remove());
+    this.desktopStyleElements = [];
+    this.desktopStylesLoaded = false;
+    
+    this.logger.debug('All Desktop CSS files unloaded');
+  }
+
+  /**
+   * Limpia TODOS los estilos dinámicos (Ionic y Desktop)
+   */
+  private cleanAllStyles(): void {
+    this.logger.debug('Cleaning all dynamic styles...');
+    
+    // Remover estilos de Ionic
+    this.unloadIonicStyles();
+    
+    // Remover estilos de Desktop
+    this.unloadDesktopStyles();
+    
+    // Limpiar cualquier link de estilo dinámico que pueda quedar
+    const dynamicLinks = document.querySelectorAll('link[id^="ionic-dynamic-"], link[id^="desktop-dynamic-"]');
+    dynamicLinks.forEach(link => link.remove());
+    
+    this.logger.debug('All dynamic styles cleaned');
   }
 
   /**

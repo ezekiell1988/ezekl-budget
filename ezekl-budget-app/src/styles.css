@@ -2,35 +2,10 @@
 @import '~@fortawesome/fontawesome-free/css/all.css';
 
 /**
- * Ionic CSS
- * -----------------------------------------------------
- * Estilos core de Ionic necesarios para que los componentes
- * funcionen correctamente (incluye toasts, modals, etc.)
+ * NOTA: Los estilos de Ionic se cargan dinámicamente solo en móvil
+ * mediante PlatformDetectorService para evitar conflictos en desktop.
+ * Ver: platform-detector.service.ts
  */
-@import '~@ionic/angular/css/core.css';
-/* @import '~@ionic/angular/css/normalize.css'; */
-@import '~@ionic/angular/css/structure.css';
-@import '~@ionic/angular/css/typography.css';
-@import '~@ionic/angular/css/display.css';
-
-/* Optional CSS utils that can be commented out */
-@import '~@ionic/angular/css/padding.css';
-@import '~@ionic/angular/css/float-elements.css';
-@import '~@ionic/angular/css/text-alignment.css';
-@import '~@ionic/angular/css/text-transformation.css';
-@import '~@ionic/angular/css/flex-utils.css';
-
-/**
- * Ionic Dark Palette
- * -----------------------------------------------------
- * DEBE estar aquí (no en ionic-mobile.css) porque los @import
- * solo funcionan en archivos compilados directamente por Angular.
- * ionic-mobile.css se carga dinámicamente y sus @import no se procesan.
- * 
- * Usando dark.class.css para que el usuario controle manualmente el dark mode.
- * El overhead de cargar esto en desktop es mínimo (~4KB gzipped).
- */
-@import '~@ionic/angular/css/palettes/dark.class.css';
 
 /**
  * Variables de color de Ionic en :root
