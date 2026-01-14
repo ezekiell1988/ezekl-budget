@@ -11,7 +11,6 @@ import {
 } from '../../service';
 import {
   ExamQuestion,
-  ExamQuestionParams,
   ExamPdf
 } from '../../shared/models';
 import { HeaderComponent, FooterComponent, PanelComponent } from '../../components';
@@ -46,10 +45,7 @@ import {
   IonContent,
   IonCard,
   IonCardHeader,
-  IonCardTitle,
   IonCardContent,
-  IonList,
-  IonItem,
   IonLabel,
   IonIcon,
   IonButton,
@@ -90,10 +86,7 @@ const AVAILABLE_PDFS: ExamPdf[] = [
     IonContent,
     IonCard,
     IonCardHeader,
-    IonCardTitle,
     IonCardContent,
-    IonList,
-    IonItem,
     IonLabel,
     IonIcon,
     IonButton,
@@ -110,7 +103,7 @@ const AVAILABLE_PDFS: ExamPdf[] = [
     IonFabButton,
     IonFabList,
     IonProgressBar
-  ]
+]
 })
 export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDestroy {
   // Datos
