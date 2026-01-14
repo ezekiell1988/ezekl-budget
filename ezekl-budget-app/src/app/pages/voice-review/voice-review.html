@@ -20,7 +20,7 @@
     <div headerContent>
       <!-- Barra de progreso con control de reproducción -->
       @if (selectedExam && initialLoadComplete) {
-        <ion-toolbar color="light">
+        <ion-toolbar>
           <ion-grid class="ion-no-padding">
             <ion-row class="ion-align-items-center">
               <ion-col size="auto" class="ion-padding-start">
@@ -32,7 +32,7 @@
                 </ion-fab-button>
               </ion-col>
               <ion-col class="ion-padding-end">
-                <ion-text color="medium">
+                <ion-text>
                   <p class="ion-no-margin" style="font-size: 14px;"><strong>{{ progressText }}</strong></p>
                   <p class="ion-no-margin" style="font-size: 12px;">{{ progressPercent }}% completado</p>
                 </ion-text>
@@ -81,7 +81,7 @@
 
     <!-- Loading -->
     @if (selectedExam && !initialLoadComplete) {
-    <ion-card color="light">
+    <ion-card>
       <ion-card-content>
         <ion-grid>
           <ion-row class="ion-align-items-center">
@@ -90,7 +90,7 @@
             </ion-col>
             <ion-col>
               <h3 class="ion-no-margin">Cargando preguntas...</h3>
-              <ion-text color="medium">
+              <ion-text>
                 <p class="ion-no-margin">Preparando lectura de voz</p>
               </ion-text>
             </ion-col>
@@ -120,8 +120,7 @@
     @for (question of questions; track question.numberQuestion) {
     <ion-card [id]="'voice-question-' + question.numberQuestion"
       [button]="true"
-      class="voice-transition"
-      [class.selected]="question.numberQuestion === currentQuestionNumber"
+      [color]="question.numberQuestion === currentQuestionNumber ? 'primary' : undefined"
       (click)="goToQuestion(question.numberQuestion)">
 
       <ion-card-header>
@@ -129,7 +128,7 @@
           <ion-row class="ion-align-items-center ion-justify-content-between">
             <ion-col size="auto">
               <ion-chip
-                [color]="isCompleted(question.numberQuestion) ? 'success' : undefined">
+                [color]="question.numberQuestion === currentQuestionNumber ? undefined : (isCompleted(question.numberQuestion) ? 'success' : undefined)">
                 <ion-icon
                   [name]="isCompleted(question.numberQuestion) ? 'checkmark-circle' : 'radio-button-off'"></ion-icon>
                 <ion-label>Pregunta {{ question.numberQuestion }}</ion-label>
@@ -149,7 +148,7 @@
 
       <ion-card-content>
         <!-- Pregunta -->
-        <ion-text>
+        <ion-text [color]="question.numberQuestion === currentQuestionNumber ? 'dark' : undefined">
           <p style="font-size: 16px; line-height: 1.6; margin-bottom: 12px;">
             {{ question.shortQuestion }}
           </p>
@@ -160,10 +159,12 @@
         <ion-grid class="ion-no-padding">
           <ion-row class="ion-align-items-start">
             <ion-col size="auto">
-              <ion-icon name="checkmark-circle" color="success" style="font-size: 20px; margin-top: 2px;"></ion-icon>
+              <ion-icon name="checkmark-circle" 
+                [color]="question.numberQuestion === currentQuestionNumber ? 'dark' : 'success'" 
+                style="font-size: 20px; margin-top: 2px;"></ion-icon>
             </ion-col>
             <ion-col>
-              <ion-text>
+              <ion-text [color]="question.numberQuestion === currentQuestionNumber ? 'dark' : undefined">
                 <p style="margin: 0; font-size: 15px; line-height: 1.5;">
                   <strong>{{ question.correctAnswer }}</strong>
                 </p>

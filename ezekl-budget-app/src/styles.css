@@ -8,9 +8,10 @@
  * funcionen correctamente (incluye toasts, modals, etc.)
  */
 @import '~@ionic/angular/css/core.css';
-@import '~@ionic/angular/css/normalize.css';
+/* @import '~@ionic/angular/css/normalize.css'; */
 @import '~@ionic/angular/css/structure.css';
 @import '~@ionic/angular/css/typography.css';
+@import '~@ionic/angular/css/display.css';
 
 /* Optional CSS utils that can be commented out */
 @import '~@ionic/angular/css/padding.css';
@@ -26,6 +27,22 @@
  * solo funcionan en archivos compilados directamente por Angular.
  * ionic-mobile.css se carga dinámicamente y sus @import no se procesan.
  * 
+ * Usando dark.class.css para que el usuario controle manualmente el dark mode.
  * El overhead de cargar esto en desktop es mínimo (~4KB gzipped).
  */
 @import '~@ionic/angular/css/palettes/dark.class.css';
+
+/**
+ * Variables de color de Ionic en :root
+ * -----------------------------------------------------
+ * Necesarias para que los overlays (action-sheets, alerts, modals)
+ * que se renderizan fuera del body tengan acceso a las variables.
+ */
+:root {
+  --ion-color-primary: #348fe2;
+  --ion-color-primary-rgb: 52, 143, 226;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #2e7ec7;
+  --ion-color-primary-tint: #489ae5;
+}

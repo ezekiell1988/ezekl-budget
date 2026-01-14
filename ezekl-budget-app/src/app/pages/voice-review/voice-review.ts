@@ -696,15 +696,6 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
             // Para la versión móvil (cards)
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-          
-          // Resaltar temporalmente la pregunta
-          element.style.transition = 'background-color 0.5s ease';
-          const originalBg = element.style.backgroundColor;
-          element.style.backgroundColor = 'var(--bs-warning-bg-subtle)';
-          
-          setTimeout(() => {
-            element.style.backgroundColor = originalBg;
-          }, 1000);
         }
       }, 100);
     }
