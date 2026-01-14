@@ -11,3 +11,4 @@ export { ConversationManagerService, type ConversationMessage } from './conversa
 export { AudioPlayerService } from './audio-player.service';
 export { AudioProcessorService } from './audio-processor.service';
 export { LoggerService, Logger, LogLevel, type LoggerConfig } from './logger.service';
+export { ExamQuestionService } from './exam-question.service';

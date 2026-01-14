@@ -44,6 +44,12 @@ export class AppMenuService {
           icon: "fa fa-microphone",
           iconMobile: "mic-outline",
         },
+        {
+          url: "/voice-review",
+          title: "Repaso con Voz",
+          icon: "fa fa-book-reader",
+          iconMobile: "book-outline",
+        },
       ],
     },
     {

@@ -5,6 +5,7 @@ import {
   LoginPage,
   AddressPage,
   VoiceShoppingPage,
+  VoiceReviewPage,
 } from "./pages";
 import { AuthGuard } from "./shared/guards";
 
@@ -29,6 +30,12 @@ export const routes: Routes = [
     path: "voice-shopping",
     component: VoiceShoppingPage,
     data: { title: "Asistente de Voz" },
+    canActivate: [AuthGuard],
+  },
+  {
+    path: "voice-review",
+    component: VoiceReviewPage,
+    data: { title: "Repaso con Voz" },
     canActivate: [AuthGuard],
   },
   {
