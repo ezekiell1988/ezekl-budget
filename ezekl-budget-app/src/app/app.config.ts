@@ -41,8 +41,6 @@ function initializeAppConfig(appSettings: AppSettings, authService: AuthService)
         
         // Inyectar configuración directamente en AppSettings
         appSettings.remoteConfigCharge = true;
-        appSettings.defaultPromoRestaurantId = config.default_promo_restaurant_id || 0;
-        appSettings.defaultPromoDeliveryType = config.default_promo_delivery_type || 'X';
         appSettings.nameCompany = config.nameCompany || 'N/D';
         appSettings.sloganCompany = config.sloganCompany || 'N/D';
         appSettings.apiVersion = config.api_version || 'N/D';
@@ -61,8 +59,6 @@ function initializeAppConfig(appSettings: AppSettings, authService: AuthService)
           // Último intento fallido - usar valores por defecto
           console.warn('⚠️ Usando configuración por defecto después de múltiples intentos fallidos');
           appSettings.remoteConfigCharge = false;
-          appSettings.defaultPromoRestaurantId = 0;
-          appSettings.defaultPromoDeliveryType = 'X';
           appSettings.nameCompany = 'N/D';
           appSettings.sloganCompany = 'N/D';
           appSettings.apiVersion = 'N/D';

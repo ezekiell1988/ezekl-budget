@@ -56,8 +56,6 @@ export class AppSettings {
 
   // Remote Config
   private _remoteConfigCharge = new BehaviorSubject<boolean>(false);
-  private _defaultPromoRestaurantId = new BehaviorSubject<number>(0);
-  private _defaultPromoDeliveryType = new BehaviorSubject<string>("X");
   private _nameCompany = new BehaviorSubject<string>("N/D");
   private _sloganCompany = new BehaviorSubject<string>("N/D");
   private _apiVersion = new BehaviorSubject<string>("0.0.0");
@@ -108,8 +106,6 @@ export class AppSettings {
   get appContentFullWidth(): boolean { return this._appContentFullWidth.value; }
 
   get remoteConfigCharge(): boolean { return this._remoteConfigCharge.value; }
-  get defaultPromoRestaurantId(): number { return this._defaultPromoRestaurantId.value; }
-  get defaultPromoDeliveryType(): string { return this._defaultPromoDeliveryType.value; }
   get nameCompany(): string { return this._nameCompany.value; }
   get sloganCompany(): string { return this._sloganCompany.value; }
   get apiVersion(): string { return this._apiVersion.value; }
@@ -158,8 +154,6 @@ export class AppSettings {
   set appContentFullWidth(value: boolean) { this._appContentFullWidth.next(value); }
 
   set remoteConfigCharge(value: boolean) { this._remoteConfigCharge.next(value); }
-  set defaultPromoRestaurantId(value: number) { this._defaultPromoRestaurantId.next(value); }
-  set defaultPromoDeliveryType(value: string) { this._defaultPromoDeliveryType.next(value); }
   set nameCompany(value: string) { this._nameCompany.next(value); }
   set sloganCompany(value: string) { this._sloganCompany.next(value); }
   set apiVersion(value: string) { this._apiVersion.next(value); }

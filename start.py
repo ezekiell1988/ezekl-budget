@@ -9,14 +9,53 @@ import os
 import platform
 
 
+def check_and_activate_venv():
+    """Verifica si estamos en el entorno virtual y lo activa si es necesario."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    venv_dir = os.path.join(base_dir, ".venv")
+    
+    # Detectar sistema operativo
+    is_windows = platform.system() == "Windows"
+    venv_python = os.path.join(venv_dir, "Scripts" if is_windows else "bin", 
+                                "python.exe" if is_windows else "python")
+    
+    # Verificar que existe el entorno virtual
+    if not os.path.exists(venv_python):
+        print("❌ Error: No se encontró el entorno virtual en .venv", file=sys.stderr)
+        print(f"Por favor, crea el entorno virtual con: python -m venv .venv", file=sys.stderr)
+        sys.exit(1)
+    
+    # Comparar rutas reales (funciona en Windows y Unix)
+    current_python = os.path.realpath(sys.executable)
+    venv_python_real = os.path.realpath(venv_python)
+    
+    if current_python != venv_python_real:
+        print("🔄 Activando entorno virtual...")
+        # Re-ejecutar este script usando el Python del entorno virtual
+        result = subprocess.run([venv_python] + sys.argv, cwd=base_dir)
+        sys.exit(result.returncode)
+    
+    # Si llegamos aquí, ya estamos en el venv
+    print("✅ Entorno virtual activo")
+
+
 def main():
     """Ejecuta el build del frontend y luego inicia el servidor backend."""
+    
+    # Importar dotenv aquí (ya dentro del venv)
+    from dotenv import load_dotenv
+    
+    # Cargar variables de entorno desde .env
+    load_dotenv()
     
     # Obtener el directorio base del proyecto
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
+    # Obtener el directorio del frontend desde variables de entorno
+    frontend_dir_name = os.getenv("FRONTEND_DIR", "ezekl-budget-ionic")
+    
     # Rutas
-    chat_bot_dir = os.path.join(base_dir, "ezekl-budget-ionic")
+    chat_bot_dir = os.path.join(base_dir, frontend_dir_name)
     venv_dir = os.path.join(base_dir, ".venv")
     
     # Detectar sistema operativo y usar la ruta correcta del ejecutable de Python
@@ -87,6 +126,9 @@ def main():
 
 if __name__ == "__main__":
     try:
+        # Primero verificar y activar el entorno virtual
+        check_and_activate_venv()
+        # Luego ejecutar el main
         main()
     except KeyboardInterrupt:
         print("\n\n⚠️  Proceso interrumpido por el usuario")
