@@ -78,21 +78,21 @@ def main():
     print("=" * 60)
     
     # Paso 1: Build del frontend
-    print("\n📦 Construyendo el frontend (npm run build)...")
+    print("\n📦 Construyendo el frontend en modo desarrollo (npm run build -- --configuration=development)...")
     print("-" * 60)
     
     try:
         # En Windows, necesitamos usar shell=True para encontrar npm
         if is_windows:
             result = subprocess.run(
-                "npm run build",
+                "npm run build -- --configuration=development",
                 cwd=chat_bot_dir,
                 shell=True,
                 check=True
             )
         else:
             result = subprocess.run(
-                ["npm", "run", "build"],
+                ["npm", "run", "build", "--", "--configuration=development"],
                 cwd=chat_bot_dir,
                 check=True
             )

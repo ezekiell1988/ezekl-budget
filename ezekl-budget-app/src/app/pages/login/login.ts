@@ -98,7 +98,7 @@ export class LoginPage extends ResponsiveComponent implements OnInit, OnDestroy 
 
   ngOnInit() {
     // Leer returnUrl de los query params
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/home';
     
     // Verificar si ya está autenticado
     const isAuth = this.authService.isAuthenticated();

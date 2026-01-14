@@ -100,12 +100,7 @@ export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDe
   }
 
   ngOnInit() {
-    // Escuchar cambios en el usuario autenticado usando effect
-    effect(() => {
-      this.currentUser = this.authService.currentUser();
-      // Forzar detección de cambios
-      this.cdr.detectChanges();
-    });
+    // La inicialización del effect se hace en el constructor
   }
 
   constructor(
@@ -122,6 +117,13 @@ export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDe
     addIcons({
       notificationsOutline,
       menuOutline
+    });
+    
+    // Escuchar cambios en el usuario autenticado usando effect
+    effect(() => {
+      this.currentUser = this.authService.currentUser();
+      // Forzar detección de cambios
+      this.cdr.detectChanges();
     });
   }
 }

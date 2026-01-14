@@ -381,13 +381,6 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 		this.menus = this.appMenuService.getAppMenus();
 		this.initializeMobileMenuState(this.menus);
 		
-		// Escuchar cambios en el usuario autenticado usando effect
-		effect(() => {
-			this.currentUser = this.authService.currentUser();
-			// Forzar detección de cambios para actualizar la vista
-			this.cdr.detectChanges();
-		});
-		
 		// Notificar al servicio cuando el menú del sidebar se abre/cierra
 		// Usamos los eventos del DOM de ion-menu
 		document.addEventListener('ionDidOpen', (event: any) => {
