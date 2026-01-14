@@ -1,0 +1,193 @@
+/* =====================================================
+   COMPONENTS - Componentes Ionic Personalizados
+   ===================================================== */
+
+// Clase para aplicar el color theme
+.ion-color-theme {
+  --ion-color-base: var(--ion-color-theme) !important;
+  --ion-color-base-rgb: var(--ion-color-theme-rgb) !important;
+  --ion-color-contrast: var(--ion-color-theme-contrast) !important;
+  --ion-color-contrast-rgb: var(--ion-color-theme-contrast-rgb) !important;
+  --ion-color-shade: var(--ion-color-theme-shade) !important;
+  --ion-color-tint: var(--ion-color-theme-tint) !important;
+}
+
+// Clases de utilidad para el color theme
+.bg-theme {
+  background-color: var(--ion-color-theme) !important;
+  color: var(--ion-color-theme-contrast) !important;
+}
+
+.text-theme {
+  color: var(--ion-color-theme) !important;
+}
+
+.border-theme {
+  border-color: var(--ion-color-theme) !important;
+}
+
+// Toolbar
+ion-toolbar {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+}
+
+ion-title {
+  font-weight: 600;
+}
+
+// Tab Bar
+ion-tab-bar {
+  --background: var(--bs-body-bg, #ffffff);
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+ion-tab-button {
+  --color: var(--bs-secondary-color, #6c757d);
+  --color-selected: var(--app-theme, #348fe2);
+}
+
+// Items
+ion-item {
+  --background: transparent;
+  --color: var(--bs-body-color, #212529);
+  --border-color: var(--bs-border-color, #dee2e6);
+  
+  ion-icon[slot="start"] {
+    font-size: 24px;
+    margin-inline-end: 16px;
+  }
+  
+  ion-label {
+    h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--ion-text-color);
+      margin-bottom: 2px;
+    }
+    
+    p {
+      font-size: 0.875rem;
+      color: var(--ion-color-medium);
+      margin-top: 2px;
+    }
+  }
+  
+  ion-badge {
+    font-size: 0.625rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+}
+
+// Cards
+ion-card {
+  --background: var(--bs-body-bg, #ffffff);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  margin: 16px;
+  
+  img {
+    width: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+  }
+}
+
+ion-card-header {
+  padding: 1rem;
+}
+
+ion-card-content {
+  padding: 1rem;
+}
+
+// Lists
+ion-list {
+  --background: transparent;
+}
+
+ion-list-header {
+  padding-top: 24px;
+  padding-bottom: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ion-color-medium);
+  
+  ion-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+}
+
+// Buttons
+ion-button {
+  --border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  height: 48px;
+  
+  ion-icon[slot="start"] {
+    font-size: 20px;
+    margin-inline-end: 8px;
+  }
+  
+  &.button-theme {
+    --background: var(--ion-color-theme);
+    --background-activated: var(--ion-color-theme-shade);
+    --background-focused: var(--ion-color-theme-shade);
+    --background-hover: var(--ion-color-theme-tint);
+    --color: var(--ion-color-theme-contrast);
+  }
+}
+
+// Inputs
+ion-input,
+ion-textarea,
+ion-select {
+  --background: var(--bs-body-bg, #ffffff);
+  --color: var(--bs-body-color, #212529);
+  --placeholder-color: var(--bs-secondary-color, #6c757d);
+}
+
+// FAB Button
+ion-fab-button {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+}
+
+// Spinner
+ion-spinner {
+  --color: var(--app-theme, #348fe2);
+}
+
+// Badge
+ion-badge {
+  --background: var(--app-theme, #348fe2);
+  --color: #ffffff;
+  
+  &.badge-theme {
+    --background: var(--ion-color-theme);
+    --color: var(--ion-color-theme-contrast);
+  }
+}
+
+// Chip
+ion-chip {
+  &.chip-theme {
+    --background: var(--ion-color-theme);
+    --color: var(--ion-color-theme-contrast);
+  }
+}
+
+// Toggle
+ion-toggle {
+  --background: var(--ion-color-light);
+  --background-checked: var(--ion-color-theme);
+  --handle-background: white;
+  --handle-background-checked: white;
+}

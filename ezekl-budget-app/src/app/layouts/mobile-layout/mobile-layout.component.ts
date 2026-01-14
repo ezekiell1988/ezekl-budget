@@ -36,9 +36,9 @@ export class MobileLayoutComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Aplicar dark mode inicial si está activado
+    // Aplicar dark mode inicial si está activado (Ionic)
     if (this.appSettings.appDarkMode) {
-      document.documentElement.setAttribute('data-bs-theme', 'dark');
+      document.body.classList.add('dark');
     }
     
     // Actualizar título según la ruta
@@ -68,10 +68,11 @@ export class MobileLayoutComponent implements OnInit {
   }
 
   onAppDarkModeChanged(val: boolean): void {
+    // Ionic dark mode: solo clase .dark en body
     if (this.appSettings.appDarkMode) {
-      document.documentElement.setAttribute('data-bs-theme', 'dark');
+      document.body.classList.add('dark');
     } else {
-      document.documentElement.removeAttribute('data-bs-theme');
+      document.body.classList.remove('dark');
     }
     this.appVariables = this.appVariablesService.getAppVariables();
     this.appVariablesService.variablesReload.emit();

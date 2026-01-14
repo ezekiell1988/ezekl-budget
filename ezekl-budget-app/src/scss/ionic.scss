@@ -1,9 +1,14 @@
-/**
- * IONIC STYLES - Mobile Only
- * Este archivo se compila y carga dinámicamente solo en móvil
- */
+/* =====================================================
+   IONIC STYLES - Mobile Only
+   Este archivo se compila y carga dinámicamente solo en móvil
+   ===================================================== */
 
-/* Ionic Core Styles */
+/**
+ * Ionic Framework - Core Styles
+ * -----------------------------------------------------
+ * Importamos los estilos base de Ionic que proporcionan
+ * la funcionalidad y diseño de los componentes móviles.
+ */
 @import '~@ionic/angular/css/core.css';
 @import '~@ionic/angular/css/structure.css';
 @import '~@ionic/angular/css/typography.css';
@@ -14,79 +19,23 @@
 @import '~@ionic/angular/css/text-transformation.css';
 @import '~@ionic/angular/css/flex-utils.css';
 
-/* Ionic Dark Mode */
+/**
+ * Dark Mode
+ * -----------------------------------------------------
+ * Soporte para tema oscuro de Ionic usando la clase .dark
+ */
 @import '~@ionic/angular/css/palettes/dark.class.css';
 
-/* Custom Ionic Mobile Styles */
-@import '../assets/css/ionic-mobile.css';
-
 /**
- * Color personalizado "theme" para Ionic
+ * Custom Mobile Styles - Estructura Modular
  * -----------------------------------------------------
- * Este color se sincroniza con el tema seleccionado en Color-Admin
- * y permite usar [color]="theme" en componentes de Ionic
+ * Estilos personalizados organizados por funcionalidad.
+ * Nota: Se eliminó ionic-mobile.css a favor de esta estructura SCSS modular.
  */
-
-/* Variables CSS del color theme (se actualizan dinámicamente desde JS) */
-:root {
-  --ion-color-theme: #00acac;
-  --ion-color-theme-rgb: 0, 172, 172;
-  --ion-color-theme-contrast: #ffffff;
-  --ion-color-theme-contrast-rgb: 255, 255, 255;
-  --ion-color-theme-shade: #0097a7;
-  --ion-color-theme-tint: #26c6da;
-}
-
-/* Aplicar el color theme a componentes de Ionic */
-.ion-color-theme {
-  --ion-color-base: var(--ion-color-theme) !important;
-  --ion-color-base-rgb: var(--ion-color-theme-rgb) !important;
-  --ion-color-contrast: var(--ion-color-theme-contrast) !important;
-  --ion-color-contrast-rgb: var(--ion-color-theme-contrast-rgb) !important;
-  --ion-color-shade: var(--ion-color-theme-shade) !important;
-  --ion-color-tint: var(--ion-color-theme-tint) !important;
-}
-
-/**
- * Clases de utilidad para el color theme (similar a Bootstrap)
- * -----------------------------------------------------
- * Permiten usar clases como bg-theme, text-theme, border-theme
- */
-
-/* Background */
-.bg-theme {
-  background-color: var(--ion-color-theme) !important;
-  color: var(--ion-color-theme-contrast) !important;
-}
-
-/* Text */
-.text-theme {
-  color: var(--ion-color-theme) !important;
-}
-
-/* Border */
-.border-theme {
-  border-color: var(--ion-color-theme) !important;
-}
-
-/* Button fill variants */
-ion-button.button-theme {
-  --background: var(--ion-color-theme);
-  --background-activated: var(--ion-color-theme-shade);
-  --background-focused: var(--ion-color-theme-shade);
-  --background-hover: var(--ion-color-theme-tint);
-  --color: var(--ion-color-theme-contrast);
-}
-
-/* Badge */
-ion-badge.badge-theme {
-  --background: var(--ion-color-theme);
-  --color: var(--ion-color-theme-contrast);
-}
-
-/* Chip */
-ion-chip.chip-theme {
-  --background: var(--ion-color-theme);
-  --color: var(--ion-color-theme-contrast);
-}
+@import 'ionic/variables';      // Variables y configuración global
+@import 'ionic/layout';         // Estructura de página y layout
+@import 'ionic/components';     // Componentes Ionic personalizados
+@import 'ionic/pages';          // Estilos específicos de páginas
+@import 'ionic/theme-panel';    // Panel de configuración de tema
+@import 'ionic/dark-mode';      // Modo oscuro
 

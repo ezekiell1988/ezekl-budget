@@ -1,5 +1,7 @@
-// Mobile Layout Component Styles
-// Estilos para el layout móvil con Ionic
+/* =====================================================
+   MOBILE LAYOUT COMPONENT
+   Estilos para el layout móvil con Ionic
+   ===================================================== */
 
 :host {
   display: block;
@@ -7,10 +9,9 @@
   height: 100%;
 }
 
-.selected {
-  --background: var(--ion-color-primary-tint);
-  --color: var(--ion-color-primary);
-}
+/* =====================================================
+   MENÚ - Configuración General
+   ===================================================== */
 
 .menu-footer {
   position: absolute;
@@ -36,79 +37,87 @@ ion-content {
 }
 
 /* =====================================================
-   Perfil de usuario en menú móvil
+   PERFIL DE USUARIO - Menú Móvil
    ===================================================== */
+
 ::ng-deep {
   .user-profile-mobile {
     padding: 20px;
     text-align: center;
     border-bottom: 1px solid var(--ion-border-color);
     margin-bottom: 10px;
+    
+    .profile-avatar {
+      margin-bottom: 12px;
+      
+      img {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid var(--ion-color-primary);
+        object-fit: cover;
+      }
+    }
+    
+    .profile-info {
+      color: var(--ion-text-color);
+      margin: 0;
+      
+      h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        color: var(--ion-text-color);
+        line-height: 1.3;
+      }
+      
+      p {
+        font-size: 14px;
+        margin: 0;
+        color: var(--ion-color-medium);
+        opacity: 0.8;
+        line-height: 1.3;
+      }
+    }
   }
 
-  .user-profile-mobile .profile-avatar {
-    margin-bottom: 12px;
-  }
-
-  .user-profile-mobile .profile-avatar img {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    border: 3px solid var(--ion-color-primary);
-    object-fit: cover;
-  }
-
-  .user-profile-mobile .profile-info {
-    color: var(--ion-text-color);
-    margin: 0;
-  }
-
-  .user-profile-mobile .profile-info h3 {
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0;
-    margin-bottom: 4px;
-    color: var(--ion-text-color);
-    line-height: 1.3;
-  }
-
-  .user-profile-mobile .profile-info p {
-    font-size: 14px;
-    margin: 0;
-    color: var(--ion-color-medium);
-    opacity: 0.8;
-    line-height: 1.3;
-  }
-
-  /* Marca del menú activo */
+  /* =====================================================
+     MENÚ - Item Seleccionado
+     ===================================================== */
+  
   ion-menu ion-item.selected {
     --background: var(--ion-color-primary-tint);
     --color: var(--ion-color-primary);
+    
+    ion-label {
+      font-weight: 600;
+    }
+    
+    ion-icon[slot="start"] {
+      color: var(--ion-color-primary);
+    }
   }
 
-  ion-menu ion-item.selected ion-label {
-    font-weight: 600;
-  }
-
-  ion-menu ion-item.selected ion-icon[slot="start"] {
-    color: var(--ion-color-primary);
-  }
-
-  /* Dark Mode - Sidebar/Menu */
-  body[data-bs-theme="dark"] .user-profile-mobile {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-
-  body[data-bs-theme="dark"] ion-menu ion-item.selected {
-    --background: rgba(52, 143, 226, 0.2);
-    --color: var(--ion-color-primary-tint);
-  }
-
-  body[data-bs-theme="dark"] ion-menu ion-item.selected ion-label {
-    color: var(--ion-color-primary-tint);
-  }
-
-  body[data-bs-theme="dark"] ion-menu ion-item.selected ion-icon[slot="start"] {
-    color: var(--ion-color-primary-tint);
+  /* =====================================================
+     DARK MODE - Menú y Perfil
+     ===================================================== */
+  
+  [data-bs-theme="dark"] {
+    .user-profile-mobile {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    ion-menu ion-item.selected {
+      --background: rgba(52, 143, 226, 0.2);
+      --color: var(--ion-color-primary-tint);
+      
+      ion-label {
+        color: var(--ion-color-primary-tint);
+      }
+      
+      ion-icon[slot="start"] {
+        color: var(--ion-color-primary-tint);
+      }
+    }
   }
 }

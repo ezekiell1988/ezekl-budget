@@ -27,6 +27,7 @@ export class PlatformDetectorService implements OnDestroy {
   private ionicStyleElements: HTMLLinkElement[] = [];
   private desktopStyleElements: HTMLLinkElement[] = [];
   private subscription: Subscription;
+  private loadingOverlay: HTMLDivElement | null = null;
 
   // Archivos CSS compilados que se cargan dinámicamente
   private readonly DESKTOP_CSS_FILES = ['desktop.css'];
@@ -93,6 +94,9 @@ export class PlatformDetectorService implements OnDestroy {
     const previousMode = this.platformModeSubject.value;
     
     if (previousMode !== mode) {
+      // Mostrar loading durante la transición
+      this.showLoadingOverlay();
+      
       this.platformModeSubject.next(mode);
       this.updateBodyClasses(mode);
       this.handleStylesChange(mode);
@@ -157,6 +161,8 @@ export class PlatformDetectorService implements OnDestroy {
         if (loadedCount === totalFiles) {
           this.appSettings.stylesLoaded = true;
           this.logger.debug('All Ionic CSS files loaded successfully');
+          // Ocultar loading cuando todos los estilos estén cargados
+          setTimeout(() => this.hideLoadingOverlay(), 100);
         }
       };
       
@@ -219,6 +225,8 @@ export class PlatformDetectorService implements OnDestroy {
         if (loadedCount === totalFiles) {
           this.appSettings.stylesLoaded = true;
           this.logger.debug('All Desktop CSS files loaded successfully');
+          // Ocultar loading cuando todos los estilos estén cargados
+          setTimeout(() => this.hideLoadingOverlay(), 100);
         }
       };
       
@@ -269,6 +277,78 @@ export class PlatformDetectorService implements OnDestroy {
     dynamicLinks.forEach(link => link.remove());
     
     this.logger.debug('All dynamic styles cleaned');
+  }
+
+  /**
+   * Muestra un overlay de loading durante la transición de estilos
+   */
+  private showLoadingOverlay(): void {
+    if (this.loadingOverlay) return;
+
+    this.logger.debug('Showing loading overlay');
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'platform-transition-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999999;
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+    `;
+
+    const spinner = document.createElement('div');
+    spinner.style.cssText = `
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    `;
+
+    // Agregar animación de spin
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+
+    overlay.appendChild(spinner);
+    document.body.appendChild(overlay);
+    this.loadingOverlay = overlay;
+
+    // Fade in
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+    });
+  }
+
+  /**
+   * Oculta el overlay de loading
+   */
+  private hideLoadingOverlay(): void {
+    if (!this.loadingOverlay) return;
+
+    this.logger.debug('Hiding loading overlay');
+    
+    const overlay = this.loadingOverlay;
+    overlay.style.opacity = '0';
+
+    setTimeout(() => {
+      overlay.remove();
+      this.loadingOverlay = null;
+    }, 200);
   }
 
   /**

@@ -1,0 +1,59 @@
+/* =====================================================
+   DARK MODE - Configuración de Modo Oscuro
+   
+   El atributo data-bs-theme="dark" se establece en document.documentElement
+   (<html>) por el ThemePanelComponent y DesktopLayoutComponent.
+   
+   Bootstrap y Color-Admin usan [data-bs-theme="dark"] como selector.
+   Ionic debe usar el mismo selector para mantener consistencia.
+   ===================================================== */
+
+[data-bs-theme="dark"] {
+  // Variables globales de Ionic para dark mode
+  --ion-background-color: var(--bs-body-bg, #212529);
+  --ion-text-color: var(--bs-body-color, #dee2e6);
+  
+  // Toolbar
+  ion-toolbar {
+    --background: var(--bs-dark, #1a1d20);
+  }
+  
+  // Tab Bar
+  ion-tab-bar {
+    --background: var(--bs-dark, #1a1d20);
+    border-top-color: var(--bs-border-color, #495057);
+  }
+  
+  // Cards
+  ion-card {
+    --background: var(--bs-dark, #2b2f32);
+  }
+  
+  // Footer
+  ion-footer {
+    border-top-color: var(--bs-border-color, #495057);
+    
+    ion-toolbar {
+      --background: var(--bs-dark, #2b2f32);
+      --color: var(--bs-body-color, #dee2e6);
+    }
+  }
+  
+  // Balance Card (Home Page)
+  .balance-card {
+    background: linear-gradient(135deg, #1e3a5f, #0f1f33);
+  }
+  
+  // Theme Panel
+  .color-circle {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  }
+  
+  ion-list-header {
+    color: var(--ion-color-step-400);
+  }
+  
+  ion-toggle {
+    --background: var(--ion-color-step-150);
+  }
+}

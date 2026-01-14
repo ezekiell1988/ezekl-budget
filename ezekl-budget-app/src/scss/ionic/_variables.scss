@@ -1,0 +1,36 @@
+/* =====================================================
+   VARIABLES - Ionic Mobile
+   Variables globales para estilos móviles
+   ===================================================== */
+
+// Variables de color de Ionic
+:root {
+  --ion-color-primary: #348fe2;
+  --ion-color-primary-rgb: 52, 143, 226;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #2e7ec7;
+  --ion-color-primary-tint: #489ae5;
+}
+
+// Variables de tema dinámicas
+:root {
+  --ion-color-theme: #00acac;
+  --ion-color-theme-rgb: 0, 172, 172;
+  --ion-color-theme-contrast: #ffffff;
+  --ion-color-theme-contrast-rgb: 255, 255, 255;
+  --ion-color-theme-shade: #0097a7;
+  --ion-color-theme-tint: #26c6da;
+}
+
+// Variables de tema para Ionic (sincronizadas con Color-Admin)
+body {
+  --ion-background-color: var(--bs-body-bg, #ffffff);
+  --ion-text-color: var(--bs-body-color, #212529);
+  --ion-font-family: var(--bs-font-sans-serif, system-ui, -apple-system, sans-serif);
+  --ion-color-primary: var(--app-theme, #348fe2);
+  --ion-color-primary-rgb: 52, 143, 226;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #2e7ec7;
+  --ion-color-primary-tint: #489ae5;
+}

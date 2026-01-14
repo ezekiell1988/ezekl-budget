@@ -112,6 +112,7 @@ export class DesktopLayoutComponent implements OnInit {
   }
 
   onAppDarkModeChanged(val: boolean) {
+    // Bootstrap/Color-Admin dark mode: solo data-bs-theme
     if (this.appSettings.appDarkMode) {
       document.documentElement.setAttribute("data-bs-theme", "dark");
     } else {

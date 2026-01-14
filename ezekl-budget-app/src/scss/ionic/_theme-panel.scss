@@ -1,0 +1,55 @@
+/* =====================================================
+   THEME PANEL - Panel de Configuración Móvil
+   ===================================================== */
+
+// Selector de colores en grid
+.color-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.color-option {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.color-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: relative;
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  ion-icon {
+    color: white;
+    font-size: 28px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  }
+  
+  // Efecto de selección
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease;
+  }
+  
+  &:has(ion-icon)::after {
+    border-color: currentColor;
+  }
+}

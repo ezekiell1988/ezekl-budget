@@ -512,11 +512,11 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
     this.appSettings.appDarkMode = checked;
     this.appDarkModeChanged.emit(true);
     
-    // Actualizar atributo data-bs-theme en el documento
+    // Ionic dark mode: solo clase .dark en body
     if (checked) {
-      document.documentElement.setAttribute('data-bs-theme', 'dark');
+      document.body.classList.add('dark');
     } else {
-      document.documentElement.setAttribute('data-bs-theme', 'light');
+      document.body.classList.remove('dark');
     }
     
     if (localStorage) {

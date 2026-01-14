@@ -1,41 +1,43 @@
 /* =====================================================
-   VOICE REVIEW PAGE - CSS ESTRICTAMENTE NECESARIO
-   
+   VOICE REVIEW PAGE
    Solo estilos que NO están disponibles en Ionic/Color-Admin
    ===================================================== */
 
 :host {
-  
-  /* Selector de examen en el header (móvil) */
+  /* Selector de examen en el header */
   .exam-selector {
     width: 100%;
     max-width: 100%;
     padding: 8px 16px;
   }
   
-  /* Animación del botón de play (no disponible en frameworks) */
+  /* Animación del botón de play */
   .voice-play-button.speaking {
     animation: voice-pulse 1.5s ease-in-out infinite;
   }
   
   @keyframes voice-pulse {
-    0%, 100% { transform: scale(1); }
+    0%, 100% { 
+      transform: scale(1); 
+    }
     50% { 
       transform: scale(1.05);
       box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
     }
   }
   
-  /* Contenedor de tabla - permite scroll natural de la página */
-  .voice-questions-table-container {
-    /* Sin restricciones de altura - el scroll lo maneja la página completa */
+  /* Header sticky en tabla */
+  .voice-questions-table {
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bs-body-bg, #fff);
+    }
   }
   
-  /* Header sticky (se mantiene visible al hacer scroll) */
-  .voice-questions-table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #fff; /* Asegurar fondo sólido para el sticky header */
+  /* Dark mode - Asegurar fondo sólido en sticky header */
+  @at-root [data-bs-theme="dark"] & .voice-questions-table thead th {
+    background: var(--bs-dark, #212529);
   }
 }

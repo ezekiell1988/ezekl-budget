@@ -30,20 +30,23 @@ Application Start
 ## 📦 CSS Files
 
 ### Desktop (1 archivo):
-- `angular.css` - Compilado de scss/angular.scss
+- **`desktop.css`** - Compilado de `src/scss/angular.scss`
+  - Incluye Color-Admin + componentes Angular
+  - Tamaño: ~2.5MB
+  - Se carga vía `DESKTOP_CSS_FILES = ['desktop.css']`
 
-### Mobile (11 archivos):
-1. `@ionic/angular/css/core.css`
-2. `@ionic/angular/css/structure.css`
-3. `@ionic/angular/css/typography.css`
-4. `@ionic/angular/css/display.css`
-5. `@ionic/angular/css/padding.css`
-6. `@ionic/angular/css/float-elements.css`
-7. `@ionic/angular/css/text-alignment.css`
-8. `@ionic/angular/css/text-transformation.css`
-9. `@ionic/angular/css/flex-utils.css`
-10. `@ionic/angular/css/palettes/dark.class.css`
-11. `assets/css/ionic-mobile.css`
+### Mobile (1 archivo compilado):
+- **`mobile.css`** - Compilado de `src/scss/ionic.scss`
+  - Incluye 10 CSS core de Ionic Framework
+  - Incluye estructura modular personalizada:
+    - `_variables.scss` - Variables CSS y configuración
+    - `_layout.scss` - Estructura de página
+    - `_components.scss` - Componentes Ionic personalizados
+    - `_pages.scss` - Estilos específicos de páginas
+    - `_theme-panel.scss` - Panel de tema
+    - `_dark-mode.scss` - Modo oscuro
+  - Tamaño: ~1.8MB
+  - Se carga vía `IONIC_CSS_FILES = ['mobile.css']`
 
 ## 🔧 Implementación
 
@@ -51,11 +54,20 @@ Application Start
 
 ```json
 "styles": [
-  "src/styles.css",
+  {
+    "input": "src/styles.css",
+    "bundleName": "styles",
+    "inject": true  // ← Solo estilos globales
+  },
   {
     "input": "src/scss/angular.scss",
-    "bundleName": "angular",
-    "inject": false  // ← NO se inyecta automáticamente
+    "bundleName": "desktop",
+    "inject": false  // ← Carga dinámica para desktop
+  },
+  {
+    "input": "src/scss/ionic.scss",
+    "bundleName": "mobile",
+    "inject": false  // ← Carga dinámica para mobile
   }
 ]
 ```
@@ -63,10 +75,28 @@ Application Start
 ### 2. styles.css
 
 ```css
-/* SOLO FontAwesome */
+/* FontAwesome Icons */
 @import '~@fortawesome/fontawesome-free/css/all.css';
 
-/* SIN imports de Ionic ni Color-Admin */
+/* Variables de Ionic para overlays (modals, alerts, action-sheets)
+   Necesarias porque se renderizan fuera del <body> */
+:root {
+  --ion-color-primary: #348fe2;
+  --ion-color-primary-rgb: 52, 143, 226;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #2e7ec7;
+  --ion-color-primary-tint: #489ae5;
+}
+
+/* Ocultar elementos de Color-Admin en modo móvil */
+body.ionic-mode {
+  #header.app-header,
+  #sidebar.app-sidebar,
+  /* ... otros elementos ... */ {
+    display: none !important;
+  }
+}
 ```
 
 ### 3. platform-detector.service.ts
@@ -104,29 +134,35 @@ handleStylesChange(mode: PlatformMode) {
 cleanAllStyles() {
   this.unloadIonicStyles();
   this.unloadDesktopStyles();
-  // Remover cualquier link dinámico residual
-  document.querySelectorAll('link[id*="-dynamic-"]').forEach(l => l.remove());
-}
-```
-
-## ✅ Beneficios
-
-1. **Zero Conflicts**: Aislamiento total entre frameworks
-2. **Clean Loading**: No hay CSS residual al cambiar modo
-3. **Predictable**: Siempre se sabe qué CSS está activo
-4. **Performance**: Solo se carga lo necesario
-5. **Maintainable**: Fácil agregar/quitar archivos
-
-## 🧪 Testing
-
-### Verificar Desktop (>768px):
-
-```javascript
-// DevTools → Elements → <head>
+  // Remover cConsole
 document.querySelectorAll('link[id^="desktop-dynamic"]').length
-// Debe retornar: 1
+// Debe retornar: 1 (desktop.css)
 
 document.querySelectorAll('link[id^="ionic-dynamic"]').length
+// Debe retornar: 0
+
+document.body.classList.contains('desktop-mode')
+// Debe retornar: true
+
+document.body.classList.contains('ionic-mode')
+// Debe retornar: false
+```
+
+### Verificar Mobile (≤768px):
+
+```javascript
+// DevTools → Console
+document.querySelectorAll('link[id^="ionic-dynamic"]').length
+// Debe retornar: 1 (mobile.css)
+
+document.querySelectorAll('link[id^="desktop-dynamic"]').length
+// Debe retornar: 0
+
+document.body.classList.contains('ionic-mode')
+// Debe retornar: true
+
+document.body.classList.contains('desktop-mode')
+// Debe retornar: falsrAll('link[id^="ionic-dynamic"]').length
 // Debe retornar: 0
 
 document.body.classList.contains('desktop-mode')
@@ -209,13 +245,56 @@ document.querySelectorAll('link[id^="ionic-dynamic"]').length === 0
 // Obtener estado actual
 const cssState = {
   mode: document.body.className,
+  width: window.innerWidth + 'px',
   ionicFiles: document.querySelectorAll('link[id^="ionic-dynamic"]').length,
   desktopFiles: document.querySelectorAll('link[id^="desktop-dynamic"]').length,
-  expected: window.innerWidth <= 768 ? 'mobile (11 files)' : 'desktop (1 file)'
+  darkMode: document.documentElement.getAttribute('data-bs-theme'),
+  expected: window.innerWidth <= 768 ? 'mobile (1 file)' : 'desktop (1 file)'
 };
 
 console.table(cssState);
 ```
+
+## 🌓 Dark Mode
+
+### Implementación Unificada
+
+El dark mode se controla mediante el atributo `data-bs-theme` en `document.documentElement` (`<html>`):
+
+```typescript
+// Activar dark mode
+document.documentElement.setAttribute('data-bs-theme', 'dark');
+
+// Desactivar dark mode
+document.documentElement.removeAttribute('data-bs-theme');
+// o
+document.documentElement.setAttribute('data-bs-theme', 'light');
+```
+
+### Selectores CSS
+
+**✅ Correcto** - Busca en `<html>`:
+```scss
+[data-bs-theme="dark"] {
+  ion-toolbar {
+    --background: var(--bs-dark, #1a1d20);
+  }
+}
+```
+
+**❌ Incorrecto** - Buscaría en `<body>`:
+```scss
+body[data-bs-theme="dark"] {
+  ion-toolbar { ... }
+}
+```
+
+### Sincronización Desktop ↔ Mobile
+
+- ✅ Mismo atributo: `data-bs-theme` en `<html>`
+- ✅ Mismo localStorage: `localStorage["appDarkMode"]`
+- ✅ Mismo selector CSS: `[data-bs-theme="dark"]`
+- ✅ Funcionan ambos frameworks (Bootstrap y Ionic)
 
 ## 🎬 Flujo Completo
 

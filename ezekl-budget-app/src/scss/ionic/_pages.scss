@@ -1,0 +1,62 @@
+/* =====================================================
+   PAGES - Estilos Específicos de Páginas
+   ===================================================== */
+
+// HOME PAGE - Balance Card
+.balance-card {
+  background: linear-gradient(135deg, var(--app-theme, #348fe2), #1e5aa8);
+  color: white;
+  
+  ion-card-header {
+    color: white;
+  }
+  
+  ion-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  ion-card-content {
+    color: white;
+  }
+}
+
+.balance-amount {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.balance-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.balance-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  
+  ion-icon {
+    font-size: 1.2rem;
+  }
+  
+  &.income ion-icon {
+    color: #4ade80 !important;
+  }
+  
+  &.expense ion-icon {
+    color: #f87171 !important;
+  }
+}
+
+// VOICE SHOPPING PAGE
+.phone-setup-container {
+  padding: 16px;
+}
