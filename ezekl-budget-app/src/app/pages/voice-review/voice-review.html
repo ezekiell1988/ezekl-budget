@@ -10,10 +10,11 @@
 @if (isMobile()) {
 <header [pageTitle]="getPageTitle()"></header>
 
-<ion-content class="ion-padding">
-  <!-- Sin examen seleccionado -->
-  @if (!selectedExam) {
-    <div class="ion-text-center ion-padding" style="min-height: 60vh; display: flex; align-items: center; justify-content: center;">
+  <ion-content class="ion-padding">
+    <!-- Sin examen seleccionado -->
+    @if (!selectedExam) {
+    <div class="ion-text-center ion-padding"
+      style="min-height: 60vh; display: flex; align-items: center; justify-content: center;">
       <div>
         <ion-icon name="mic-outline" size="large" color="medium" style="font-size: 64px;"></ion-icon>
         <h2>Selecciona un examen</h2>
@@ -24,24 +25,22 @@
         <!-- Selector de examen -->
         <ion-card class="ion-margin-top">
           <ion-card-content>
-            <ion-select
-              placeholder="Selecciona un examen"
-              (ionChange)="onExamSelected($event)"
+            <ion-select placeholder="Selecciona un examen" (ionChange)="onExamSelected($event)"
               interface="action-sheet">
               @for (pdf of availablePdfs; track pdf.id) {
-                <ion-select-option [value]="pdf.id">
-                  {{ pdf.displayName }}
-                </ion-select-option>
+              <ion-select-option [value]="pdf.id">
+                {{ pdf.displayName }}
+              </ion-select-option>
               }
             </ion-select>
           </ion-card-content>
         </ion-card>
       </div>
     </div>
-  }
+    }
 
-  <!-- Loading -->
-  @if (selectedExam && !initialLoadComplete) {
+    <!-- Loading -->
+    @if (selectedExam && !initialLoadComplete) {
     <ion-card color="light">
       <ion-card-content>
         <ion-grid>
@@ -62,32 +61,34 @@
 
     <!-- Skeletons -->
     @for (item of [1,2,3,4,5]; track item) {
-      <ion-card>
-        <ion-card-header>
-          <ion-skeleton-text [animated]="true" style="width: 30%; height: 24px;"></ion-skeleton-text>
-        </ion-card-header>
-        <ion-card-content>
-          <ion-skeleton-text [animated]="true" style="width: 100%; height: 20px; margin-bottom: 8px;"></ion-skeleton-text>
-          <ion-skeleton-text [animated]="true" style="width: 90%; height: 20px; margin-bottom: 8px;"></ion-skeleton-text>
-          <ion-skeleton-text [animated]="true" style="width: 95%; height: 20px;"></ion-skeleton-text>
-        </ion-card-content>
-      </ion-card>
+    <ion-card>
+      <ion-card-header>
+        <ion-skeleton-text [animated]="true" style="width: 30%; height: 24px;"></ion-skeleton-text>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-skeleton-text [animated]="true" style="width: 100%; height: 20px; margin-bottom: 8px;"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 90%; height: 20px; margin-bottom: 8px;"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 95%; height: 20px;"></ion-skeleton-text>
+      </ion-card-content>
+    </ion-card>
     }
-  }
+    }
 
-  <!-- Contenido principal con preguntas -->
-  @if (selectedExam && initialLoadComplete) {
+    <!-- Contenido principal con preguntas -->
+    @if (selectedExam && initialLoadComplete) {
     <!-- Tarjeta de control y progreso -->
     <ion-card color="primary">
       <ion-card-content>
         <ion-grid class="ion-no-padding">
           <ion-row class="ion-align-items-center">
             <ion-col size="auto">
-              <ion-button
-                [color]="isSpeaking ? 'warning' : 'success'"
-                size="large"
-                fill="solid"
-                shape="round"
+              <ion-button [color]="isSpeaking ? 'warning' : (questions.length > 0 ? 'success' : 'medium')"
+                [disabled]="questions.length === 0" 
+                size="large" 
+                fill="solid" 
+                shape="round" 
+                class="voice-play-button"
+                [class.speaking]="isSpeaking"
                 (click)="toggleSpeech()">
                 <ion-icon [name]="isSpeaking ? 'pause' : 'play'" slot="icon-only"></ion-icon>
               </ion-button>
@@ -97,8 +98,7 @@
                 <p class="ion-no-margin"><strong>{{ progressText }}</strong></p>
                 <p class="ion-no-margin" style="font-size: 0.9em;">{{ progressPercent }}% completado</p>
               </ion-text>
-              <ion-progress-bar
-                [value]="progressPercent / 100"
+              <ion-progress-bar [value]="progressPercent / 100"
                 [color]="progressPercent === 100 ? 'success' : 'light'">
               </ion-progress-bar>
             </ion-col>
@@ -114,98 +114,100 @@
 
     <!-- Lista de preguntas -->
     @for (question of questions; track question.numberQuestion) {
-      <ion-card
-        [id]="'voice-question-' + question.numberQuestion"
-        [color]="question.numberQuestion === currentQuestionNumber ? 'primary' : undefined"
-        [button]="true"
-        (click)="goToQuestion(question.numberQuestion)">
+    <ion-card [id]="'voice-question-' + question.numberQuestion"
+      [color]="question.numberQuestion === currentQuestionNumber ? 'primary' : undefined" 
+      [button]="true"
+      class="voice-transition"
+      (click)="goToQuestion(question.numberQuestion)">
 
-        <ion-card-header>
-          <ion-grid class="ion-no-padding">
-            <ion-row class="ion-align-items-center ion-justify-content-between">
-              <ion-col size="auto">
-                <ion-chip [color]="question.numberQuestion === currentQuestionNumber ? 'light' : (isCompleted(question.numberQuestion) ? 'success' : 'medium')">
-                  <ion-icon [name]="isCompleted(question.numberQuestion) ? 'checkmark-circle' : 'checkmark-circle-outline'"></ion-icon>
-                  <ion-label><strong>Pregunta {{ question.numberQuestion }}</strong></ion-label>
-                </ion-chip>
-              </ion-col>
-              @if (isCompleted(question.numberQuestion)) {
-                <ion-col>
-                  <ion-badge [color]="question.numberQuestion === currentQuestionNumber ? 'light' : 'success'">
-                    <ion-icon name="checkmark" style="margin-right: 4px;"></ion-icon>
-                    Leída
-                  </ion-badge>
-                </ion-col>
-              }
-              @if (question.numberQuestion === currentQuestionNumber && isSpeaking) {
-                <ion-col size="auto">
-                  <ion-chip color="warning">
-                    <ion-icon name="volume-high"></ion-icon>
-                    <ion-label>Leyendo</ion-label>
-                  </ion-chip>
-                </ion-col>
-              }
-            </ion-row>
-          </ion-grid>
-        </ion-card-header>
+      <ion-card-header>
+        <ion-grid class="ion-no-padding">
+          <ion-row class="ion-align-items-center ion-justify-content-between">
+            <ion-col size="auto">
+              <ion-chip
+                [color]="question.numberQuestion === currentQuestionNumber ? 'light' : (isCompleted(question.numberQuestion) ? 'success' : 'medium')">
+                <ion-icon
+                  [name]="isCompleted(question.numberQuestion) ? 'checkmark-circle' : 'checkmark-circle-outline'"></ion-icon>
+                <ion-label><strong>Pregunta {{ question.numberQuestion }}</strong></ion-label>
+              </ion-chip>
+            </ion-col>
+            @if (isCompleted(question.numberQuestion)) {
+            <ion-col>
+              <ion-badge [color]="question.numberQuestion === currentQuestionNumber ? 'light' : 'success'">
+                <ion-icon name="checkmark" style="margin-right: 4px;"></ion-icon>
+                Leída
+              </ion-badge>
+            </ion-col>
+            }
+            @if (question.numberQuestion === currentQuestionNumber && isSpeaking) {
+            <ion-col size="auto">
+              <ion-chip color="warning">
+                <ion-icon name="volume-high"></ion-icon>
+                <ion-label>Leyendo</ion-label>
+              </ion-chip>
+            </ion-col>
+            }
+          </ion-row>
+        </ion-grid>
+      </ion-card-header>
 
-        <ion-card-content>
-          <!-- Pregunta -->
-          <ion-text>
-            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 12px;">
-              {{ question.shortQuestion }}
-            </p>
-          </ion-text>
+      <ion-card-content>
+        <!-- Pregunta -->
+        <ion-text>
+          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 12px;">
+            {{ question.shortQuestion }}
+          </p>
+        </ion-text>
 
-          <!-- Respuesta -->
-          @if (question.correctAnswer) {
-            <ion-grid class="ion-no-padding">
-              <ion-row class="ion-align-items-start">
-                <ion-col size="auto">
-                  <ion-icon name="checkmark-circle" color="success" style="font-size: 20px; margin-top: 2px;"></ion-icon>
-                </ion-col>
-                <ion-col>
-                  <ion-text>
-                    <p style="margin: 0; font-size: 15px; line-height: 1.5;">
-                      <strong>{{ question.correctAnswer }}</strong>
-                    </p>
-                  </ion-text>
-                </ion-col>
-              </ion-row>
-            </ion-grid>
-          }
-        </ion-card-content>
-      </ion-card>
+        <!-- Respuesta -->
+        @if (question.correctAnswer) {
+        <ion-grid class="ion-no-padding">
+          <ion-row class="ion-align-items-start">
+            <ion-col size="auto">
+              <ion-icon name="checkmark-circle" color="success" style="font-size: 20px; margin-top: 2px;"></ion-icon>
+            </ion-col>
+            <ion-col>
+              <ion-text>
+                <p style="margin: 0; font-size: 15px; line-height: 1.5;">
+                  <strong>{{ question.correctAnswer }}</strong>
+                </p>
+              </ion-text>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+        }
+      </ion-card-content>
+    </ion-card>
     }
 
     <!-- Sin preguntas -->
     @if (questions.length === 0) {
-      <ion-card>
-        <ion-card-content class="ion-text-center">
-          <ion-icon name="alert-circle" size="large" color="warning" style="font-size: 64px;"></ion-icon>
-          <h3>No hay preguntas</h3>
-          <ion-text color="medium">
-            <p>No se encontraron preguntas para este examen</p>
-          </ion-text>
-        </ion-card-content>
-      </ion-card>
+    <ion-card>
+      <ion-card-content class="ion-text-center">
+        <ion-icon name="alert-circle" size="large" color="warning" style="font-size: 64px;"></ion-icon>
+        <h3>No hay preguntas</h3>
+        <ion-text color="medium">
+          <p>No se encontraron preguntas para este examen</p>
+          <p>Intenta actualizar o seleccionar otro examen</p>
+        </ion-text>
+        <ion-button (click)="reloadQuestions()" color="primary" fill="outline" class="ion-margin-top">
+          <ion-icon name="refresh" slot="start"></ion-icon>
+          Reintentar carga
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
     }
 
     <!-- FAB de navegación: Anterior (izquierda) -->
     <ion-fab vertical="bottom" horizontal="start" slot="fixed">
-      <ion-fab-button
-        color="secondary"
-        (click)="goToPreviousQuestion()"
-        [disabled]="currentQuestionNumber <= 1">
+      <ion-fab-button color="secondary" (click)="goToPreviousQuestion()" [disabled]="currentQuestionNumber <= 1">
         <ion-icon name="chevron-up"></ion-icon>
       </ion-fab-button>
     </ion-fab>
 
     <!-- FAB de navegación: Siguiente (derecha) -->
     <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-      <ion-fab-button
-        color="secondary"
-        (click)="goToNextQuestion()"
+      <ion-fab-button color="secondary" (click)="goToNextQuestion()"
         [disabled]="currentQuestionNumber >= totalQuestions">
         <ion-icon name="chevron-down"></ion-icon>
       </ion-fab-button>
@@ -218,30 +220,23 @@
       </ion-fab-button>
 
       <ion-fab-list side="bottom">
-        <ion-fab-button
-          color="medium"
-          (click)="openGoToDialog()">
+        <ion-fab-button color="medium" (click)="openGoToDialog()">
           <ion-icon name="navigate"></ion-icon>
         </ion-fab-button>
 
-        <ion-fab-button
-          color="success"
-          (click)="markAllPreviousComplete()"
-          [disabled]="currentQuestionNumber <= 0">
+        <ion-fab-button color="success" (click)="markAllPreviousComplete()" [disabled]="currentQuestionNumber <= 0">
           <ion-icon name="checkmark-done"></ion-icon>
         </ion-fab-button>
 
-        <ion-fab-button
-          color="primary"
-          (click)="handleRefresh($event)">
+        <ion-fab-button color="primary" (click)="handleRefresh($event)">
           <ion-icon name="refresh"></ion-icon>
         </ion-fab-button>
       </ion-fab-list>
     </ion-fab>
-  }
-</ion-content>
+    }
+  </ion-content>
 
-<app-footer translucent="true" footerText="© {{ appSettings.nameCompany }} BackOffice" />
+  <app-footer translucent="true" footerText="© {{ appSettings.nameCompany }} BackOffice" />
 }
 
 <!-- ========== VERSIÓN DESKTOP (COLOR-ADMIN) ========== -->
@@ -262,255 +257,282 @@
 
   <!-- Sin examen seleccionado -->
   @if (!selectedExam) {
-    <div class="row">
-      <div class="col-xl-12">
-        <panel title="Seleccionar Examen">
-          <div class="text-center py-5">
-            <i class="fa fa-microphone fa-5x text-muted mb-4"></i>
-            <h3>Selecciona un examen para comenzar</h3>
-            <p class="text-muted mb-4">El sistema leerá las preguntas en voz alta y te permitirá navegar entre ellas</p>
+  <div class="row">
+    <div class="col-xl-12">
+      <panel title="Seleccionar Examen">
+        <div class="text-center py-5">
+          <i class="fa fa-microphone fa-5x text-muted mb-4"></i>
+          <h3>Selecciona un examen para comenzar</h3>
+          <p class="text-muted mb-4">El sistema leerá las preguntas en voz alta y te permitirá navegar entre ellas</p>
 
-            <div class="row justify-content-center">
-              <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Examen</label>
-                  <select class="form-select" (change)="onExamSelected($event)">
-                    <option value="">Selecciona un examen...</option>
-                    @for (pdf of availablePdfs; track pdf.id) {
-                      <option [value]="pdf.id">{{ pdf.displayName }}</option>
-                    }
-                  </select>
-                </div>
+          <div class="row justify-content-center">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Examen</label>
+                <select class="form-select" (change)="onExamSelectedDesktop($event)">
+                  <option value="">Selecciona un examen...</option>
+                  @for (pdf of availablePdfs; track pdf.id) {
+                  <option [value]="pdf.id">{{ pdf.displayName }}</option>
+                  }
+                </select>
               </div>
             </div>
           </div>
-        </panel>
-      </div>
+        </div>
+      </panel>
     </div>
+  </div>
   }
 
   <!-- Loading -->
   @if (selectedExam && !initialLoadComplete) {
-    <div class="row">
-      <div class="col-xl-12">
-        <panel title="Cargando preguntas">
-          <div class="text-center py-4">
-            <div class="spinner-border text-primary mb-3" role="status">
-              <span class="visually-hidden">Cargando...</span>
-            </div>
-            <h4>Preparando {{ selectedExam.displayName }}</h4>
-            <p class="text-muted">Cargando preguntas y preparando síntesis de voz...</p>
+  <div class="row">
+    <div class="col-xl-12">
+      <panel title="Cargando preguntas">
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Cargando...</span>
           </div>
-        </panel>
-      </div>
+          <h4>Preparando {{ selectedExam.displayName }}</h4>
+          <p class="text-muted">Cargando preguntas y preparando síntesis de voz...</p>
+        </div>
+      </panel>
     </div>
+  </div>
   }
 
   <!-- Contenido principal -->
   @if (selectedExam && initialLoadComplete) {
-    <!-- row para controles y estadísticas -->
-    <div class="row mb-3">
-      <!-- Panel de control de reproducción -->
-      <div class="col-xl-6">
-        <div class="card border-0 bg-primary text-white mb-3">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="flex-grow-1">
-                <h5 class="mb-1">{{ selectedExam.displayName }}</h5>
-                <div class="d-flex align-items-center mb-2">
-                  <button 
-                    class="btn btn-lg me-2"
-                    [class]="isSpeaking ? 'btn-warning' : 'btn-success'"
-                    (click)="toggleSpeech()">
-                    <i [class]="isSpeaking ? 'fa fa-pause' : 'fa fa-play'"></i>
-                    {{ isSpeaking ? 'Pausar' : 'Reproducir' }}
-                  </button>
-                  <button class="btn btn-outline-light btn-sm me-2" (click)="goToPreviousQuestionAndRead()" [disabled]="currentQuestionNumber <= 1">
-                    <i class="fa fa-step-backward"></i>
-                  </button>
-                  <button class="btn btn-outline-light btn-sm me-2" (click)="goToNextQuestionAndRead()" [disabled]="currentQuestionNumber >= totalQuestions">
-                    <i class="fa fa-step-forward"></i>
-                  </button>
-                  <button class="btn btn-outline-light btn-sm" (click)="goBackToSelector()">
-                    <i class="fa fa-times"></i> Cambiar examen
-                  </button>
+  <!-- row para controles y estadísticas -->
+  <div class="row mb-3">
+    <!-- Panel de control de reproducción -->
+    <div class="col-xl-6">
+      <div class="card border-0 bg-primary text-white mb-3">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h5 class="mb-1">{{ selectedExam.displayName }}</h5>
+              <div class="d-flex align-items-center mb-2">
+                <button class="btn btn-lg me-2"
+                  [class]="isSpeaking ? 'btn-warning' : (questions.length > 0 ? 'btn-success' : 'btn-secondary')"
+                  [disabled]="questions.length === 0" (click)="toggleSpeech()">
+                  <i [class]="isSpeaking ? 'fa fa-pause' : 'fa fa-play'"></i>
+                  {{ isSpeaking ? 'Pausar' : 'Reproducir' }}
+                </button>
+                <button class="btn btn-outline-light btn-sm me-2" (click)="goToPreviousQuestionAndRead()"
+                  [disabled]="currentQuestionNumber <= 1">
+                  <i class="fa fa-step-backward"></i>
+                </button>
+                <button class="btn btn-outline-light btn-sm me-2" (click)="goToNextQuestionAndRead()"
+                  [disabled]="currentQuestionNumber >= totalQuestions">
+                  <i class="fa fa-step-forward"></i>
+                </button>
+                <button class="btn btn-outline-light btn-sm" (click)="goBackToSelector()">
+                  <i class="fa fa-times"></i> Cambiar examen
+                </button>
+              </div>
+              <div class="progress bg-dark" style="height: 8px;">
+                <div class="progress-bar" [class]="progressPercent === 100 ? 'bg-success' : 'bg-light'"
+                  [style.width.%]="progressPercent">
                 </div>
-                <div class="progress bg-dark" style="height: 8px;">
-                  <div 
-                    class="progress-bar"
-                    [class]="progressPercent === 100 ? 'bg-success' : 'bg-light'"
-                    [style.width.%]="progressPercent">
-                  </div>
-                </div>
-                <small class="d-block mt-1">{{ progressText }} ({{ progressPercent }}%)</small>
+              </div>
+              <small class="d-block mt-1">{{ progressText }} ({{ progressPercent }}%)</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats bg-success">
+        <div class="stats-icon stats-icon-lg"><i class="fa fa-check-circle fa-fw"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">COMPLETADAS</div>
+          <div class="stats-number">{{ completedCount }}</div>
+          <div class="stats-desc">de {{ totalQuestions }} preguntas</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats bg-blue">
+        <div class="stats-icon stats-icon-lg"><i class="fa fa-list fa-fw"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">ACTUAL</div>
+          <div class="stats-number">{{ currentQuestionNumber }}</div>
+          <div class="stats-desc">Pregunta en reproducción</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- row para preguntas y acciones -->
+  <div class="row">
+    <!-- Lista de preguntas -->
+    <div class="col-xl-9">
+      <panel title="Preguntas del Examen">
+        @if (questions.length > 0) {
+        <!-- Info de navegación -->
+        <div class="bg-light p-3 rounded mb-3 d-flex justify-content-between align-items-center">
+          <div>
+            <small class="text-muted">
+              <i class="fa fa-list me-1"></i>
+              <strong>{{ questions.length }}</strong> preguntas totales |
+              <i class="fa fa-check-circle text-success me-1"></i>
+              <strong class="text-success">{{ completedCount }}</strong> completadas |
+              <i class="fa fa-arrow-right text-primary me-1"></i>
+              Actual: <strong class="text-primary">{{ currentQuestionNumber || 'Ninguna' }}</strong>
+            </small>
+            <div class="progress mt-1" style="height: 4px; width: 200px;">
+              <div class="progress-bar bg-success" [style.width.%]="progressPercent">
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Estadísticas -->
-      <div class="col-xl-3 col-md-6">
-        <div class="widget widget-stats bg-success">
-          <div class="stats-icon stats-icon-lg"><i class="fa fa-check-circle fa-fw"></i></div>
-          <div class="stats-content">
-            <div class="stats-title">COMPLETADAS</div>
-            <div class="stats-number">{{ completedCount }}</div>
-            <div class="stats-desc">de {{ totalQuestions }} preguntas</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-xl-3 col-md-6">
-        <div class="widget widget-stats bg-blue">
-          <div class="stats-icon stats-icon-lg"><i class="fa fa-list fa-fw"></i></div>
-          <div class="stats-content">
-            <div class="stats-title">ACTUAL</div>
-            <div class="stats-number">{{ currentQuestionNumber }}</div>
-            <div class="stats-desc">Pregunta en reproducción</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- row para preguntas y acciones -->
-    <div class="row">
-      <!-- Lista de preguntas -->
-      <div class="col-xl-9">
-        <panel title="Preguntas del Examen">
-          @if (questions.length > 0) {
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead>
-                  <tr>
-                    <th width="80">#</th>
-                    <th>Pregunta</th>
-                    <th>Respuesta Correcta</th>
-                    <th width="100" class="text-center">Estado</th>
-                    <th width="120" class="text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (question of questions; track question.numberQuestion) {
-                    <tr 
-                      [id]="'voice-question-' + question.numberQuestion"
-                      [class]="question.numberQuestion === currentQuestionNumber ? 'table-primary' : ''">
-                      <td>
-                        <strong>{{ question.numberQuestion }}</strong>
-                        @if (question.numberQuestion === currentQuestionNumber && isSpeaking) {
-                          <i class="fa fa-volume-up text-warning ms-1"></i>
-                        }
-                      </td>
-                      <td>
-                        <div style="max-width: 400px;">
-                          {{ question.shortQuestion }}
-                        </div>
-                      </td>
-                      <td>
-                        <div style="max-width: 300px;">
-                          <strong class="text-success">{{ question.correctAnswer }}</strong>
-                        </div>
-                      </td>
-                      <td class="text-center">
-                        @if (isCompleted(question.numberQuestion)) {
-                          <span class="badge bg-success">
-                            <i class="fa fa-check me-1"></i>Leída
-                          </span>
-                        } @else {
-                          <span class="badge bg-secondary">Pendiente</span>
-                        }
-                      </td>
-                      <td class="text-center">
-                        <button 
-                          class="btn btn-sm btn-outline-primary"
-                          (click)="goToQuestion(question.numberQuestion)"
-                          title="Ir a esta pregunta">
-                          <i class="fa fa-play"></i>
-                        </button>
-                        @if (!isCompleted(question.numberQuestion)) {
-                          <button 
-                            class="btn btn-sm btn-outline-success ms-1"
-                            (click)="toggleCompleteManual(question)"
-                            title="Marcar como leída">
-                            <i class="fa fa-check"></i>
-                          </button>
-                        }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <div class="text-center py-4">
-              <i class="fa fa-exclamation-triangle fa-3x text-warning mb-3"></i>
-              <h4>No hay preguntas disponibles</h4>
-              <p class="text-muted">No se encontraron preguntas para este examen</p>
-            </div>
-          }
-        </panel>
-      </div>
-
-      <!-- Panel de acciones -->
-      <div class="col-xl-3">
-        <panel title="Acciones Rápidas">
-          <div class="d-grid gap-2">
-            <button 
-              class="btn btn-primary"
-              (click)="openGoToDialog()">
-              <i class="fa fa-search me-2"></i>Ir a pregunta
-            </button>
-            
-            <button 
-              class="btn btn-success"
-              (click)="markAllPreviousComplete()"
-              [disabled]="currentQuestionNumber <= 0">
-              <i class="fa fa-check-double me-2"></i>Marcar hasta aquí
-            </button>
-
-            <hr>
-
-            <button 
-              class="btn btn-outline-secondary"
-              (click)="toggleAutoRead()">
-              <i [class]="autoReadNext ? 'fa fa-toggle-on text-success' : 'fa fa-toggle-off'" class="me-2"></i>
-              Lectura automática
-            </button>
-
-            <button 
-              class="btn btn-outline-secondary"
-              (click)="handleRefresh($event)">
-              <i class="fa fa-sync me-2"></i>Actualizar
-            </button>
-          </div>
-        </panel>
-
-        <!-- Información adicional -->
-        <panel title="Información">
-          <div class="mb-3">
-            <label class="text-muted small">Velocidad de lectura:</label>
-            <div>0.9x (Normal)</div>
-          </div>
-          <div class="mb-3">
-            <label class="text-muted small">Idioma:</label>
-            <div>Español (ES)</div>
-          </div>
           <div>
-            <label class="text-muted small">Soporte de voz:</label>
-            <div>
-              @if (speechSynthesis) {
-                <span class="badge bg-success">
-                  <i class="fa fa-check me-1"></i>Disponible
-                </span>
-              } @else {
-                <span class="badge bg-danger">
-                  <i class="fa fa-times me-1"></i>No disponible
-                </span>
-              }
-            </div>
+            <button class="btn btn-sm btn-outline-secondary me-2" (click)="scrollToCurrentQuestion()"
+              [disabled]="currentQuestionNumber <= 0">
+              <i class="fa fa-crosshairs me-1"></i>Ir a actual
+            </button>
+            <button class="btn btn-sm btn-outline-primary" (click)="goToQuestion(1)">
+              <i class="fa fa-arrow-up me-1"></i>Inicio
+            </button>
           </div>
-        </panel>
-      </div>
+        </div>
+
+        <!-- Tabla con scroll -->
+        <div class="voice-questions-table-container">
+          <table class="table table-hover mb-0 table-sm">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th width="60">#</th>
+                <th>Pregunta</th>
+                <th width="200">Respuesta Correcta</th>
+                <th width="80" class="text-center">Estado</th>
+                <th width="120" class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (question of questions; track question.numberQuestion) {
+              <tr [id]="'voice-question-' + question.numberQuestion"
+                [class]="question.numberQuestion === currentQuestionNumber ? 'table-primary' : ''">
+                <td class="align-middle">
+                  <div class="d-flex align-items-center">
+                    <strong>{{ question.numberQuestion }}</strong>
+                    @if (question.numberQuestion === currentQuestionNumber) {
+                    <i class="fa fa-arrow-right text-primary ms-2" title="Pregunta actual"></i>
+                    }
+                    @if (question.numberQuestion === currentQuestionNumber && isSpeaking) {
+                    <i class="fa fa-volume-up text-warning ms-1" title="Reproduciéndose"></i>
+                    }
+                  </div>
+                </td>
+                <td class="align-middle">
+                  <div style="max-width: 350px; font-size: 0.9em; line-height: 1.4;" [title]="question.shortQuestion">
+                    {{ truncateText(question.shortQuestion, 120) }}
+                  </div>
+                </td>
+                <td class="align-middle">
+                  <div style="max-width: 180px; font-size: 0.85em;" [title]="question.correctAnswer">
+                    <strong class="text-success">
+                      {{ truncateText(question.correctAnswer || '', 50) }}
+                    </strong>
+                  </div>
+                </td>
+                <td class="text-center align-middle">
+                  @if (isCompleted(question.numberQuestion)) {
+                  <span class="badge bg-success" title="Pregunta leída">
+                    <i class="fa fa-check me-1"></i>Leída
+                  </span>
+                  } @else {
+                  <span class="badge bg-secondary" title="Pregunta pendiente">Pendiente</span>
+                  }
+                </td>
+                <td class="text-center align-middle">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-primary"
+                      [class.btn-primary]="question.numberQuestion === currentQuestionNumber"
+                      (click)="goToQuestionAndRead(question.numberQuestion)" title="Ir a esta pregunta y leer">
+                      <i class="fa fa-play"></i>
+                    </button>
+                    @if (!isCompleted(question.numberQuestion)) {
+                    <button class="btn btn-outline-success" (click)="toggleCompleteManual(question)"
+                      title="Marcar como leída">
+                      <i class="fa fa-check"></i>
+                    </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        } @else {
+        <div class="text-center py-4">
+          <i class="fa fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+          <h4>No hay preguntas disponibles</h4>
+          <p class="text-muted">No se encontraron preguntas para este examen</p>
+          <p class="text-muted">Intenta recargar las preguntas o selecciona otro examen</p>
+          <button class="btn btn-primary mt-3" (click)="reloadQuestions()">
+            <i class="fa fa-refresh me-2"></i>Reintentar carga
+          </button>
+        </div>
+        }
+      </panel>
     </div>
-  }
+
+    <!-- Panel de acciones -->
+    <div class="col-xl-3">
+      <panel title="Acciones Rápidas">
+        <div class="d-grid gap-2">
+          <button class="btn btn-primary" (click)="openGoToDialog()">
+            <i class="fa fa-search me-2"></i>Ir a pregunta
+          </button>
+
+          <button class="btn btn-success" (click)="markAllPreviousComplete()" [disabled]="currentQuestionNumber <= 0">
+            <i class="fa fa-check-double me-2"></i>Marcar hasta aquí
+          </button>
+
+          <hr>
+
+          <button class="btn btn-outline-secondary" (click)="toggleAutoRead()">
+            <i [class]="autoReadNext ? 'fa fa-toggle-on text-success' : 'fa fa-toggle-off'" class="me-2"></i>
+            Lectura automática
+          </button>
+
+          <button class="btn btn-outline-secondary" (click)="handleRefresh($event)">
+            <i class="fa fa-sync me-2"></i>Actualizar
+          </button>
+        </div>
+      </panel>
+
+      <!-- Información adicional -->
+      <panel title="Información">
+        <div class="mb-3">
+          <label class="text-muted small">Velocidad de lectura:</label>
+          <div>0.9x (Normal)</div>
+        </div>
+        <div class="mb-3">
+          <label class="text-muted small">Idioma:</label>
+          <div>Español (ES)</div>
+        </div>
+        <div>
+          <label class="text-muted small">Soporte de voz:</label>
+          <div>
+            @if (speechSynthesis) {
+            <span class="badge bg-success">
+              <i class="fa fa-check me-1"></i>Disponible
+            </span>
+            } @else {
+            <span class="badge bg-danger">
+              <i class="fa fa-times me-1"></i>No disponible
+            </span>
+            }
+          </div>
+        </div>
+      </panel>
+    </div>
+  </div>
+}
 }

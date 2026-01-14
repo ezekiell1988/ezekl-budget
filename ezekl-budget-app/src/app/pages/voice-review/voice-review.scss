@@ -1,0 +1,57 @@
+/* =====================================================
+   VOICE REVIEW PAGE - CSS ESTRICTAMENTE NECESARIO
+   
+   Solo estilos que NO están disponibles en Ionic/Color-Admin
+   ===================================================== */
+
+.voice-review-page {
+  
+  /* Animación del botón de play (no disponible en frameworks) */
+  .voice-play-button.speaking {
+    animation: voice-pulse 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes voice-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { 
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+    }
+  }
+  
+  /* Contenedor de tabla con scroll personalizado (desktop) */
+  .voice-questions-table-container {
+    max-height: 600px;
+    overflow-y: auto;
+    
+    /* Scrollbar personalizado */
+    &::-webkit-scrollbar { width: 8px; }
+    &::-webkit-scrollbar-track { 
+      background: #f8f9fa; 
+      border-radius: 4px; 
+    }
+    &::-webkit-scrollbar-thumb { 
+      background: #6c757d; 
+      border-radius: 4px;
+      &:hover { background: #495057; }
+    }
+    
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #6c757d #f8f9fa;
+  }
+  
+  /* Header sticky (mejorar funcionalidad de tabla) */
+  .voice-questions-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  /* Mobile: altura menor */
+  @media (max-width: 768px) {
+    .voice-questions-table-container {
+      max-height: 400px;
+    }
+  }
+}

@@ -76,6 +76,7 @@ const AVAILABLE_PDFS: ExamPdf[] = [
 @Component({
   selector: 'voice-review',
   templateUrl: './voice-review.html',
+  styleUrls: ['./voice-review.scss'],
   standalone: true,
   imports: [
     CommonModule,
@@ -179,10 +180,13 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
   }
 
   ngOnInit() {
+    this.logger.debug('VoiceReviewPage ngOnInit');
+    
     // Suscribirse a los cambios del servicio
     this.examQuestionService.questions
       .pipe(takeUntil(this.destroy$))
       .subscribe(questions => {
+        this.logger.debug('Questions updated from service:', questions.length);
         this.questions = questions;
         this.updateCurrentQuestion();
       });
@@ -190,18 +194,21 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
     this.examQuestionService.loading
       .pipe(takeUntil(this.destroy$))
       .subscribe(loading => {
+        this.logger.debug('Loading state changed:', loading);
         this.loading = loading;
       });
 
     this.examQuestionService.hasMore
       .pipe(takeUntil(this.destroy$))
       .subscribe(hasMore => {
+        this.logger.debug('HasMore changed:', hasMore);
         this.hasMore = hasMore;
       });
 
     this.examQuestionService.totalItems
       .pipe(takeUntil(this.destroy$))
       .subscribe(total => {
+        this.logger.debug('TotalItems changed:', total);
         this.totalQuestions = total;
       });
   }
@@ -223,8 +230,16 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
    * Actualizar la pregunta actual
    */
   private updateCurrentQuestion() {
+    this.logger.debug('updateCurrentQuestion called, currentQuestionNumber:', this.currentQuestionNumber);
+    
     if (this.currentQuestionNumber > 0) {
       this.currentQuestion = this.questions.find(q => q.numberQuestion === this.currentQuestionNumber) || null;
+      this.logger.debug('currentQuestion found:', !!this.currentQuestion);
+    } else if (this.questions.length > 0) {
+      // Fallback: si no hay número actual pero hay preguntas, seleccionar la primera
+      this.currentQuestionNumber = this.questions[0].numberQuestion;
+      this.currentQuestion = this.questions[0];
+      this.logger.debug('Fallback: selected first question:', this.currentQuestionNumber);
     }
   }
 
@@ -245,8 +260,20 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
    * Cuando se selecciona un examen del dropdown
    */
   async onExamSelected(event: any) {
-    const examId = event.detail.value;
-    this.selectedExam = this.availablePdfs.find(pdf => pdf.id === examId) || null;
+    // Manejar tanto eventos de Ionic (event.detail.value) como HTML estándar (event.target.value)
+    const examId = event.detail?.value || event.target?.value;
+    
+    this.logger.debug('Examen seleccionado:', examId);
+    
+    if (!examId) {
+      this.logger.debug('No se seleccionó ningún examen');
+      return;
+    }
+
+    const selectedPdf = this.availablePdfs.find(pdf => pdf.id == examId); // Usar == para conversión de tipo
+    this.selectedExam = selectedPdf || null;
+
+    this.logger.debug('PDF encontrado:', this.selectedExam);
 
     if (this.selectedExam) {
       // Detener voz si está activa
@@ -258,33 +285,108 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
       this.examQuestionService.clearState();
 
       // Cargar todas las preguntas
-      await this.loadAllQuestions(examId);
+      await this.loadAllQuestions(Number(examId));
+    }
+  }
+
+  /**
+   * Método específico para manejar la selección en desktop (HTML select)
+   */
+  async onExamSelectedDesktop(event: any) {
+    const examId = event.target.value;
+    
+    this.logger.debug('Examen seleccionado (desktop):', examId);
+    
+    if (!examId) {
+      this.logger.debug('No se seleccionó ningún examen');
+      return;
+    }
+
+    const selectedPdf = this.availablePdfs.find(pdf => pdf.id == examId); // Usar == para conversión de tipo
+    this.selectedExam = selectedPdf || null;
+
+    this.logger.debug('PDF encontrado (desktop):', this.selectedExam);
+
+    if (this.selectedExam) {
+      // Detener voz si está activa
+      this.stopSpeech();
+
+      // Limpiar estado anterior
+      this.questions = [];
+      this.initialLoadComplete = false;
+      this.examQuestionService.clearState();
+
+      // Cargar todas las preguntas
+      await this.loadAllQuestions(Number(examId));
+    }
+  }
+
+  /**
+   * Truncar texto para mostrar en la tabla
+   */
+  truncateText(text: string, maxLength: number): string {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  }
+
+  /**
+   * Método público para recargar preguntas desde el template
+   */
+  async reloadQuestions() {
+    if (this.selectedExam) {
+      this.questions = [];
+      this.initialLoadComplete = false;
+      this.examQuestionService.clearState();
+      await this.loadAllQuestions(this.selectedExam.id);
     }
   }
 
   /**
    * Cargar todas las preguntas
    */
-  private async loadAllQuestions(examId: number) {
+  async loadAllQuestions(examId: number) {
     this.loading = true;
+    this.logger.debug('Iniciando carga de preguntas para examId:', examId);
 
     try {
       // Cargar en lotes de 100
+      let loadedCount = 0;
       while (this.hasMore) {
+        this.logger.debug(`Cargando lote ${Math.floor(loadedCount / 100) + 1}...`);
+        
         await this.examQuestionService.loadQuestions(examId, {
           sort: 'numberQuestion_asc',
           itemPerPage: 100
         }, this.questions.length > 0).toPromise();
+        
+        loadedCount = this.questions.length;
+        this.logger.debug(`Preguntas cargadas hasta ahora: ${loadedCount}`);
       }
 
+      this.logger.debug(`Carga completada. Total de preguntas: ${this.questions.length}`);
       this.initialLoadComplete = true;
 
       // Seleccionar la última pregunta leída
       this.selectLastReadQuestion();
+      
+      // Forzar detección de cambios
+      this.cdr.detectChanges();
+      
     } catch (error) {
       this.logger.error('Error cargando preguntas:', error);
+      await this.showToast('Error al cargar las preguntas del examen', 'danger');
+      
+      // En lugar de resetear completamente, marcar como completado para mostrar la interfaz
+      // pero sin preguntas, así el usuario puede intentar de nuevo
+      this.initialLoadComplete = true;
+      this.questions = []; // Asegurar que la lista esté vacía
+      
+      // NO resetear selectedExam para mantener la interfaz visible
+      // this.selectedExam = null;  // COMENTADO para mantener la interfaz
+      
     } finally {
       this.loading = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -382,6 +484,13 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
    * Seleccionar la última pregunta leída automáticamente
    */
   private selectLastReadQuestion() {
+    this.logger.debug('selectLastReadQuestion called, questions length:', this.questions.length);
+    
+    if (this.questions.length === 0) {
+      this.logger.warn('No questions available');
+      return;
+    }
+
     let lastReadIndex = -1;
     for (let i = this.questions.length - 1; i >= 0; i--) {
       if (this.questions[i].readed) {
@@ -390,6 +499,8 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
       }
     }
 
+    this.logger.debug('lastReadIndex:', lastReadIndex);
+
     if (lastReadIndex >= 0 && lastReadIndex < this.questions.length - 1) {
       this.currentQuestionNumber = this.questions[lastReadIndex + 1].numberQuestion;
     } else if (lastReadIndex === this.questions.length - 1) {
@@ -397,6 +508,8 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
     } else {
       this.currentQuestionNumber = this.questions[0]?.numberQuestion || 1;
     }
+
+    this.logger.debug('Selected currentQuestionNumber:', this.currentQuestionNumber);
 
     this.updateCurrentQuestion();
     this.scrollToCurrentQuestion();
@@ -491,6 +604,24 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
   }
 
   /**
+   * Ir a una pregunta específica y comenzar a leer automáticamente
+   */
+  goToQuestionAndRead(questionNumber: number) {
+    const question = this.questions.find(q => q.numberQuestion === questionNumber);
+    if (question) {
+      this.stopSpeech();
+      this.currentQuestionNumber = questionNumber;
+      this.updateCurrentQuestion();
+      this.scrollToCurrentQuestion();
+      
+      // Esperar un momento para que se actualice la vista y luego comenzar a leer
+      setTimeout(() => {
+        this.startSpeech();
+      }, 300);
+    }
+  }
+
+  /**
    * Toggle lectura automática
    */
   toggleAutoRead() {
@@ -537,12 +668,35 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
   /**
    * Scroll hacia la pregunta actual en la lista
    */
-  private scrollToCurrentQuestion() {
+  scrollToCurrentQuestion() {
     if (this.currentQuestionNumber > 0) {
       setTimeout(() => {
         const element = document.getElementById(`voice-question-${this.currentQuestionNumber}`);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Si está en una tabla, también hacer scroll del contenedor de la tabla
+          const tableContainer = element.closest('.table-responsive');
+          
+          if (tableContainer) {
+            // Para la versión desktop (tabla)
+            const rect = element.getBoundingClientRect();
+            const containerRect = tableContainer.getBoundingClientRect();
+            
+            if (rect.top < containerRect.top || rect.bottom > containerRect.bottom) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          } else {
+            // Para la versión móvil (cards)
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          
+          // Resaltar temporalmente la pregunta
+          element.style.transition = 'background-color 0.5s ease';
+          const originalBg = element.style.backgroundColor;
+          element.style.backgroundColor = 'var(--bs-warning-bg-subtle)';
+          
+          setTimeout(() => {
+            element.style.backgroundColor = originalBg;
+          }, 1000);
         }
       }, 100);
     }
@@ -602,13 +756,41 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
    * Toggle reproducir/pausar
    */
   toggleSpeech() {
+    this.logger.debug('toggleSpeech called');
+    this.logger.debug('speechSynthesis available:', !!this.speechSynthesis);
+    this.logger.debug('selectedExam:', this.selectedExam);
+    this.logger.debug('initialLoadComplete:', this.initialLoadComplete);
+    this.logger.debug('currentQuestion:', this.currentQuestion);
+    this.logger.debug('questions.length:', this.questions.length);
+    
     if (!this.speechSynthesis) {
+      this.logger.warn('Speech synthesis not available');
       this.showToast('Tu navegador no soporta lectura de voz', 'warning');
       return;
     }
 
+    if (this.questions.length === 0) {
+      this.logger.warn('No questions available');
+      this.showToast('No hay preguntas cargadas para leer', 'warning');
+      return;
+    }
+
+    if (!this.currentQuestion) {
+      this.logger.warn('No current question available, attempting to select first question');
+      if (this.questions.length > 0) {
+        this.currentQuestionNumber = this.questions[0].numberQuestion;
+        this.updateCurrentQuestion();
+      }
+      
+      if (!this.currentQuestion) {
+        this.showToast('Selecciona una pregunta para comenzar', 'warning');
+        return;
+      }
+    }
+
     // Verificar si hay algo reproduciéndose actualmente
     const isCurrentlySpeaking = this.speechSynthesis.speaking && !this.speechSynthesis.paused;
+    this.logger.debug('isCurrentlySpeaking:', isCurrentlySpeaking);
 
     if (isCurrentlySpeaking) {
       this.pauseSpeech();
