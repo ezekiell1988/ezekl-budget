@@ -233,7 +233,7 @@ async def login(data: LoginRequest):
 
 
 @router.get(
-    "/verify-token",
+    "/verify-token.json",
     response_model=VerifyTokenResponse,
     summary="Obtener información del usuario autenticado",
     description="""Endpoint privado que retorna los datos del usuario actual y fecha de vencimiento del token.
@@ -259,7 +259,7 @@ async def login(data: LoginRequest):
         }
     },
 )
-async def verify_token(current_user: CurrentUser = Depends(get_current_user)):
+async def verify_token_json(current_user: CurrentUser = Depends(get_current_user)):
     """
     Endpoint privado que retorna información del usuario autenticado.
 
@@ -291,6 +291,16 @@ async def verify_token(current_user: CurrentUser = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Error obteniendo información de usuario: {str(e)}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+
+@router.get(
+    "/verify-token",
+    response_model=VerifyTokenResponse,
+    include_in_schema=False,
+)
+async def verify_token(current_user: CurrentUser = Depends(get_current_user)):
+    """Alias para /verify-token.json (oculto en Swagger)"""
+    return await verify_token_json(current_user)
 
 
 @router.post(

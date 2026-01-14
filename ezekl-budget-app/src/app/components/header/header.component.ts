@@ -21,7 +21,7 @@ import {
 import { addIcons } from 'ionicons';
 import { notificationsOutline, menuOutline } from 'ionicons/icons';
 import { AppSettings } from "../../service/app-settings.service";
-import { AuthService } from '../../service';
+import { AuthService, LoggerService } from '../../service';
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 declare var slideToggle: any;
@@ -42,6 +42,8 @@ declare var slideToggle: any;
   ],
 })
 export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDestroy {
+  private readonly logger: LoggerService;
+  
   @Input() appSidebarTwo;
   @Input() pageTitle = 'Ezekl Budget'; // Para versión móvil
   @Input() color = 'theme'; // Color del toolbar para versión móvil
@@ -82,10 +84,10 @@ export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDe
   logout(): void {
     this.authService.logout().subscribe({
       next: () => {
-        console.log('Sesión cerrada exitosamente desde header');
+        this.logger.success('Sesión cerrada exitosamente');
       },
       error: (error) => {
-        console.error('Error al cerrar sesión desde header:', error);
+        this.logger.error('Error al cerrar sesión:', error);
         this.authService.clearSession();
       }
     });
@@ -109,9 +111,11 @@ export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDe
     private renderer: Renderer2, 
     public appSettings: AppSettings,
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    loggerService: LoggerService
   ) {
     super();
+    this.logger = loggerService.getLogger('HeaderComponent');
     
     // Registrar íconos de Ionicons para el header móvil
     addIcons({

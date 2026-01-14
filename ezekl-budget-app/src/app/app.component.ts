@@ -1,7 +1,7 @@
-import { Component, OnInit, OnDestroy, signal, computed, ChangeDetectorRef } from "@angular/core";
+import { Component, OnInit, OnDestroy, signal, computed, ChangeDetectorRef, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { Subscription } from "rxjs";
-import { PlatformDetectorService, PlatformMode } from "./service";
+import { PlatformDetectorService, PlatformMode, LoggerService } from "./service";
 import { AppSettings } from "./service/app-settings.service";
 import { MobileLayoutComponent, DesktopLayoutComponent } from "./layouts";
 
@@ -30,6 +30,7 @@ export class AppComponent implements OnInit, OnDestroy {
   isDesktop = computed(() => this.platformMode() === 'desktop');
   
   private platformSubscription: Subscription | null = null;
+  private readonly logger = inject(LoggerService).getLogger('AppComponent');
 
   constructor(
     private platformDetector: PlatformDetectorService,
@@ -70,7 +71,7 @@ export class AppComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       clearInterval(checkInterval);
       if (this.isLoaderVisible()) {
-        console.warn('⚠️ Timeout de carga - mostrando app');
+        this.logger.warn('Timeout de carga - mostrando app');
         this.hideLoader();
       }
     }, 5000);
@@ -88,7 +89,7 @@ export class AppComponent implements OnInit, OnDestroy {
         loader.remove();
       }, 500); // Esperar a que termine la transición
     } else {
-      console.warn('⚠️ Loader ya fue removido');
+      this.logger.warn('Loader ya fue removido');
     }
   }
   

@@ -6,4 +6,12 @@
 export const environment = {
   production: false,
   apiUrl: 'api/v1/',
+  
+  // Configuración de logs
+  logging: {
+    enabled: true, // Habilitar todos los logs en desarrollo
+    showTimestamp: true,
+    showContext: true,
+    useColors: true
+  }
 };

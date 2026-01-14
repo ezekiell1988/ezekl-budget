@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AUDIO_CONFIG, getMicrophoneConstraints } from '../shared/config/audio.config';
+import { LoggerService } from './logger.service';
 
 /**
  * Servicio para manejar la grabación de audio del micrófono
@@ -10,6 +11,7 @@ import { AUDIO_CONFIG, getMicrophoneConstraints } from '../shared/config/audio.c
   providedIn: 'root'
 })
 export class AudioRecorderService {
+  private readonly logger = inject(LoggerService).getLogger('AudioRecorderService');
   private mediaRecorder: MediaRecorder | null = null;
   private audioStream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
@@ -59,9 +61,9 @@ export class AudioRecorderService {
       
       this.setupMediaRecorderEvents();
       
-      console.log('🎤 Micrófono inicializado correctamente');
+      this.logger.success('Micrófono inicializado correctamente');
     } catch (error) {
-      console.error('❌ Error inicializando micrófono:', error);
+      this.logger.error('Error inicializando micrófono:', error);
       throw new Error('No se pudo acceder al micrófono. Verifica los permisos.');
     }
   }
@@ -79,7 +81,7 @@ export class AudioRecorderService {
     };
 
     this.mediaRecorder.onerror = (event: any) => {
-      console.error('❌ Error en MediaRecorder:', event.error);
+      this.logger.error('Error en MediaRecorder:', event.error);
       this.stopRecording();
     };
   }
@@ -89,7 +91,7 @@ export class AudioRecorderService {
    */
   startRecording(): void {
     if (!this.mediaRecorder || this.mediaRecorder.state === 'recording') {
-      console.warn('⚠️ MediaRecorder no disponible o ya está grabando');
+      this.logger.warn('MediaRecorder no disponible o ya está grabando');
       return;
     }
 
@@ -101,9 +103,9 @@ export class AudioRecorderService {
       this.isRecording$.next(true);
       this.startAudioLevelMonitoring();
       
-      console.log('🎤 Grabación iniciada');
+      this.logger.success('Grabación iniciada');
     } catch (error) {
-      console.error('❌ Error al iniciar grabación:', error);
+      this.logger.error('Error al iniciar grabación:', error);
     }
   }
 
@@ -130,7 +132,7 @@ export class AudioRecorderService {
         this.isRecording$.next(false);
         this.stopAudioLevelMonitoring();
         
-        console.log(`🎤 Grabación detenida. Tamaño: ${audioBlob.size} bytes`);
+        this.logger.debug(`Grabación detenida. Tamaño: ${audioBlob.size} bytes`);
         resolve(audioBlob);
       };
 
@@ -146,7 +148,7 @@ export class AudioRecorderService {
       this.mediaRecorder.pause();
       this.isRecording$.next(false);
       this.stopAudioLevelMonitoring();
-      console.log('⏸️ Grabación pausada');
+      this.logger.debug('Grabación pausada');
     }
   }
 
@@ -158,7 +160,7 @@ export class AudioRecorderService {
       this.mediaRecorder.resume();
       this.isRecording$.next(true);
       this.startAudioLevelMonitoring();
-      console.log('▶️ Grabación reanudada');
+      this.logger.debug('Grabación reanudada');
     }
   }
 
@@ -171,7 +173,7 @@ export class AudioRecorderService {
       this.audioChunks = [];
       this.isRecording$.next(false);
       this.stopAudioLevelMonitoring();
-      console.log('🗑️ Grabación descartada');
+      this.logger.debug('Grabación descartada');
     }
   }
 
@@ -240,7 +242,7 @@ export class AudioRecorderService {
     };
 
     checkAudioLevel();
-    console.log('🎤 VAD continuo activado (umbral: ' + AUDIO_CONFIG.vad.energyThreshold + ', frames: ' + AUDIO_CONFIG.vad.consecutiveFrames + ')');
+    this.logger.debug('VAD continuo activado (umbral: ' + AUDIO_CONFIG.vad.energyThreshold + ', frames: ' + AUDIO_CONFIG.vad.consecutiveFrames + ')');
   }
 
   /**
@@ -254,7 +256,7 @@ export class AudioRecorderService {
       this.vadAnimationFrame = null;
     }
     this.audioLevel$.next(0);
-    console.log('🎤 VAD continuo desactivado');
+    this.logger.debug('VAD continuo desactivado');
   }
 
   /**
@@ -307,7 +309,7 @@ export class AudioRecorderService {
     this.isRecording$.next(false);
     this.audioLevel$.next(0);
 
-    console.log('🎤 Micrófono liberado');
+    this.logger.debug('Micrófono liberado');
   }
 
   // ============= Getters =============

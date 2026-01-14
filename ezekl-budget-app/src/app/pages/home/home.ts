@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { addIcons } from 'ionicons';
-import { AppSettings } from '../../service';
+import { AppSettings, LoggerService } from '../../service';
 import { HeaderComponent, FooterComponent } from '../../components';
 import { 
   walletOutline, 
@@ -64,6 +64,8 @@ export class HomePage extends ResponsiveComponent {
     { id: 4, description: 'Transferencia recibida', amount: 500.00, date: new Date(), type: 'income' },
   ];
 
+  private readonly logger = inject(LoggerService).getLogger('HomePage');
+
   constructor(public appSettings: AppSettings) {
     super();
     // Registrar íconos de Ionic
@@ -101,19 +103,19 @@ export class HomePage extends ResponsiveComponent {
   handleRefresh(event: any): void {
     setTimeout(() => {
       // Aquí iría la lógica de actualización
-      console.log('Datos actualizados');
+      this.logger.debug('Datos actualizados');
       event.target.complete();
     }, 1500);
   }
 
   // Métodos de navegación
   viewAllTransactions(): void {
-    console.log('Ver todas las transacciones');
+    this.logger.debug('Ver todas las transacciones');
     // Implementar navegación
   }
 
   addTransaction(): void {
-    console.log('Agregar transacción');
+    this.logger.debug('Agregar transacción');
     // Implementar lógica
   }
 }

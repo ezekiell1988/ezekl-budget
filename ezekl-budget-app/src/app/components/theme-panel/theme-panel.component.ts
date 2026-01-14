@@ -34,6 +34,7 @@ import {
 import { AppVariablesService } from "../../service/app-variables.service";
 import { AppSettings } from "../../service/app-settings.service";
 import { MenuStateService } from "../../service/menu-state.service";
+import { LoggerService } from "../../service/logger.service";
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 declare var bootstrap: any;
@@ -76,7 +77,8 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
     private menuController: MenuController,
     private alertController: AlertController,
     private cdr: ChangeDetectorRef,
-    private menuStateService: MenuStateService
+    private menuStateService: MenuStateService,
+    private logger: LoggerService
   ) {
     super();
     // Registrar iconos de Ionic para versión móvil
@@ -133,12 +135,12 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
 
   async openMobileSettings() {
     await this.menuController.open('settings-menu');
-    console.log('Menú de configuración abierto');
+    this.logger.debug('Menú de configuración abierto');
   }
 
   async closeMobileSettings() {
     await this.menuController.close('settings-menu');
-    console.log('Menú de configuración cerrado');
+    this.logger.debug('Menú de configuración cerrado');
   }
 
   /**

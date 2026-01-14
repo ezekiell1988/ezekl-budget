@@ -10,3 +10,4 @@ export { MenuStateService } from './menu-state.service';
 export { ConversationManagerService, type ConversationMessage } from './conversation-manager.service';
 export { AudioPlayerService } from './audio-player.service';
 export { AudioProcessorService } from './audio-processor.service';
+export { LoggerService, LogLevel, type LoggerConfig } from './logger.service';

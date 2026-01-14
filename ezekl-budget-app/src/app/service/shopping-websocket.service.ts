@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { 
   WebSocketState, 
@@ -9,6 +9,7 @@ import {
   WSShoppingResponse
 } from '../shared/models/websocket.models';
 import { buildWebSocketUrl, WEBSOCKET_CONFIG } from '../shared/config/websocket.config';
+import { LoggerService } from './logger.service';
 
 /**
  * Servicio para manejar la conexión WebSocket con el backend de shopping
@@ -17,6 +18,7 @@ import { buildWebSocketUrl, WEBSOCKET_CONFIG } from '../shared/config/websocket.
   providedIn: 'root'
 })
 export class ShoppingWebSocketService {
+  private readonly logger = inject(LoggerService).getLogger('ShoppingWebSocketService');
   private ws: WebSocket | null = null;
   private reconnectAttempt = 0;
   private pingIntervalId: any = null;
@@ -40,7 +42,7 @@ export class ShoppingWebSocketService {
    */
   connect(phone: string, merchantId?: number, returnAudio: boolean = true): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.warn('⚠️ WebSocket ya está conectado');
+      this.logger.warn('WebSocket ya está conectado');
       return;
     }
 
@@ -56,9 +58,9 @@ export class ShoppingWebSocketService {
       
       this.setupWebSocketHandlers();
       
-      console.log(`🔌 Conectando WebSocket: ${url}`);
+      this.logger.debug(`Conectando WebSocket: ${url}`);
     } catch (error) {
-      console.error('❌ Error creando WebSocket:', error);
+      this.logger.error('Error creando WebSocket:', error);
       this.handleError('Error al crear conexión WebSocket');
     }
   }
@@ -70,7 +72,7 @@ export class ShoppingWebSocketService {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('✅ WebSocket conectado');
+      this.logger.success('WebSocket conectado');
       this.wsState$.next(WebSocketState.CONNECTED);
       this.reconnectAttempt = 0;
       this.startPingInterval();
@@ -81,18 +83,18 @@ export class ShoppingWebSocketService {
         const data: WSResponse = JSON.parse(event.data);
         this.handleMessage(data);
       } catch (error) {
-        console.error('❌ Error parseando mensaje:', error);
+        this.logger.error('Error parseando mensaje:', error);
       }
     };
 
     this.ws.onerror = (error) => {
-      console.error('❌ WebSocket error:', error);
+      this.logger.error('WebSocket error:', error);
       this.wsState$.next(WebSocketState.ERROR);
       this.handleError('Error en conexión WebSocket');
     };
 
     this.ws.onclose = (event) => {
-      console.log(`🔌 WebSocket cerrado. Code: ${event.code}, Reason: ${event.reason}`);
+      this.logger.debug(`WebSocket cerrado. Code: ${event.code}, Reason: ${event.reason}`);
       this.wsState$.next(WebSocketState.DISCONNECTED);
       this.stopPingInterval();
       
@@ -112,11 +114,11 @@ export class ShoppingWebSocketService {
     switch (data.type) {
       case 'conversation_started':
         this.metadata.conversationId = data.conversation_id;
-        console.log(`💬 Conversación iniciada: ${data.conversation_id}`);
+        this.logger.debug(`Conversación iniciada: ${data.conversation_id}`);
         break;
         
       case 'transcription':
-        console.log(`📝 Transcripción recibida: ${(data as any).text}`);
+        this.logger.debug(`Transcripción recibida: ${(data as any).text}`);
         break;
         
       case 'shopping_response':
@@ -127,11 +129,11 @@ export class ShoppingWebSocketService {
         break;
         
       case 'pong':
-        console.log('🏓 Pong recibido');
+        this.logger.debug('Pong recibido');
         break;
         
       case 'error':
-        console.error('❌ Error del servidor:', data.error);
+        this.logger.error('Error del servidor:', data.error);
         this.handleError(data.error);
         break;
     }
@@ -141,13 +143,13 @@ export class ShoppingWebSocketService {
    * Maneja respuestas de shopping
    */
   private handleShoppingResponse(data: WSShoppingResponse): void {
-    console.log(`📦 Respuesta de shopping recibida (${data.shopping_response.duration_ms}ms)`);
-    console.log(`🔍 Audio en shopping_response: ${!!data.shopping_response.audio_base64}`);
-    console.log(`🔍 Audio en audio_response: ${!!data.audio_response?.audio_base64}`);
+    this.logger.debug(`Respuesta de shopping recibida (${data.shopping_response.duration_ms}ms)`);
+    this.logger.debug(`Audio en shopping_response: ${!!data.shopping_response.audio_base64}`);
+    this.logger.debug(`Audio en audio_response: ${!!data.audio_response?.audio_base64}`);
     
     // Aquí puedes agregar lógica adicional como reproducir audio si lo necesitas
     if (data.shopping_response.execution_details) {
-      console.log('Detalles de ejecución:', data.shopping_response.execution_details);
+      this.logger.debug('Detalles de ejecución:', data.shopping_response.execution_details);
     }
   }
 
@@ -156,7 +158,7 @@ export class ShoppingWebSocketService {
    */
   sendMessage(message: string, trackingId?: string): void {
     if (!this.isConnected) {
-      console.error('❌ WebSocket no está conectado');
+      this.logger.error('WebSocket no está conectado');
       this.handleError('No hay conexión con el servidor');
       return;
     }
@@ -176,7 +178,7 @@ export class ShoppingWebSocketService {
    */
   sendAudio(audioBase64: string, format: string = 'webm', language: string = 'es', trackingId?: string): void {
     if (!this.isConnected) {
-      console.error('❌ WebSocket no está conectado');
+      this.logger.error('WebSocket no está conectado');
       this.handleError('No hay conexión con el servidor');
       return;
     }
@@ -226,15 +228,15 @@ export class ShoppingWebSocketService {
    */
   private send(data: WSMessageRequest): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('❌ No se puede enviar: WebSocket no está abierto');
+      this.logger.error('No se puede enviar: WebSocket no está abierto');
       return;
     }
 
     try {
       this.ws.send(JSON.stringify(data));
-      console.log(`📤 Mensaje enviado:`, data.type);
+      this.logger.debug('Mensaje enviado:', data.type);
     } catch (error) {
-      console.error('❌ Error enviando mensaje:', error);
+      this.logger.error('Error enviando mensaje:', error);
       this.handleError('Error al enviar mensaje');
     }
   }
@@ -276,7 +278,7 @@ export class ShoppingWebSocketService {
     const delay = WEBSOCKET_CONFIG.reconnect.delayMs * 
                   Math.pow(WEBSOCKET_CONFIG.reconnect.backoffMultiplier, this.reconnectAttempt - 1);
     
-    console.log(`🔄 Reintentando conexión en ${delay}ms (intento ${this.reconnectAttempt}/${WEBSOCKET_CONFIG.reconnect.maxAttempts})`);
+    this.logger.info(`Reintentando conexión en ${delay}ms (intento ${this.reconnectAttempt}/${WEBSOCKET_CONFIG.reconnect.maxAttempts})`);
     
     setTimeout(() => {
       if (this.metadata.phone) {
@@ -298,7 +300,7 @@ export class ShoppingWebSocketService {
     this.wsState$.next(WebSocketState.DISCONNECTED);
     this.conversationState$.next(ConversationState.IDLE);
     
-    console.log('🔌 WebSocket desconectado');
+    this.logger.info('WebSocket desconectado');
   }
 
   /**

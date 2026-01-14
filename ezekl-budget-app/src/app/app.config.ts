@@ -9,7 +9,7 @@ import { AppSettings } from './service/app-settings.service';
 import { AppVariablesService } from './service/app-variables.service';
 import { AppMenuService } from './service/app-menus.service';
 import { PlatformDetectorService } from './service/platform-detector.service';
-import { AuthService } from './service';
+import { AuthService, LoggerService } from './service';
 import { authInterceptor } from './shared/interceptors';
 import { environment } from '../environments/environment';
 
@@ -18,8 +18,10 @@ import { environment } from '../environments/environment';
  * Este es el patrón recomendado por Angular para inicialización asíncrona
  * También valida y refresca el token de autenticación si está próximo a expirar
  */
-function initializeAppConfig(appSettings: AppSettings, authService: AuthService): () => Promise<void> {
+function initializeAppConfig(appSettings: AppSettings, authService: AuthService, loggerService: LoggerService): () => Promise<void> {
   return async () => {
+    const logger = loggerService.getLogger('AppInitializer');
+    
     // 1. Cargar configuración remota
     const configUrl = environment.apiUrl + 'config.json';
     const maxRetries = 3;
@@ -50,14 +52,14 @@ function initializeAppConfig(appSettings: AppSettings, authService: AuthService)
         
       } catch (error) {
         retryCount++;
-        console.error(`❌ Error al cargar configuración (intento ${retryCount}/${maxRetries}):`, error);
+        logger.error(`Error al cargar configuración (intento ${retryCount}/${maxRetries}):`, error);
         
         if (retryCount < maxRetries) {
           // Esperar antes de reintentar (1 segundo)
           await new Promise(resolve => setTimeout(resolve, 1000));
         } else {
           // Último intento fallido - usar valores por defecto
-          console.warn('⚠️ Usando configuración por defecto después de múltiples intentos fallidos');
+          logger.warn('Usando configuración por defecto después de múltiples intentos fallidos');
           appSettings.remoteConfigCharge = false;
           appSettings.nameCompany = 'N/D';
           appSettings.sloganCompany = 'N/D';
@@ -72,18 +74,18 @@ function initializeAppConfig(appSettings: AppSettings, authService: AuthService)
       const token = authService.getToken();
       
       if (token) {
-        console.log('🔐 Token detectado en inicialización');
+        logger.debug('Token detectado en inicialización');
         
         // Si el token está expirado, limpiar sesión
         if (authService.isTokenExpired()) {
-          console.warn('⚠️ Token expirado - limpiando sesión');
+          logger.warn('Token expirado - limpiando sesión');
           authService.clearSession();
           return;
         }
         
         // Si el token está próximo a expirar, intentar refrescarlo
         if (authService.isTokenExpiringSoon()) {
-          console.log('🔄 Token próximo a expirar - intentando refrescar');
+          logger.debug('Token próximo a expirar - intentando refrescar');
           
           try {
             // Convertir Observable a Promise para usar en async/await
@@ -95,18 +97,18 @@ function initializeAppConfig(appSettings: AppSettings, authService: AuthService)
             });
             
             if (refreshResponse?.success) {
-              console.log('✅ Token refrescado exitosamente en inicialización');
+              logger.success('Token refrescado exitosamente en inicialización');
             }
           } catch (refreshError) {
-            console.error('❌ Error al refrescar token en inicialización:', refreshError);
+            logger.error('Error al refrescar token en inicialización:', refreshError);
             // No limpiar sesión aquí - dejar que el interceptor lo maneje
           }
         } else {
-          console.log('✅ Token válido y vigente');
+          logger.debug('Token válido y vigente');
         }
       }
     } catch (error) {
-      console.error('❌ Error validando token en inicialización:', error);
+      logger.error('Error validando token en inicialización:', error);
       // No bloquear la carga de la app por errores de token
     }
   };
@@ -138,7 +140,8 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       const appSettings = inject(AppSettings);
       const authService = inject(AuthService);
-      return initializeAppConfig(appSettings, authService)();
+      const loggerService = inject(LoggerService);
+      return initializeAppConfig(appSettings, authService, loggerService)();
     })
   ]
 };

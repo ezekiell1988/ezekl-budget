@@ -39,7 +39,7 @@ import { slideUp } from '../../composables/slideUp.js';
 import { slideToggle } from '../../composables/slideToggle.js';
 import { AppMenuService } from '../../service/app-menus.service';
 import { AppSettings } from '../../service/app-settings.service';
-import { AuthService } from '../../service/auth.service';
+import { AuthService, LoggerService } from '../../service';
 import { MenuStateService } from '../../service/menu-state.service';
 import { FloatSubMenuComponent } from '../float-sub-menu/float-sub-menu.component';
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
@@ -70,6 +70,7 @@ import { PlatformMode } from '../../service/platform-detector.service';
 })
 
 export class SidebarComponent extends ResponsiveComponent implements AfterViewChecked {
+	private readonly logger: LoggerService;
 	menus: any[] = [];
 	currentUser: any = null;
 	// Flag para controlar el renderizado del ion-menu
@@ -150,7 +151,7 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 			if (direction === 'rtl') {
 				const sidebarRightOffset = window.innerWidth - (targetSidebar.offsetLeft + targetSidebar.offsetWidth);
 				this.appSidebarFloatSubMenuRight = (window.innerWidth - targetSidebar.offsetLeft) + 'px';
-				console.log(this.appSidebarFloatSubMenuRight);
+				this.logger.debug('appSidebarFloatSubMenuRight:', this.appSidebarFloatSubMenuRight);
 			} else {
 				this.appSidebarFloatSubMenuLeft = (this.appSidebarFloatSubMenuOffset.width + targetSidebar.offsetLeft) + 'px';
 			}
@@ -465,11 +466,11 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 		// Llamar al servicio de autenticación para cerrar sesión
 		this.authService.logout().subscribe({
 			next: () => {
-				console.log('Sesión cerrada exitosamente');
+				this.logger.success('Sesión cerrada exitosamente');
 				// El servicio ya redirige al login
 			},
 			error: (error) => {
-				console.error('Error al cerrar sesión:', error);
+				this.logger.error('Error al cerrar sesión:', error);
 				// Cerrar sesión localmente aunque falle el backend
 				this.authService.clearSession();
 			}
@@ -483,9 +484,11 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
     private menuController: MenuController, 
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
-    private menuStateService: MenuStateService
+    private menuStateService: MenuStateService,
+    loggerService: LoggerService
   ) {
     super();
+    this.logger = loggerService.getLogger('SidebarComponent');
     
     // Registrar íconos de Ionicons
     addIcons({

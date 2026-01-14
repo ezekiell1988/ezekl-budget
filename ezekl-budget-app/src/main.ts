@@ -9,4 +9,4 @@ if (environment.production) {
 }
 
 bootstrapApplication(AppComponent, appConfig)
-  .catch(err => console.log(err));
+  .catch(err => console.error('Error al iniciar aplicación:', err));

@@ -1,7 +1,10 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { BehaviorSubject, Observable, Subscription } from 'rxjs';
-import { distinctUntilChanged, map } from 'rxjs/operators';import { AppSettings } from './app-settings.service';
+import { distinctUntilChanged, map } from 'rxjs/operators';
+import { AppSettings } from './app-settings.service';
+import { LoggerService } from './logger.service';
+
 export type PlatformMode = 'mobile' | 'desktop';
 
 @Injectable({
@@ -46,7 +49,8 @@ export class PlatformDetectorService implements OnDestroy {
 
   constructor(
     private breakpointObserver: BreakpointObserver,
-    private appSettings: AppSettings
+    private appSettings: AppSettings,
+    private logger: LoggerService
   ) {
     // Cargar estilos inmediatamente si el modo inicial es móvil
     const initialMode = this.getInitialMode();
@@ -120,7 +124,7 @@ export class PlatformDetectorService implements OnDestroy {
     };
     
     this.ionicStyleElement.onerror = () => {
-      console.error('❌ Error al cargar estilos de Ionic');
+      this.logger.error('Error al cargar estilos de Ionic');
       this.appSettings.stylesLoaded = true; // Marcar como listo para no bloquear
     };
     
@@ -138,7 +142,7 @@ export class PlatformDetectorService implements OnDestroy {
     this.ionicStyleElement = null;
     this.ionicStylesLoaded = false;
     
-    console.log('[PlatformDetector] Ionic styles unloaded');
+    this.logger.debug('Ionic styles unloaded');
   }
 
   /**

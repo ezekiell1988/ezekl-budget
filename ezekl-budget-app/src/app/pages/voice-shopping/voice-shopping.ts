@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HeaderComponent } from '../../components/header';
@@ -44,13 +44,14 @@ import {
   ConversationManagerService,
   AudioPlayerService,
   AudioProcessorService,
+  LoggerService,
   type ConversationMessage
 } from '../../service';
 import { 
   WebSocketState, 
   ConversationState,
   WSResponse,
-  WSShoppingResponse 
+  WSShoppingResponse
 } from '../../shared/models';
 
 @Component({
@@ -109,6 +110,8 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
   // Control de interrupción
   private pendingAudioBlob: Blob | null = null;
   private _isMuted = false;
+
+  private readonly logger = inject(LoggerService).getLogger('VoiceShoppingPage');
 
   constructor(
     private authService: AuthService,
@@ -190,7 +193,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
         // VAD: Si el bot está hablando y detectamos voz consistente del usuario, interrumpir automáticamente
         if (this.conversationState === ConversationState.SPEAKING && 
             this.audioRecorder.hasVoiceDetected) {
-          console.log(`🎤 VAD: Voz detectada (nivel ${level}) mientras bot habla - Interrumpiendo...`);
+          this.logger.debug(`VAD: Voz detectada (nivel ${level}) mientras bot habla - Interrumpiendo...`);
           this.interruptBot();
         }
       });
@@ -209,7 +212,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
    * Detiene la reproducción del audio y activa el micrófono
    */
   private interruptBot(): void {
-    console.log('🛑 VAD: Usuario interrumpiendo al bot');
+    this.logger.debug('VAD: Usuario interrumpiendo al bot');
     
     // Evitar múltiples interrupciones
     if (this.conversationState !== ConversationState.SPEAKING) {
@@ -269,7 +272,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
       this.startListening();
       
     } catch (error: any) {
-      console.error('Error iniciando conversación:', error);
+      this.logger.error('Error iniciando conversación:', error);
       alert(error.message || 'Error al iniciar la conversación');
     }
   }
@@ -351,7 +354,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
    * - Regresa al estado inicial
    */
   stopConversation(): void {
-    console.log('📥 Finalizando conversación');
+    this.logger.info('Finalizando conversación');
     
     // Detener audio del bot usando el servicio
     this.audioPlayer.stopAudio();
@@ -411,7 +414,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
     const audioBase64 = await this.audioProcessor.convertBlobToBase64(audioBlob);
     
     if (audioBase64) {
-      console.log(`📤 Enviando audio (${audioBlob.size} bytes)`);
+      this.logger.debug(`Enviando audio (${audioBlob.size} bytes)`);
       // Enviar como mensaje de tipo 'audio'
       this.websocket.sendAudio(audioBase64, 'webm', 'es');
     } else {
@@ -426,7 +429,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
   private handleWebSocketMessage(message: WSResponse): void {
     switch (message.type) {
       case 'conversation_started':
-        console.log('Conversación iniciada:', message.conversation_id);
+        this.logger.debug('Conversación iniciada:', message.conversation_id);
         break;
 
       case 'transcription':
@@ -457,7 +460,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
     // Pasar execution_details si existen
     const executionDetails = response.shopping_response.execution_details;
     if (executionDetails && executionDetails.length > 0) {
-      console.log('📊 Detalles de ejecución:', executionDetails);
+      this.logger.debug('Detalles de ejecución:', executionDetails);
     }
     this.addBotMessage(response.shopping_response.response, executionDetails);
     
@@ -471,11 +474,11 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
     const audioBase64 = response.audio_response?.audio_base64 || response.shopping_response.audio_base64;
     
     if (audioBase64) {
-      console.log('🔊 Reproduciendo audio del backend...');
+      this.logger.debug('Reproduciendo audio del backend...');
       await this.playAudio(audioBase64);
     } else {
-      console.warn('⚠️ No se recibió audio del backend');
-      console.log('Respuesta completa:', JSON.stringify(response, null, 2));
+      this.logger.warn('No se recibió audio del backend');
+      this.logger.debug('Respuesta completa:', JSON.stringify(response, null, 2));
     }
     
     // Bot terminó de hablar, reiniciar escucha solo si no está en mute
@@ -483,7 +486,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
     if (!this._isMuted) {
       this.startListening();
     } else {
-      console.log('🔇 Micrófono en mute - no se reactiva automáticamente');
+      this.logger.debug('Micrófono en mute - no se reactiva automáticamente');
       this.websocket.setConversationState(ConversationState.PAUSED);
       this.conversationState = ConversationState.PAUSED;
     }
@@ -514,7 +517,7 @@ export class VoiceShoppingPage extends ResponsiveComponent implements OnInit, On
         element.scrollTop = element.scrollHeight;
       }
     } catch (err) {
-      console.error('Error haciendo scroll:', err);
+      this.logger.error('Error haciendo scroll:', err);
     }
   }
 

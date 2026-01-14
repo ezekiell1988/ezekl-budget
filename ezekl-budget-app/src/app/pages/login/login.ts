@@ -1,8 +1,8 @@
-import { Component, OnInit, OnDestroy, Renderer2 } from '@angular/core';
+import { Component, OnInit, OnDestroy, Renderer2, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { AppSettings, AuthService } from '../../service';
+import { AppSettings, AuthService, LoggerService } from '../../service';
 import { ResponsiveComponent } from '../../shared';
 import { HeaderComponent, FooterComponent } from '../../components';
 import {
@@ -48,11 +48,13 @@ import { lockClosedOutline, mailOutline, arrowBackOutline, refreshOutline } from
   ]
 })
 export class LoginPage extends ResponsiveComponent implements OnInit, OnDestroy {
+  // Logger con contexto
+  private readonly logger = inject(LoggerService).getLogger('LoginPage');
+  
   // Paso 1: Solicitar PIN
   codeLogin: string = '';
   
-  // Paso 2: Ingresar PIN
-  idLogin: number | null = null;
+  // Paso 2: Ingresar PIN (ya no necesitamos idLogin)
   token: string = '';
   
   // Estados
@@ -96,7 +98,7 @@ export class LoginPage extends ResponsiveComponent implements OnInit, OnDestroy 
 
   ngOnInit() {
     // Leer returnUrl de los query params
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/home';
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
     
     // Verificar si ya está autenticado
     const isAuth = this.authService.isAuthenticated();
@@ -116,7 +118,7 @@ export class LoginPage extends ResponsiveComponent implements OnInit, OnDestroy 
   }
 
   /**
-   * Paso 1: Solicitar PIN (envía SMS y Email)
+   * Paso 1: Solicitar PIN (envía Email)
    */
   async requestPin() {
     if (!this.codeLogin || this.codeLogin.trim() === '') {
@@ -131,16 +133,19 @@ export class LoginPage extends ResponsiveComponent implements OnInit, OnDestroy 
     this.authService.requestLoginToken(this.codeLogin.trim()).subscribe({
       next: (response) => {
         this.loading = false;
-        if (response.success) {
-          this.idLogin = response.idLogin;
+        if (response.success && response.tokenGenerated) {
           this.step = 'verify';
-          this.successMessage = 'Se ha enviado un PIN de 5 dígitos a tu teléfono y correo electrónico';
+          this.successMessage = 'Se ha enviado un PIN de 5 dígitos a tu correo electrónico';
           this.startResendTimer();
+          this.logger.success('PIN enviado correctamente al email');
+        } else {
+          this.errorMessage = response.message || 'Error al generar token';
+          this.logger.warn('Error al generar token:', response.message);
         }
       },
       error: (error) => {
         this.loading = false;
-        console.error('Error solicitando PIN:', error);
+        this.logger.error('Error solicitando PIN:', error);
         
         if (error.status === 404) {
           this.errorMessage = 'Usuario no encontrado. Verifica tu código de login';
@@ -167,43 +172,46 @@ export class LoginPage extends ResponsiveComponent implements OnInit, OnDestroy 
       return;
     }
 
-    if (!this.idLogin) {
-      this.errorMessage = 'Error: ID de login no disponible';
+    if (!this.codeLogin) {
+      this.errorMessage = 'Error: código de login no disponible';
       return;
     }
 
     this.loading = true;
     this.errorMessage = '';
 
-    this.authService.loginWithToken(this.idLogin, this.token.trim()).subscribe({
+    this.authService.loginWithToken(this.codeLogin.trim(), this.token.trim()).subscribe({
       next: async (response) => {
         this.loading = false;
-        if (response.success) {
-          console.log('✅ Login exitoso, token guardado');
-          console.log('📱 Token:', response.token.substring(0, 20) + '...');
-          console.log('👤 Usuario:', response.user);
+        if (response.success && response.accessToken) {
+          this.logger.success('Login exitoso, token guardado');
+          this.logger.debug('Token recibido:', response.accessToken.substring(0, 20) + '...');
+          this.logger.debug('Usuario autenticado:', response.user.nameLogin);
           
           // Pequeño delay para asegurar que localStorage se sincronice en mobile
           await new Promise(resolve => setTimeout(resolve, 300));
           
           // Verificar que el token se guardó correctamente
           const savedToken = this.authService.getToken();
-          console.log('🔍 Token guardado verificado:', savedToken ? 'SÍ' : 'NO');
+          this.logger.debug('Token guardado verificado:', savedToken ? 'SÍ' : 'NO');
           
           if (!savedToken) {
-            console.error('❌ Token no se guardó correctamente');
+            this.logger.error('Token no se guardó correctamente en localStorage');
             this.errorMessage = 'Error guardando sesión. Intenta nuevamente';
             return;
           }
           
           // Redirigir a returnUrl o home
-          console.log('🔄 Navegando a:', this.returnUrl);
+          this.logger.info('Navegando a:', this.returnUrl);
           this.router.navigate([this.returnUrl]);
+        } else {
+          this.errorMessage = response.message || 'Error en la autenticación';
+          this.logger.warn('Error en autenticación:', response.message);
         }
       },
       error: (error) => {
         this.loading = false;
-        console.error('Error verificando PIN:', error);
+        this.logger.error('Error verificando PIN:', error);
         
         if (error.status === 401) {
           this.errorMessage = 'PIN inválido o expirado. Solicita uno nuevo';
@@ -222,7 +230,6 @@ export class LoginPage extends ResponsiveComponent implements OnInit, OnDestroy 
   backToRequest() {
     this.step = 'request';
     this.token = '';
-    this.idLogin = null;
     this.errorMessage = '';
     this.successMessage = '';
     this.stopResendTimer();

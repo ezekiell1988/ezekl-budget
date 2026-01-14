@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { LoggerService } from './logger.service';
 
 /**
  * Servicio para procesar y convertir audio
@@ -7,6 +8,7 @@ import { Injectable } from '@angular/core';
   providedIn: 'root'
 })
 export class AudioProcessorService {
+  private readonly logger = inject(LoggerService).getLogger('AudioProcessorService');
 
   /**
    * Convierte un Blob de audio a formato Base64
@@ -24,7 +26,7 @@ export class AudioProcessorService {
       };
       
       reader.onerror = (error) => {
-        console.error('❌ Error convirtiendo audio a base64:', error);
+        this.logger.error('Error convirtiendo audio a base64:', error);
         reject(error);
       };
       
@@ -62,7 +64,7 @@ export class AudioProcessorService {
   isValidAudioBlob(blob: Blob): boolean {
     if (!blob) return false;
     if (blob.size === 0) {
-      console.warn('⚠️ Blob de audio está vacío');
+      this.logger.warn('Blob de audio está vacío');
       return false;
     }
     return true;
@@ -85,7 +87,7 @@ export class AudioProcessorService {
    */
   isValidBase64Audio(base64: string): boolean {
     if (!base64 || base64.length === 0) {
-      console.warn('⚠️ String base64 está vacío');
+      this.logger.warn('String base64 está vacío');
       return false;
     }
     
@@ -94,7 +96,7 @@ export class AudioProcessorService {
       atob(base64);
       return true;
     } catch (e) {
-      console.error('❌ String base64 inválido:', e);
+      this.logger.error('String base64 inválido:', e);
       return false;
     }
   }

@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { LoggerService } from './logger.service';
 
 /**
  * Servicio para reproducir audio del bot con soporte para interrupción
@@ -8,6 +9,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class AudioPlayerService {
+  private readonly logger = inject(LoggerService).getLogger('AudioPlayerService');
   private currentAudioSubject = new BehaviorSubject<HTMLAudioElement | null>(null);
   private isPlayingSubject = new BehaviorSubject<boolean>(false);
 
@@ -29,7 +31,7 @@ export class AudioPlayerService {
   async playAudio(audioBase64: string): Promise<void> {
     return new Promise((resolve) => {
       try {
-        console.log(`🎵 Intentando reproducir audio (${audioBase64.length} caracteres)`);
+        this.logger.debug(`Intentando reproducir audio (${audioBase64.length} caracteres)`);
         
         // Detener audio anterior si existe
         this.stopAudio();
@@ -58,11 +60,11 @@ export class AudioPlayerService {
         this.isPlayingSubject.next(true);
         
         audio.onloadeddata = () => {
-          console.log('✅ Audio cargado correctamente');
+          this.logger.success('Audio cargado correctamente');
         };
         
         audio.onended = () => {
-          console.log('✅ Audio terminó de reproducirse');
+          this.logger.success('Audio terminó de reproducirse');
           URL.revokeObjectURL(url); // Limpiar el blob URL
           this.currentAudioSubject.next(null);
           this.isPlayingSubject.next(false);
@@ -70,8 +72,8 @@ export class AudioPlayerService {
         };
         
         audio.onerror = (error) => {
-          console.error('❌ Error reproduciendo audio:', error);
-          console.error('Audio element error event:', audio.error);
+          this.logger.error('Error reproduciendo audio:', error);
+          this.logger.error('Audio element error event:', audio.error);
           URL.revokeObjectURL(url); // Limpiar el blob URL
           this.currentAudioSubject.next(null);
           this.isPlayingSubject.next(false);
@@ -84,11 +86,11 @@ export class AudioPlayerService {
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              console.log('▶️ Audio iniciado correctamente');
+              this.logger.success('Audio iniciado correctamente');
             })
             .catch(error => {
-              console.error('❌ Error al iniciar reproducción:', error);
-              console.error('Puede ser que se necesite interacción del usuario para reproducir audio');
+              this.logger.error('Error al iniciar reproducción:', error);
+              this.logger.warn('Puede ser que se necesite interacción del usuario para reproducir audio');
               URL.revokeObjectURL(url);
               this.currentAudioSubject.next(null);
               this.isPlayingSubject.next(false);
@@ -96,7 +98,7 @@ export class AudioPlayerService {
             });
         }
       } catch (error) {
-        console.error('❌ Error creando audio:', error);
+        this.logger.error('Error creando audio:', error);
         this.currentAudioSubject.next(null);
         this.isPlayingSubject.next(false);
         resolve();
@@ -110,7 +112,7 @@ export class AudioPlayerService {
   stopAudio(): void {
     const audio = this.currentAudioSubject.value;
     if (audio) {
-      console.log('🛑 Deteniendo audio actual');
+      this.logger.debug('Deteniendo audio actual');
       audio.pause();
       audio.currentTime = 0;
       this.currentAudioSubject.next(null);
@@ -124,7 +126,7 @@ export class AudioPlayerService {
   pauseAudio(): void {
     const audio = this.currentAudioSubject.value;
     if (audio && !audio.paused) {
-      console.log('⏸️ Pausando audio');
+      this.logger.debug('Pausando audio');
       audio.pause();
       this.isPlayingSubject.next(false);
     }
@@ -136,13 +138,13 @@ export class AudioPlayerService {
   resumeAudio(): void {
     const audio = this.currentAudioSubject.value;
     if (audio && audio.paused) {
-      console.log('▶️ Reanudando audio');
+      this.logger.debug('Reanudando audio');
       audio.play()
         .then(() => {
           this.isPlayingSubject.next(true);
         })
         .catch(error => {
-          console.error('❌ Error al reanudar audio:', error);
+          this.logger.error('Error al reanudar audio:', error);
         });
     }
   }
