@@ -190,6 +190,13 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
   ngOnInit() {
     this.logger.debug('VoiceReviewPage ngOnInit');
     
+    // Debug: Verificar estado del dark mode
+    this.logger.debug('===== DARK MODE DEBUG =====');
+    this.logger.debug('appDarkMode:', this.appSettings.appDarkMode);
+    this.logger.debug('html has .ion-palette-dark:', document.documentElement.classList.contains('ion-palette-dark'));
+    this.logger.debug('Computed --ion-background-color:', getComputedStyle(document.documentElement).getPropertyValue('--ion-background-color'));
+    this.logger.debug('============================');
+    
     // Suscribirse a los cambios del servicio
     this.examQuestionService.questions
       .pipe(takeUntil(this.destroy$))

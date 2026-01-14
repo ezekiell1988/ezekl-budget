@@ -94,12 +94,15 @@ export class PlatformDetectorService implements OnDestroy {
     const previousMode = this.platformModeSubject.value;
     
     if (previousMode !== mode) {
-      // Mostrar loading durante la transición
+      // 1. Mostrar loading primero
       this.showLoadingOverlay();
       
-      this.platformModeSubject.next(mode);
-      this.updateBodyClasses(mode);
-      this.handleStylesChange(mode);
+      // 2. Esperar a que el loading se renderice, luego cambiar estilos
+      requestAnimationFrame(() => {
+        this.platformModeSubject.next(mode);
+        this.updateBodyClasses(mode);
+        this.handleStylesChange(mode);
+      });
     }
   }
 
@@ -118,13 +121,13 @@ export class PlatformDetectorService implements OnDestroy {
   private handleStylesChange(mode: PlatformMode): void {
     this.logger.debug(`Platform mode changed to: ${mode}`);
     
-    // Limpiar TODOS los estilos antes de cargar nuevos
-    this.cleanAllStyles();
-    
     // Resetear flag de estilos cargados
     this.appSettings.stylesLoaded = false;
     
-    // Cargar estilos según el nuevo modo
+    // 2. Limpiar TODOS los estilos anteriores (síncrono)
+    this.cleanAllStyles();
+    
+    // 3. Cargar estilos según el nuevo modo (asíncrono - oculta loading al terminar)
     if (mode === 'mobile') {
       this.loadIonicStyles();
     } else {
@@ -161,8 +164,8 @@ export class PlatformDetectorService implements OnDestroy {
         if (loadedCount === totalFiles) {
           this.appSettings.stylesLoaded = true;
           this.logger.debug('All Ionic CSS files loaded successfully');
-          // Ocultar loading cuando todos los estilos estén cargados
-          setTimeout(() => this.hideLoadingOverlay(), 100);
+          // 4. Ocultar loading solo cuando TODOS los estilos estén cargados y aplicados
+          setTimeout(() => this.hideLoadingOverlay(), 150);
         }
       };
       
@@ -172,6 +175,8 @@ export class PlatformDetectorService implements OnDestroy {
         if (loadedCount === totalFiles) {
           this.logger.warn('Some CSS files failed to load, but continuing...');
           this.appSettings.stylesLoaded = true;
+          // Ocultar loading incluso si hubo errores
+          setTimeout(() => this.hideLoadingOverlay(), 150);
         }
       };
       
@@ -225,8 +230,8 @@ export class PlatformDetectorService implements OnDestroy {
         if (loadedCount === totalFiles) {
           this.appSettings.stylesLoaded = true;
           this.logger.debug('All Desktop CSS files loaded successfully');
-          // Ocultar loading cuando todos los estilos estén cargados
-          setTimeout(() => this.hideLoadingOverlay(), 100);
+          // 4. Ocultar loading solo cuando TODOS los estilos estén cargados y aplicados
+          setTimeout(() => this.hideLoadingOverlay(), 150);
         }
       };
       
@@ -236,6 +241,8 @@ export class PlatformDetectorService implements OnDestroy {
         if (loadedCount === totalFiles) {
           this.logger.warn('Some CSS files failed to load, but continuing...');
           this.appSettings.stylesLoaded = true;
+          // Ocultar loading incluso si hubo errores
+          setTimeout(() => this.hideLoadingOverlay(), 150);
         }
       };
       
@@ -295,8 +302,7 @@ export class PlatformDetectorService implements OnDestroy {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
+      background: #1a1a1a;
       display: flex;
       align-items: center;
       justify-content: center;

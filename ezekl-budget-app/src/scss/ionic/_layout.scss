@@ -23,6 +23,8 @@ body {
   overflow: hidden;
   margin: 0;
   padding: 0;
+  background-color: var(--ion-background-color, #ffffff);
+  color: var(--ion-text-color, #212529);
 }
 
 // Configuración de ion-app
@@ -33,6 +35,7 @@ ion-app {
   position: fixed;
   top: 0;
   left: 0;
+  background-color: var(--ion-background-color, #ffffff);
 }
 
 // Configuración de ion-content

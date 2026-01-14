@@ -100,9 +100,10 @@ ion-content {
 
   /* =====================================================
      DARK MODE - Menú y Perfil
+     Ionic usa .ion-palette-dark según documentación oficial
      ===================================================== */
   
-  [data-bs-theme="dark"] {
+  .ion-palette-dark {
     .user-profile-mobile {
       border-bottom-color: rgba(255, 255, 255, 0.1);
     }

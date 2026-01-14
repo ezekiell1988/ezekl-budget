@@ -1,42 +1,92 @@
 /* =====================================================
    DARK MODE - Configuración de Modo Oscuro
    
-   El atributo data-bs-theme="dark" se establece en document.documentElement
-   (<html>) por el ThemePanelComponent y DesktopLayoutComponent.
+   Ionic usa la clase .ion-palette-dark en el elemento html según:
+   https://ionicframework.com/docs/theming/dark-mode
    
-   Bootstrap y Color-Admin usan [data-bs-theme="dark"] como selector.
-   Ionic debe usar el mismo selector para mantener consistencia.
+   El archivo dark.class.css de Ionic ya define las variables base.
+   Aquí solo personalizamos componentes específicos.
    ===================================================== */
 
-[data-bs-theme="dark"] {
-  // Variables globales de Ionic para dark mode
-  --ion-background-color: var(--bs-body-bg, #212529);
-  --ion-text-color: var(--bs-body-color, #dee2e6);
+.ion-palette-dark {
+  /* Las variables principales ya están definidas por dark.class.css:
+   * --ion-background-color, --ion-text-color, --ion-color-step-*, etc.
+   * Solo personalizamos componentes específicos
+   */
+  
+  // Asegurar que el fondo y texto usen las variables de Ionic
+  --ion-background-color: #121212;
+  --ion-background-color-rgb: 18, 18, 18;
+  --ion-text-color: #ffffff;
+  --ion-text-color-rgb: 255, 255, 255;
   
   // Toolbar
   ion-toolbar {
-    --background: var(--bs-dark, #1a1d20);
+    --background: #1e1e1e;
+    --color: #ffffff;
   }
   
   // Tab Bar
   ion-tab-bar {
-    --background: var(--bs-dark, #1a1d20);
-    border-top-color: var(--bs-border-color, #495057);
+    --background: #1e1e1e;
+    border-top-color: rgba(255, 255, 255, 0.1);
   }
   
   // Cards
   ion-card {
-    --background: var(--bs-dark, #2b2f32);
+    --background: #1e1e1e;
+    --color: #ffffff;
+  }
+  
+  // Content
+  ion-content {
+    --background: #121212;
+    --color: #ffffff;
   }
   
   // Footer
   ion-footer {
-    border-top-color: var(--bs-border-color, #495057);
+    border-top-color: rgba(255, 255, 255, 0.1);
     
     ion-toolbar {
-      --background: var(--bs-dark, #2b2f32);
-      --color: var(--bs-body-color, #dee2e6);
+      --background: #1e1e1e;
+      --color: #ffffff;
     }
+  }
+  
+  // Items
+  ion-item {
+    --background: #1e1e1e;
+    --color: #ffffff;
+    --border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  // Inputs (ion-input, ion-textarea, ion-select)
+  ion-input,
+  ion-textarea,
+  ion-select {
+    --background: #1e1e1e;
+    --color: #ffffff;
+    --placeholder-color: rgba(255, 255, 255, 0.6);
+    --placeholder-opacity: 0.6;
+  }
+  
+  // Select específico
+  ion-select::part(text) {
+    color: #ffffff;
+  }
+  
+  ion-select::part(icon) {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  // Lists
+  ion-list {
+    background: #121212;
+  }
+  
+  ion-list-header {
+    color: rgba(255, 255, 255, 0.6);
   }
   
   // Balance Card (Home Page)
@@ -49,11 +99,7 @@
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
   }
   
-  ion-list-header {
-    color: var(--ion-color-step-400);
-  }
-  
   ion-toggle {
-    --background: var(--ion-color-step-150);
+    --background: rgba(255, 255, 255, 0.2);
   }
 }

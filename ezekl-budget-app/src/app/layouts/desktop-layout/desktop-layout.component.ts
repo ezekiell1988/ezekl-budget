@@ -112,11 +112,14 @@ export class DesktopLayoutComponent implements OnInit {
   }
 
   onAppDarkModeChanged(val: boolean) {
-    // Bootstrap/Color-Admin dark mode: solo data-bs-theme
+    // Bootstrap/Color-Admin dark mode: data-bs-theme="dark"
+    // También sincronizar con Ionic agregando .ion-palette-dark para compatibilidad
     if (this.appSettings.appDarkMode) {
       document.documentElement.setAttribute("data-bs-theme", "dark");
+      document.documentElement.classList.add("ion-palette-dark");
     } else {
       document.documentElement.removeAttribute("data-bs-theme");
+      document.documentElement.classList.remove("ion-palette-dark");
     }
     this.appVariables = this.appVariablesService.getAppVariables();
     this.appVariablesService.variablesReload.emit();
