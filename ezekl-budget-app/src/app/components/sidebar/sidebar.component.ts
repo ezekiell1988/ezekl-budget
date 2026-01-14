@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ElementRef, HostListener, ViewChild, OnInit, AfterViewChecked, AfterViewInit, ChangeDetectorRef } 		 from '@angular/core';
+import { Component, Input, Output, EventEmitter, ElementRef, HostListener, ViewChild, OnInit, AfterViewChecked, AfterViewInit, ChangeDetectorRef, effect } 		 from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { NgScrollbarModule } from 'ngx-scrollbar';
@@ -39,7 +39,7 @@ import { slideUp } from '../../composables/slideUp.js';
 import { slideToggle } from '../../composables/slideToggle.js';
 import { AppMenuService } from '../../service/app-menus.service';
 import { AppSettings } from '../../service/app-settings.service';
-import { AuthService, LoggerService } from '../../service';
+import { AuthService, LoggerService, Logger } from '../../service';
 import { MenuStateService } from '../../service/menu-state.service';
 import { FloatSubMenuComponent } from '../float-sub-menu/float-sub-menu.component';
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
@@ -70,7 +70,7 @@ import { PlatformMode } from '../../service/platform-detector.service';
 })
 
 export class SidebarComponent extends ResponsiveComponent implements AfterViewChecked {
-	private readonly logger: LoggerService;
+	private readonly logger: Logger;
 	menus: any[] = [];
 	currentUser: any = null;
 	// Flag para controlar el renderizado del ion-menu
@@ -381,9 +381,9 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 		this.menus = this.appMenuService.getAppMenus();
 		this.initializeMobileMenuState(this.menus);
 		
-		// Suscribirse a cambios en el usuario autenticado
-		this.authService.currentUser$.subscribe(user => {
-			this.currentUser = user;
+		// Escuchar cambios en el usuario autenticado usando effect
+		effect(() => {
+			this.currentUser = this.authService.currentUser();
 			// Forzar detección de cambios para actualizar la vista
 			this.cdr.detectChanges();
 		});
@@ -516,9 +516,9 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
       this.desktopMode = true;
     }
     
-    // Suscribirse a cambios de usuario autenticado
-    this.authService.currentUser$.subscribe(user => {
-      this.currentUser = user;
+    // Escuchar cambios de usuario autenticado usando effect
+    effect(() => {
+      this.currentUser = this.authService.currentUser();
       this.updateIonMenuVisibility();
     });
     

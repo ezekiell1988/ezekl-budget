@@ -7,6 +7,7 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectorRef,
+  effect,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { 
@@ -21,7 +22,7 @@ import {
 import { addIcons } from 'ionicons';
 import { notificationsOutline, menuOutline } from 'ionicons/icons';
 import { AppSettings } from "../../service/app-settings.service";
-import { AuthService, LoggerService } from '../../service';
+import { AuthService, LoggerService, Logger } from '../../service';
 import { ResponsiveComponent } from '../../shared/responsive-component.base';
 
 declare var slideToggle: any;
@@ -42,7 +43,7 @@ declare var slideToggle: any;
   ],
 })
 export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDestroy {
-  private readonly logger: LoggerService;
+  private readonly logger: Logger;
   
   @Input() appSidebarTwo;
   @Input() pageTitle = 'Ezekl Budget'; // Para versión móvil
@@ -99,9 +100,9 @@ export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDe
   }
 
   ngOnInit() {
-    // Suscribirse a cambios en el usuario autenticado
-    this.authService.currentUser$.subscribe(user => {
-      this.currentUser = user;
+    // Escuchar cambios en el usuario autenticado usando effect
+    effect(() => {
+      this.currentUser = this.authService.currentUser();
       // Forzar detección de cambios
       this.cdr.detectChanges();
     });
