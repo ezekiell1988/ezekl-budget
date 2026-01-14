@@ -15,11 +15,11 @@ Application Start
 ├── Detect Platform
 │   ├── Desktop (>768px)
 │   │   ├── Add class: desktop-mode
-│   │   └── Load: angular.css
+│   │   └── Load: desktop.css
 │   │
 │   └── Mobile (≤768px)
 │       ├── Add class: ionic-mode
-│       └── Load: 11 Ionic CSS files
+│       └── Load: mobile.css (compilado de ionic.scss)
 │
 └── On Window Resize
     ├── cleanAllStyles() ← Limpieza TOTAL
@@ -37,7 +37,11 @@ Application Start
 
 ### Mobile (1 archivo compilado):
 - **`mobile.css`** - Compilado de `src/scss/ionic.scss`
-  - Incluye 10 CSS core de Ionic Framework
+  - Incluye todos los CSS core de Ionic Framework:
+    - `core.css`, `structure.css`, `typography.css`, `display.css`
+    - `padding.css`, `float-elements.css`, `text-alignment.css`
+    - `text-transformation.css`, `flex-utils.css`
+    - `palettes/dark.class.css` (dark mode)
   - Incluye estructura modular personalizada:
     - `_variables.scss` - Variables CSS y configuración
     - `_layout.scss` - Estructura de página
@@ -134,7 +138,20 @@ handleStylesChange(mode: PlatformMode) {
 cleanAllStyles() {
   this.unloadIonicStyles();
   this.unloadDesktopStyles();
-  // Remover cConsole
+  // Limpiar cualquier link de estilo dinámico que pueda quedar
+  const dynamicLinks = document.querySelectorAll(
+    'link[id^="ionic-dynamic-"], link[id^="desktop-dynamic-"]'
+  );
+  dynamicLinks.forEach(link => link.remove());
+}
+```
+
+## 🧪 Verificaciones en DevTools
+
+### Verificar Desktop (>768px):
+
+```javascript
+// DevTools → Console
 document.querySelectorAll('link[id^="desktop-dynamic"]').length
 // Debe retornar: 1 (desktop.css)
 
@@ -162,19 +179,15 @@ document.body.classList.contains('ionic-mode')
 // Debe retornar: true
 
 document.body.classList.contains('desktop-mode')
-// Debe retornar: falsrAll('link[id^="ionic-dynamic"]').length
-// Debe retornar: 0
-
-document.body.classList.contains('desktop-mode')
-// Debe retornar: true
+// Debe retornar: false
 ```
 
 ### Verificar Mobile (≤768px):
 
 ```javascript
-// DevTools → Elements → <head>
+// DevTools → Console
 document.querySelectorAll('link[id^="ionic-dynamic"]').length
-// Debe retornar: 11
+// Debe retornar: 1 (mobile.css)
 
 document.querySelectorAll('link[id^="desktop-dynamic"]').length
 // Debe retornar: 0
@@ -192,6 +205,8 @@ document.body.classList.contains('ionic-mode')
    "Platform mode changed to: mobile"
    "Cleaning all dynamic styles..."
    "Loading Ionic CSS files dynamically..."
+   "Files to load: [\"mobile.css\"]"
+   "Loaded 1/1: mobile.css"
    "All Ionic CSS files loaded successfully"
    ```
 
@@ -202,7 +217,7 @@ document.body.classList.contains('ionic-mode')
 1. Agregar `@import` de frameworks en `styles.css`
 2. Cambiar `inject: false` a `true` en angular.json
 3. Cargar CSS sin limpiar primero
-4. Modificar el orden de IONIC_CSS_FILES
+4. Cargar manualmente archivos CSS individuales de Ionic (usar mobile.css compilado)
 
 ### ✅ SIEMPRE hacer:
 
@@ -249,7 +264,7 @@ const cssState = {
   ionicFiles: document.querySelectorAll('link[id^="ionic-dynamic"]').length,
   desktopFiles: document.querySelectorAll('link[id^="desktop-dynamic"]').length,
   darkMode: document.documentElement.getAttribute('data-bs-theme'),
-  expected: window.innerWidth <= 768 ? 'mobile (1 file)' : 'desktop (1 file)'
+  expected: window.innerWidth <= 768 ? '1 file (mobile.css)' : '1 file (desktop.css)'
 };
 
 console.table(cssState);
