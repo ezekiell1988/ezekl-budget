@@ -4,7 +4,7 @@
    Solo estilos que NO están disponibles en Ionic/Color-Admin
    ===================================================== */
 
-.voice-review-page {
+:host {
   
   /* Selector de examen en el header (móvil) */
   .exam-selector {
@@ -26,39 +26,16 @@
     }
   }
   
-  /* Contenedor de tabla con scroll personalizado (desktop) */
+  /* Contenedor de tabla - permite scroll natural de la página */
   .voice-questions-table-container {
-    max-height: 600px;
-    overflow-y: auto;
-    
-    /* Scrollbar personalizado */
-    &::-webkit-scrollbar { width: 8px; }
-    &::-webkit-scrollbar-track { 
-      background: #f8f9fa; 
-      border-radius: 4px; 
-    }
-    &::-webkit-scrollbar-thumb { 
-      background: #6c757d; 
-      border-radius: 4px;
-      &:hover { background: #495057; }
-    }
-    
-    /* Firefox */
-    scrollbar-width: thin;
-    scrollbar-color: #6c757d #f8f9fa;
+    /* Sin restricciones de altura - el scroll lo maneja la página completa */
   }
   
-  /* Header sticky (mejorar funcionalidad de tabla) */
+  /* Header sticky (se mantiene visible al hacer scroll) */
   .voice-questions-table thead th {
     position: sticky;
     top: 0;
     z-index: 10;
-  }
-  
-  /* Mobile: altura menor */
-  @media (max-width: 768px) {
-    .voice-questions-table-container {
-      max-height: 400px;
-    }
+    background: #fff; /* Asegurar fondo sólido para el sticky header */
   }
 }
