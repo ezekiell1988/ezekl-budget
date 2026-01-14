@@ -2,13 +2,8 @@
 @if (isMobile()) {
 <!-- Botón flotante -->
 @if (showFab) {
-<ion-fab slot="fixed" vertical="center" horizontal="end" [class.fab-disabled]="fabDisabled">
-	<ion-fab-button 
-		(click)="openMobileSettings()" 
-		color="theme"
-		[disabled]="fabDisabled"
-		[style.pointer-events]="fabDisabled ? 'none' : 'auto'"
-		[style.opacity]="fabDisabled ? '0.3' : '1'">
+<ion-fab slot="fixed" vertical="center" horizontal="end">
+	<ion-fab-button (click)="openMobileSettings()" color="theme">
 		<ion-icon name="settings-outline"></ion-icon>
 	</ion-fab-button>
 </ion-fab>
@@ -21,7 +16,7 @@
 	side="end" 
 	type="overlay" 
 	[swipeGesture]="false"
-	[disabled]="fabDisabled || isSidebarActive">
+	[disabled]="!showFab">
 	<ion-header>
 		<ion-toolbar color="theme">
 			<ion-title>Configuración</ion-title>

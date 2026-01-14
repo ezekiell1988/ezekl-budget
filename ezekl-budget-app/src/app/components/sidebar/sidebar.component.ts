@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, ElementRef, HostListener, ViewChild, OnInit, AfterViewChecked, AfterViewInit, ChangeDetectorRef, effect } 		 from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { NgScrollbarModule } from 'ngx-scrollbar';
 import { 
   IonMenu,
@@ -381,6 +382,15 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 		this.menus = this.appMenuService.getAppMenus();
 		this.initializeMobileMenuState(this.menus);
 		
+		// Escuchar cambios de navegación para actualizar estado del menú
+		this.router.events.pipe(
+			filter(event => event instanceof NavigationEnd)
+		).subscribe(() => {
+			// Reinicializar el estado del menú cuando cambie la ruta
+			this.initializeMobileMenuState(this.menus);
+			this.cdr.detectChanges();
+		});
+		
 		// Notificar al servicio cuando el menú del sidebar se abre/cierra
 		// Usamos los eventos del DOM de ion-menu
 		document.addEventListener('ionDidOpen', (event: any) => {
@@ -402,13 +412,33 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 	}
 
 	private initializeMobileMenuState(items: any[]): void {
+		// Obtener la URL actual
+		const currentUrl = this.router.url;
+		
 		// Inicializar el estado de expansión para cada item con submenú
 		items.forEach(item => {
 			if (item.submenu) {
-				item.expanded = false; // Por defecto colapsado
+				// Expandir solo si contiene la ruta activa
+				item.expanded = this.menuContainsActiveRoute(item, currentUrl);
 				this.initializeMobileMenuState(item.submenu); // Recursivo
 			}
 		});
+	}
+
+	private menuContainsActiveRoute(menuItem: any, currentUrl: string): boolean {
+		// Si el item tiene una URL y coincide con la actual
+		if (menuItem.url && currentUrl.startsWith(menuItem.url)) {
+			return true;
+		}
+		
+		// Si el item tiene submenú, verificar recursivamente
+		if (menuItem.submenu) {
+			return menuItem.submenu.some((subItem: any) => 
+				this.menuContainsActiveRoute(subItem, currentUrl)
+			);
+		}
+		
+		return false;
 	}
 
 	toggleMobileSubmenu(item: any): void {
@@ -483,6 +513,7 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
     private menuStateService: MenuStateService,
+    private router: Router,
     loggerService: LoggerService
   ) {
     super();
