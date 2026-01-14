@@ -7,7 +7,7 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectorRef,
-  effect,
+  effect
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { 
@@ -16,6 +16,7 @@ import {
   IonTitle,
   IonButtons,
   IonMenuButton,
+  IonBackButton,
   IonButton,
   IonIcon
 } from '@ionic/angular/standalone';
@@ -38,6 +39,7 @@ declare var slideToggle: any;
     IonTitle,
     IonButtons,
     IonMenuButton,
+    IonBackButton,
     IonButton,
     IonIcon
   ],
@@ -46,8 +48,13 @@ export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDe
   private readonly logger: Logger;
   
   @Input() appSidebarTwo;
-  @Input() pageTitle = 'Ezekl Budget'; // Para versión móvil
+  @Input() pageTitle = ''; // Para versión móvil
   @Input() color = 'theme'; // Color del toolbar para versión móvil
+  @Input() translucent = true; // Para header translúcido en iOS
+  @Input() showBackButton = false; // Mostrar botón de retroceso
+  @Input() backButtonHref = '/'; // URL por defecto del botón de retroceso
+  @Input() showNotifications = true; // Mostrar botón de notificaciones
+  @Input() hasCustomContent = false; // Indica si hay contenido personalizado (se auto-detecta en el template)
   @Output() appSidebarEndToggled = new EventEmitter<boolean>();
   @Output() appSidebarMobileToggled = new EventEmitter<boolean>();
   @Output() appSidebarEndMobileToggled = new EventEmitter<boolean>();
@@ -100,7 +107,10 @@ export class HeaderComponent extends ResponsiveComponent implements OnInit, OnDe
   }
 
   ngOnInit() {
-    // La inicialización del effect se hace en el constructor
+    // Establecer el título por defecto si no se ha proporcionado
+    if (!this.pageTitle) {
+      this.pageTitle = this.appSettings.nameCompany;
+    }
   }
 
   constructor(

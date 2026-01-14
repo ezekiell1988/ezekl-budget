@@ -8,7 +8,45 @@
 
 <!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
 @if (isMobile()) {
-<header [pageTitle]="getPageTitle()"></header>
+  <!-- Header con toolbar principal + contenido personalizado -->
+  <header [pageTitle]="'Repaso con Voz'" [showBackButton]="!!selectedExam" [showNotifications]="false">
+    <!-- Botones adicionales en el header principal -->
+    <ion-buttons headerButtons slot="end">
+      <ion-button fill="clear" (click)="handleRefresh($event)">
+        <ion-icon name="refresh" slot="icon-only" color="light"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+
+    <div headerContent>
+      <!-- Barra de progreso con control de reproducción -->
+      @if (selectedExam && initialLoadComplete) {
+        <ion-toolbar color="light">
+          <ion-grid class="ion-no-padding">
+            <ion-row class="ion-align-items-center">
+              <ion-col size="auto" class="ion-padding-start">
+                <ion-fab-button
+                  [color]="isSpeaking ? 'warning' : 'success'"
+                  size="small"
+                  (click)="toggleSpeech()">
+                  <ion-icon [name]="isSpeaking ? 'pause' : 'play'"></ion-icon>
+                </ion-fab-button>
+              </ion-col>
+              <ion-col class="ion-padding-end">
+                <ion-text color="medium">
+                  <p class="ion-no-margin" style="font-size: 14px;"><strong>{{ progressText }}</strong></p>
+                  <p class="ion-no-margin" style="font-size: 12px;">{{ progressPercent }}% completado</p>
+                </ion-text>
+                <ion-progress-bar
+                  [value]="progressPercent / 100"
+                  [color]="progressPercent === 100 ? 'success' : 'primary'">
+                </ion-progress-bar>
+              </ion-col>
+            </ion-row>
+          </ion-grid>
+        </ion-toolbar>
+      }
+    </div>
+  </header>
 
   <ion-content class="ion-padding">
     <!-- Sin examen seleccionado -->
@@ -25,12 +63,14 @@
         <!-- Selector de examen -->
         <ion-card class="ion-margin-top">
           <ion-card-content>
-            <ion-select placeholder="Selecciona un examen" (ionChange)="onExamSelected($event)"
+            <ion-select
+              placeholder="Selecciona un examen"
+              (ionChange)="onExamSelected($event)"
               interface="action-sheet">
               @for (pdf of availablePdfs; track pdf.id) {
-              <ion-select-option [value]="pdf.id">
-                {{ pdf.displayName }}
-              </ion-select-option>
+                <ion-select-option [value]="pdf.id">
+                  {{ pdf.displayName }}
+                </ion-select-option>
               }
             </ion-select>
           </ion-card-content>
@@ -76,48 +116,12 @@
 
     <!-- Contenido principal con preguntas -->
     @if (selectedExam && initialLoadComplete) {
-    <!-- Tarjeta de control y progreso -->
-    <ion-card color="primary">
-      <ion-card-content>
-        <ion-grid class="ion-no-padding">
-          <ion-row class="ion-align-items-center">
-            <ion-col size="auto">
-              <ion-button [color]="isSpeaking ? 'warning' : (questions.length > 0 ? 'success' : 'medium')"
-                [disabled]="questions.length === 0" 
-                size="large" 
-                fill="solid" 
-                shape="round" 
-                class="voice-play-button"
-                [class.speaking]="isSpeaking"
-                (click)="toggleSpeech()">
-                <ion-icon [name]="isSpeaking ? 'pause' : 'play'" slot="icon-only"></ion-icon>
-              </ion-button>
-            </ion-col>
-            <ion-col>
-              <ion-text color="light">
-                <p class="ion-no-margin"><strong>{{ progressText }}</strong></p>
-                <p class="ion-no-margin" style="font-size: 0.9em;">{{ progressPercent }}% completado</p>
-              </ion-text>
-              <ion-progress-bar [value]="progressPercent / 100"
-                [color]="progressPercent === 100 ? 'success' : 'light'">
-              </ion-progress-bar>
-            </ion-col>
-            <ion-col size="auto">
-              <ion-button fill="clear" (click)="goBackToSelector()">
-                <ion-icon name="arrow-back" slot="icon-only" color="light"></ion-icon>
-              </ion-button>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
-      </ion-card-content>
-    </ion-card>
-
     <!-- Lista de preguntas -->
     @for (question of questions; track question.numberQuestion) {
     <ion-card [id]="'voice-question-' + question.numberQuestion"
-      [color]="question.numberQuestion === currentQuestionNumber ? 'primary' : undefined" 
       [button]="true"
       class="voice-transition"
+      [class.selected]="question.numberQuestion === currentQuestionNumber"
       (click)="goToQuestion(question.numberQuestion)">
 
       <ion-card-header>
@@ -125,20 +129,12 @@
           <ion-row class="ion-align-items-center ion-justify-content-between">
             <ion-col size="auto">
               <ion-chip
-                [color]="question.numberQuestion === currentQuestionNumber ? 'light' : (isCompleted(question.numberQuestion) ? 'success' : 'medium')">
+                [color]="isCompleted(question.numberQuestion) ? 'success' : undefined">
                 <ion-icon
-                  [name]="isCompleted(question.numberQuestion) ? 'checkmark-circle' : 'checkmark-circle-outline'"></ion-icon>
-                <ion-label><strong>Pregunta {{ question.numberQuestion }}</strong></ion-label>
+                  [name]="isCompleted(question.numberQuestion) ? 'checkmark-circle' : 'radio-button-off'"></ion-icon>
+                <ion-label>Pregunta {{ question.numberQuestion }}</ion-label>
               </ion-chip>
             </ion-col>
-            @if (isCompleted(question.numberQuestion)) {
-            <ion-col>
-              <ion-badge [color]="question.numberQuestion === currentQuestionNumber ? 'light' : 'success'">
-                <ion-icon name="checkmark" style="margin-right: 4px;"></ion-icon>
-                Leída
-              </ion-badge>
-            </ion-col>
-            }
             @if (question.numberQuestion === currentQuestionNumber && isSpeaking) {
             <ion-col size="auto">
               <ion-chip color="warning">

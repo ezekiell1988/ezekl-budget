@@ -7,22 +7,32 @@
 
 <!-- ========== VERSIÓN MÓVIL (Ionic) ========== -->
 @if (isMobile()) {
-  <ion-header>
+  <ion-header [translucent]="translucent">
+    <!-- Toolbar principal - Siempre se muestra -->
     <ion-toolbar [color]="color">
-      @if (isAuthenticated()) {
+      @if (showBackButton) {
+      <ion-buttons slot="start">
+        <ion-back-button [defaultHref]="backButtonHref"></ion-back-button>
+      </ion-buttons>
+      } @else if (isAuthenticated()) {
       <ion-buttons slot="start">
         <ion-menu-button menu="main-menu"></ion-menu-button>
       </ion-buttons>
       }
       <ion-title>{{ pageTitle }}</ion-title>
-      @if (isAuthenticated()) {
+      @if (isAuthenticated() && showNotifications) {
       <ion-buttons slot="end">
         <ion-button>
           <ion-icon name="notifications-outline"></ion-icon>
         </ion-button>
       </ion-buttons>
       }
+      <!-- Botones adicionales personalizados -->
+      <ng-content select="[headerButtons]"></ng-content>
     </ion-toolbar>
+
+    <!-- Contenido adicional personalizado debajo del toolbar principal -->
+    <ng-content select="[headerContent]"></ng-content>
   </ion-header>
 }
 

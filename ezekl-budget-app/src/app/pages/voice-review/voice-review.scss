@@ -6,6 +6,25 @@
 
 .voice-review-page {
   
+  /* Selector de examen en el header (móvil) */
+  .exam-selector {
+    width: 100%;
+    max-width: 100%;
+    padding: 8px 16px;
+  }
+  
+  /* Card seleccionado - compatible con dark mode */
+  ion-card.selected {
+    border: 2px solid var(--ion-color-primary);
+    background: var(--ion-color-primary-tint);
+    
+    /* Ajustar opacidad según el tema */
+    @media (prefers-color-scheme: dark) {
+      background: var(--ion-color-primary-shade);
+      opacity: 0.9;
+    }
+  }
+  
   /* Animación del botón de play (no disponible en frameworks) */
   .voice-play-button.speaking {
     animation: voice-pulse 1.5s ease-in-out infinite;
