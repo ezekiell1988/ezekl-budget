@@ -77,22 +77,31 @@ def main():
     print("🚀 Iniciando Voice Bot")
     print("=" * 60)
     
+    # Detectar qué comando de build usar según el frontend
+    if frontend_dir_name == "ezekl-budget-ionic":
+        build_command = "npm run build"  # Ya incluye --configuration development
+    elif frontend_dir_name == "ezekl-budget-app":
+        build_command = "npm run build:dev"  # Usa el nuevo script de desarrollo
+    else:
+        build_command = "npm run build"  # Fallback por defecto
+    
     # Paso 1: Build del frontend
-    print("\n📦 Construyendo el frontend en modo desarrollo (npm run build -- --configuration=development)...")
+    print(f"\n📦 Construyendo el frontend ({frontend_dir_name}) en modo desarrollo...")
+    print(f"    Comando: {build_command}")
     print("-" * 60)
     
     try:
         # En Windows, necesitamos usar shell=True para encontrar npm
         if is_windows:
             result = subprocess.run(
-                "npm run build -- --configuration=development",
+                build_command,
                 cwd=chat_bot_dir,
                 shell=True,
                 check=True
             )
         else:
             result = subprocess.run(
-                ["npm", "run", "build", "--", "--configuration=development"],
+                build_command.split(),
                 cwd=chat_bot_dir,
                 check=True
             )
