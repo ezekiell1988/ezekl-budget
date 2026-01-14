@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # Configuración del servidor
     port: int = 8000
     reload: bool = True
+    frontend_dir: str = "ezekl-budget-ionic"  # Directorio del frontend Ionic
     
     # Azure OpenAI Configuration
     azure_openai_endpoint: str

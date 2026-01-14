@@ -117,7 +117,7 @@ if settings.frontend_build_path:
     FRONTEND_BUILD_PATH = Path(settings.frontend_build_path)
 else:
     # Detectar automáticamente basado en la ubicación del archivo
-    FRONTEND_BUILD_PATH = Path(__file__).parent.parent / "ezekl-budget-ionic" / "www"
+    FRONTEND_BUILD_PATH = Path(__file__).parent.parent / settings.frontend_dir / "www"
 
 # Inicializar la aplicación FastAPI con lifespan y configuración de seguridad
 app = FastAPI(
@@ -213,7 +213,7 @@ if __name__ == "__main__":
         "ws_ping_timeout": 20,
         "ws_max_size": 16777216,  # 16MB
         "reload": settings.reload,  # Configurado desde .env
-        "reload_excludes": ["*.git*", "*.pyc", "__pycache__", "*.log", "ezekl-budget-ionic/*"],  # Excluir archivos que no requieren reload
+        "reload_excludes": ["*.git*", "*.pyc", "__pycache__", "*.log", f"{settings.frontend_dir}/*"],  # Excluir archivos que no requieren reload
         "log_level": "info",
     }
     
