@@ -1,8 +1,14 @@
-import { Component, Output, EventEmitter, OnInit, ChangeDetectorRef } from "@angular/core";
+import {
+  Component,
+  Output,
+  EventEmitter,
+  OnInit,
+  ChangeDetectorRef,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { NgScrollbarModule } from "ngx-scrollbar";
-import { 
+import {
   IonFab,
   IonFabButton,
   IonIcon,
@@ -18,24 +24,24 @@ import {
   IonLabel,
   IonToggle,
   MenuController,
-  AlertController
-} from '@ionic/angular/standalone';
-import Swal from 'sweetalert2';
-import { addIcons } from 'ionicons';
-import { 
-  settingsOutline, 
-  closeOutline, 
-  checkmarkOutline, 
-  colorPaletteOutline, 
-  moonOutline, 
+  AlertController,
+} from "@ionic/angular/standalone";
+import Swal from "sweetalert2";
+import { addIcons } from "ionicons";
+import {
+  settingsOutline,
+  closeOutline,
+  checkmarkOutline,
+  colorPaletteOutline,
+  moonOutline,
   textOutline,
-  refreshOutline 
-} from 'ionicons/icons';
+  refreshOutline,
+} from "ionicons/icons";
 import { AppVariablesService } from "../../service/app-variables.service";
 import { AppSettings } from "../../service/app-settings.service";
 import { MenuStateService } from "../../service/menu-state.service";
 import { LoggerService } from "../../service/logger.service";
-import { ResponsiveComponent } from '../../shared/responsive-component.base';
+import { ResponsiveComponent } from "../../shared/responsive-component.base";
 
 declare var bootstrap: any;
 
@@ -44,8 +50,8 @@ declare var bootstrap: any;
   templateUrl: "./theme-panel.component.html",
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
+    CommonModule,
+    FormsModule,
     NgScrollbarModule,
     IonFab,
     IonFabButton,
@@ -60,16 +66,16 @@ declare var bootstrap: any;
     IonList,
     IonItem,
     IonLabel,
-    IonToggle
+    IonToggle,
   ],
 })
 export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   @Output() appDarkModeChanged = new EventEmitter<boolean>();
   @Output() appThemeChanged = new EventEmitter<boolean>();
   appVariables = this.appVariablesService.getAppVariables();
-  
+
   // Color actual del toolbar para Ionic
-  toolbarColor: string = '#00acac';
+  toolbarColor: string = "#00acac";
 
   constructor(
     public appSettings: AppSettings,
@@ -83,32 +89,32 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
     super();
     // Registrar iconos de Ionic para versión móvil
     addIcons({
-      settingsOutline,      // Botón flotante de configuración
-      closeOutline,         // Botón cerrar menú
-      checkmarkOutline,     // Indicador de color seleccionado
-      colorPaletteOutline,  // Ícono de selector de color
-      moonOutline,          // Ícono de modo oscuro
-      textOutline,          // Ícono de modo RTL
-      refreshOutline        // Botón restaurar configuración
+      settingsOutline, // Botón flotante de configuración
+      closeOutline, // Botón cerrar menú
+      checkmarkOutline, // Indicador de color seleccionado
+      colorPaletteOutline, // Ícono de selector de color
+      moonOutline, // Ícono de modo oscuro
+      textOutline, // Ícono de modo RTL
+      refreshOutline, // Botón restaurar configuración
     });
   }
 
   // Estado del panel (web)
   active: boolean = false;
-  
+
   // Estado del FAB (móvil)
   showFab: boolean = true;
-  
+
   // Variables de estado de los checkboxes
-  // NOTA: Aunque algunas opciones no se usan en móvil, se mantienen 
+  // NOTA: Aunque algunas opciones no se usan en móvil, se mantienen
   // estas variables para compatibilidad con la versión desktop (Color-Admin)
-  appThemeDarkModeCheckbox: boolean = false;        // Usado en móvil y desktop
-  appHeaderFixedCheckbox: boolean = true;           // Solo desktop
-  appHeaderInverseCheckbox: boolean = false;        // Solo desktop
-  appSidebarFixedCheckbox: boolean = true;          // Solo desktop
-  appSidebarGridCheckbox: boolean = false;          // Solo desktop
-  appGradientEnabledCheckbox: boolean = false;      // Solo desktop
-  appRtlEnabledCheckbox: boolean = false;           // Usado en móvil y desktop
+  appThemeDarkModeCheckbox: boolean = false; // Usado en móvil y desktop
+  appHeaderFixedCheckbox: boolean = true; // Solo desktop
+  appHeaderInverseCheckbox: boolean = false; // Solo desktop
+  appSidebarFixedCheckbox: boolean = true; // Solo desktop
+  appSidebarGridCheckbox: boolean = false; // Solo desktop
+  appGradientEnabledCheckbox: boolean = false; // Solo desktop
+  appRtlEnabledCheckbox: boolean = false; // Usado en móvil y desktop
 
   selectedTheme = "teal";
   themes = [
@@ -134,13 +140,13 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   }
 
   async openMobileSettings() {
-    await this.menuController.open('settings-menu');
-    this.logger.debug('Menú de configuración abierto');
+    await this.menuController.open("settings-menu");
+    this.logger.debug("Menú de configuración abierto");
   }
 
   async closeMobileSettings() {
-    await this.menuController.close('settings-menu');
-    this.logger.debug('Menú de configuración cerrado');
+    await this.menuController.close("settings-menu");
+    this.logger.debug("Menú de configuración cerrado");
   }
 
   /**
@@ -160,14 +166,14 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
    */
   private resetLocalStorageWeb() {
     Swal.fire({
-      title: '¿Restaurar Configuración?',
-      text: '¿Estás seguro de que deseas restaurar la configuración predeterminada? Esto recargará la aplicación.',
-      icon: 'warning',
+      title: "¿Restaurar Configuración?",
+      text: "¿Estás seguro de que deseas restaurar la configuración predeterminada? Esto recargará la aplicación.",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#00acac',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Sí, restaurar',
-      cancelButtonText: 'Cancelar'
+      confirmButtonColor: "#00acac",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Sí, restaurar",
+      cancelButtonText: "Cancelar",
     }).then((result) => {
       if (result.isConfirmed) {
         this.clearThemeSettings();
@@ -181,22 +187,23 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
    */
   private async resetLocalStorageMobile() {
     const alert = await this.alertController.create({
-      header: '¿Restaurar Configuración?',
-      message: '¿Estás seguro de que deseas restaurar la configuración predeterminada? Esto recargará la aplicación.',
+      header: "¿Restaurar Configuración?",
+      message:
+        "¿Estás seguro de que deseas restaurar la configuración predeterminada? Esto recargará la aplicación.",
       buttons: [
         {
-          text: 'Cancelar',
-          role: 'cancel',
-          cssClass: 'secondary'
+          text: "Cancelar",
+          role: "cancel",
+          cssClass: "secondary",
         },
         {
-          text: 'Sí, restaurar',
+          text: "Sí, restaurar",
           handler: () => {
             this.clearThemeSettings();
             window.location.reload();
-          }
-        }
-      ]
+          },
+        },
+      ],
     });
 
     await alert.present();
@@ -209,18 +216,18 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
    */
   private clearThemeSettings() {
     const keysToRemove = [
-      'appTheme',              // Color del tema (móvil y desktop)
-      'appThemePanelActive',   // Estado del panel (solo desktop)
-      'appDarkMode',           // Modo oscuro (móvil y desktop)
-      'appHeaderFixed',        // Solo desktop
-      'appHeaderInverse',      // Solo desktop
-      'appSidebarFixed',       // Solo desktop
-      'appSidebarGrid',        // Solo desktop
-      'appGradientEnabled',    // Solo desktop
-      'appRtlMode'            // RTL mode (no implementado actualmente)
+      "appTheme", // Color del tema (móvil y desktop)
+      "appThemePanelActive", // Estado del panel (solo desktop)
+      "appDarkMode", // Modo oscuro (móvil y desktop)
+      "appHeaderFixed", // Solo desktop
+      "appHeaderInverse", // Solo desktop
+      "appSidebarFixed", // Solo desktop
+      "appSidebarGrid", // Solo desktop
+      "appGradientEnabled", // Solo desktop
+      "appRtlMode", // RTL mode (no implementado actualmente)
     ];
-    
-    keysToRemove.forEach(key => {
+
+    keysToRemove.forEach((key) => {
       localStorage.removeItem(key);
     });
   }
@@ -238,7 +245,7 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
       }
       this.cdr.detectChanges();
     });
-    
+
     var elm = document.querySelectorAll('[data-bs-toggle="tooltip"]');
 
     for (var i = 0; i < elm.length; i++) {
@@ -306,14 +313,14 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
       event.stopPropagation();
       event.preventDefault();
     }
-    
+
     this.appSettings.appTheme = theme;
     this.selectedTheme = theme;
     this.appThemeChanged.emit(true);
     if (localStorage) {
       localStorage["appTheme"] = theme;
     }
-    
+
     // Actualizar variables de Ionic en móvil
     if (this.isMobile()) {
       // Esperar a que las clases CSS se apliquen y las variables se actualicen
@@ -322,37 +329,38 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   }
 
   /**
-   * Actualiza las variables de color de Ionic leyendo desde las variables CSS de Bootstrap
+   * Actualiza las variables de color de Ionic leyendo desde las variables CSS del template
    */
   private updateIonicThemeColors() {
     const root = document.documentElement;
-    // Leer desde document.body porque ahí es donde se aplica la clase theme-{color}
-    const styles = getComputedStyle(document.body);
-    
-    // Intentar leer el color del tema desde diferentes variables
-    let themeColor = styles.getPropertyValue('--bs-app-theme').trim();
-    if (!themeColor) {
-      themeColor = styles.getPropertyValue('--app-theme').trim();
-    }
-    
-    if (themeColor && themeColor.startsWith('#')) {
+    const styles = getComputedStyle(root);
+
+    // Leer el color del tema seleccionado desde las variables CSS
+    const themeColor = styles
+      .getPropertyValue(`--bs-${this.selectedTheme}`)
+      .trim();
+
+    if (themeColor && themeColor.startsWith("#")) {
       const rgb = this.hexToRgb(themeColor);
-      
+
       if (rgb) {
         // Actualizar propiedad reactiva
         this.toolbarColor = themeColor;
-        
+
         // Actualizar variables de Ionic
-        root.style.setProperty('--ion-color-theme', themeColor);
-        root.style.setProperty('--ion-color-theme-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
-        
+        root.style.setProperty("--ion-color-theme", themeColor);
+        root.style.setProperty(
+          "--ion-color-theme-rgb",
+          `${rgb.r}, ${rgb.g}, ${rgb.b}`
+        );
+
         // Calcular shade (10% más oscuro) y tint (10% más claro)
         const shade = this.adjustBrightness(themeColor, -10);
         const tint = this.adjustBrightness(themeColor, 10);
-        
-        root.style.setProperty('--ion-color-theme-shade', shade);
-        root.style.setProperty('--ion-color-theme-tint', tint);
-        
+
+        root.style.setProperty("--ion-color-theme-shade", shade);
+        root.style.setProperty("--ion-color-theme-tint", tint);
+
         // Forzar detección de cambios en Angular
         this.cdr.detectChanges();
       }
@@ -362,12 +370,12 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   /**
    * Convierte color hexadecimal a RGB
    */
-  private hexToRgb(hex: string): {r: number, g: number, b: number} | null {
-    hex = hex.replace('#', '');
+  private hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    hex = hex.replace("#", "");
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
-    
+
     if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
     return { r, g, b };
   }
@@ -378,16 +386,16 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   private adjustBrightness(hex: string, percent: number): string {
     const rgb = this.hexToRgb(hex);
     if (!rgb) return hex;
-    
+
     const adjust = (value: number) => {
-      const adjusted = value + (value * percent / 100);
+      const adjusted = value + (value * percent) / 100;
       return Math.min(255, Math.max(0, Math.round(adjusted)));
     };
-    
-    const r = adjust(rgb.r).toString(16).padStart(2, '0');
-    const g = adjust(rgb.g).toString(16).padStart(2, '0');
-    const b = adjust(rgb.b).toString(16).padStart(2, '0');
-    
+
+    const r = adjust(rgb.r).toString(16).padStart(2, "0");
+    const g = adjust(rgb.g).toString(16).padStart(2, "0");
+    const b = adjust(rgb.b).toString(16).padStart(2, "0");
+
     return `#${r}${g}${b}`;
   }
 
@@ -421,7 +429,7 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
     const checked = (e as any).srcElement?.checked || false;
     this.appSettings.appDarkMode = checked;
     this.appDarkModeChanged.emit(true);
-    
+
     if (localStorage) {
       localStorage["appDarkMode"] = checked;
     }
@@ -511,14 +519,14 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
     const checked = e.detail?.checked || false;
     this.appSettings.appDarkMode = checked;
     this.appDarkModeChanged.emit(true);
-    
+
     // Ionic dark mode: solo clase .dark en body
     if (checked) {
-      document.body.classList.add('dark');
+      document.body.classList.add("dark");
     } else {
-      document.body.classList.remove('dark');
+      document.body.classList.remove("dark");
     }
-    
+
     if (localStorage) {
       localStorage["appDarkMode"] = checked;
     }
@@ -526,14 +534,14 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
 
   private toggleRtlEnabledMobile(e: any) {
     const isRtl = e.detail?.checked || false;
-    
+
     // Actualizar dirección del documento
     if (isRtl) {
       document.documentElement.setAttribute("dir", "rtl");
     } else {
       document.documentElement.removeAttribute("dir");
     }
-    
+
     if (localStorage) {
       localStorage.setItem("appRtlMode", isRtl.toString());
     }

@@ -10,12 +10,7 @@
 }
 
 <!-- Menú lateral derecho -->
-<ion-menu 
-	contentId="main-content" 
-	menuId="settings-menu" 
-	side="end" 
-	type="overlay" 
-	[swipeGesture]="false"
+<ion-menu contentId="main-content" menuId="settings-menu" side="end" type="overlay" [swipeGesture]="false"
 	[disabled]="!showFab">
 	<ion-header>
 		<ion-toolbar color="theme">
@@ -34,13 +29,13 @@
 			<ion-list-header>
 				<ion-label>Color del Tema</ion-label>
 			</ion-list-header>
-			
+
 			<div class="color-selector-grid ion-padding">
 				@for (theme of themes; track $index) {
 				<div class="color-option" (click)="toggleTheme(theme, $event)">
 					<div class="color-circle" [ngClass]="'bg-' + theme">
 						@if (selectedTheme === theme) {
-							<ion-icon name="checkmark-outline"></ion-icon>
+						<ion-icon name="checkmark-outline"></ion-icon>
 						}
 					</div>
 				</div>
@@ -61,8 +56,8 @@
 					<h2>Modo Oscuro</h2>
 					<p>Reduce el brillo de la pantalla</p>
 				</ion-label>
-				<ion-toggle slot="end" [(ngModel)]="appThemeDarkModeCheckbox"
-					(ionChange)="toggleDarkMode($event)" color="theme"></ion-toggle>
+				<ion-toggle slot="end" [(ngModel)]="appThemeDarkModeCheckbox" (ionChange)="toggleDarkMode($event)"
+					color="theme"></ion-toggle>
 			</ion-item>
 
 			<!-- Modo RTL -->
@@ -72,8 +67,8 @@
 					<h2>Modo RTL</h2>
 					<p>Texto de derecha a izquierda</p>
 				</ion-label>
-				<ion-toggle slot="end" [(ngModel)]="appRtlEnabledCheckbox"
-					(ionChange)="toggleRtlEnabled($event)" color="theme"></ion-toggle>
+				<ion-toggle slot="end" [(ngModel)]="appRtlEnabledCheckbox" (ionChange)="toggleRtlEnabled($event)"
+					color="theme"></ion-toggle>
 			</ion-item>
 		</ion-list>
 
@@ -83,7 +78,7 @@
 				<ion-icon name="checkmark-outline" slot="start"></ion-icon>
 				Aplicar Cambios
 			</ion-button>
-			
+
 			<ion-button expand="block" (click)="resetLocalStorage()" color="medium" size="large" fill="outline">
 				<ion-icon name="refresh-outline" slot="start"></ion-icon>
 				Restaurar Configuración

@@ -53,3 +53,21 @@
     border-color: currentColor;
   }
 }
+
+/* =====================================================
+   BACKGROUND COLOR UTILITIES
+   Clases de fondo usando las variables CSS del template
+   ===================================================== */
+
+.bg-red { background-color: var(--bs-red) !important; }
+.bg-pink { background-color: var(--bs-pink) !important; }
+.bg-orange { background-color: var(--bs-orange) !important; }
+.bg-yellow { background-color: var(--bs-yellow) !important; }
+.bg-lime { background-color: var(--bs-lime) !important; }
+.bg-green { background-color: var(--bs-green) !important; }
+.bg-teal { background-color: var(--bs-teal) !important; }
+.bg-cyan { background-color: var(--bs-cyan) !important; }
+.bg-blue { background-color: var(--bs-blue) !important; }
+.bg-purple { background-color: var(--bs-purple) !important; }
+.bg-indigo { background-color: var(--bs-indigo) !important; }
+.bg-gray-500 { background-color: var(--bs-gray-500) !important; }
