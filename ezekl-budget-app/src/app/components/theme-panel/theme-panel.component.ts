@@ -1,6 +1,8 @@
 import { Component, Output, EventEmitter, OnInit, ChangeDetectorRef } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
+import { Router, NavigationEnd } from "@angular/router";
+import { filter } from "rxjs/operators";
 import { NgScrollbarModule } from "ngx-scrollbar";
 import { 
   IonFab,
@@ -78,7 +80,8 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
     private alertController: AlertController,
     private cdr: ChangeDetectorRef,
     private menuStateService: MenuStateService,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private router: Router
   ) {
     super();
     // Registrar iconos de Ionic para versión móvil
@@ -98,6 +101,14 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   
   // Estado del FAB (móvil)
   showFab: boolean = true;
+  
+  // Timestamp de la última vez que se cerró el menú sidebar
+  private lastSidebarCloseTime: number = 0;
+  
+  // Flags para controlar el estado del FAB
+  private isNavigating: boolean = false;
+  isSidebarActive: boolean = false; // Público para el template
+  fabDisabled: boolean = false;
   
   // Variables de estado de los checkboxes
   // NOTA: Aunque algunas opciones no se usan en móvil, se mantienen 
@@ -134,6 +145,34 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   }
 
   async openMobileSettings() {
+    // Validaciones múltiples para prevenir apertura accidental
+    
+    // 1. Validar si el FAB está deshabilitado
+    if (this.fabDisabled) {
+      this.logger.debug('Prevenido: FAB está deshabilitado');
+      return;
+    }
+    
+    // 2. Validar si el sidebar está activo
+    if (this.isSidebarActive) {
+      this.logger.debug('Prevenido: Sidebar está activo');
+      return;
+    }
+    
+    // 3. Validar si estamos navegando
+    if (this.isNavigating) {
+      this.logger.debug('Prevenido: Navegación en proceso');
+      return;
+    }
+    
+    // 4. Validar tiempo desde el último cierre
+    const timeSinceLastClose = Date.now() - this.lastSidebarCloseTime;
+    if (timeSinceLastClose < 1500) {
+      this.logger.debug(`Prevenido: Sidebar cerrado hace solo ${timeSinceLastClose}ms`);
+      return;
+    }
+    
+    // Todas las validaciones pasadas, abrir menú
     await this.menuController.open('settings-menu');
     this.logger.debug('Menú de configuración abierto');
   }
@@ -228,15 +267,56 @@ export class ThemePanelComponent extends ResponsiveComponent implements OnInit {
   ngOnInit() {
     // Escuchar cuando se abre/cierra el menú del sidebar para ocultar/mostrar el FAB
     this.menuStateService.getSidebarMenuState().subscribe((isOpen) => {
+      this.isSidebarActive = isOpen;
+      
       if (isOpen) {
+        // Sidebar abierto: ocultar FAB inmediatamente y deshabilitarlo
         this.showFab = false;
+        this.fabDisabled = true;
+        this.logger.debug('Sidebar abierto - FAB oculto y deshabilitado');
       } else {
-        // Pequeño delay para evitar que el FAB capture el evento de click
+        // Sidebar cerrado: guardar timestamp y comenzar proceso de reactivación
+        this.lastSidebarCloseTime = Date.now();
+        this.fabDisabled = true;
+        
+        this.logger.debug('Sidebar cerrado - iniciando delay de reactivación');
+        
+        // Primero esperamos a que el menú se cierre completamente
         setTimeout(() => {
           this.showFab = true;
-        }, 100);
+          this.logger.debug('FAB visible nuevamente');
+        }, 800);
+        
+        // Luego habilitamos la interacción después de un delay adicional
+        setTimeout(() => {
+          if (!this.isSidebarActive && !this.isNavigating) {
+            this.fabDisabled = false;
+            this.logger.debug('FAB habilitado para interacción');
+          }
+        }, 1500);
       }
       this.cdr.detectChanges();
+    });
+    
+    // Escuchar navegaciones para actualizar el timestamp y prevenir aperturas accidentales
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe(() => {
+      // Marcar que estamos navegando
+      this.isNavigating = true;
+      this.lastSidebarCloseTime = Date.now();
+      this.fabDisabled = true;
+      
+      this.logger.debug('Navegación completada - FAB deshabilitado temporalmente');
+      
+      // Rehabilitar después de que la navegación se complete
+      setTimeout(() => {
+        this.isNavigating = false;
+        if (!this.isSidebarActive) {
+          this.fabDisabled = false;
+          this.logger.debug('FAB rehabilitado después de navegación');
+        }
+      }, 1500);
     });
     
     var elm = document.querySelectorAll('[data-bs-toggle="tooltip"]');

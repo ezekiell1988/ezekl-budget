@@ -386,12 +386,17 @@ export class SidebarComponent extends ResponsiveComponent implements AfterViewCh
 		document.addEventListener('ionDidOpen', (event: any) => {
 			if (event.target.menuId === 'main-menu') {
 				this.menuStateService.setSidebarMenuState(true);
+				this.logger.debug('Menu sidebar abierto');
 			}
 		});
 		
 		document.addEventListener('ionDidClose', (event: any) => {
 			if (event.target.menuId === 'main-menu') {
-				this.menuStateService.setSidebarMenuState(false);
+				// Pequeño delay para asegurar que la navegación se complete primero
+				setTimeout(() => {
+					this.menuStateService.setSidebarMenuState(false);
+					this.logger.debug('Menu sidebar cerrado');
+				}, 50);
 			}
 		});
 	}
