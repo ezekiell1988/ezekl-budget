@@ -4,6 +4,19 @@ AS
 BEGIN
   SET NOCOUNT ON;
   DECLARE @idProduct INT = JSON_VALUE(@json, '$.idProduct');
+  DECLARE @idCompany INT = JSON_VALUE(@json, '$.idCompany');
+  
+  -- Validar que el producto existe y pertenece a la compañía
+  IF NOT EXISTS (
+    SELECT 1
+    FROM tbCompanyProduct
+    WHERE idProduct = @idProduct
+    AND idCompany = @idCompany
+  )
+  BEGIN
+    RAISERROR(N'Error: El producto no existe.', 16, 1);
+    RETURN;
+  END
   
   -- Crear producto
   UPDATE PC
@@ -36,10 +49,11 @@ BEGIN
   SELECT JSON_QUERY(@json) json;
 END
 GO
-
+BEGIN TRAN
 -- Probar el procedimiento corregido
 EXEC spProductConfigurationEdit @json = N'{
-  "idProduct": 1
+  "idCompany": 1
+  , "idProduct": 34
   , "isMainCategory": false
   , "isCategory": false
   , "isProduct": false
@@ -48,6 +62,4 @@ EXEC spProductConfigurationEdit @json = N'{
   , "isCombo": false
   , "isUniqueSelection": false
 }';
-
--- EXEC spTruncateTable @table = 'dbo.tbProductConfiguration';
--- EXEC spTruncateTable @table = 'dbo.tbProduct';
+ROLLBACK TRAN

@@ -4,6 +4,19 @@ AS
 BEGIN
   SET NOCOUNT ON;
   DECLARE @idProduct INT = JSON_VALUE(@json, '$.idProduct');
+  DECLARE @idCompany INT = JSON_VALUE(@json, '$.idCompany');
+
+  -- Validar que el producto existe y pertenece a la compañía
+  IF NOT EXISTS (
+    SELECT 1
+    FROM tbCompanyProduct
+    WHERE idProduct = @idProduct
+    AND idCompany = @idCompany
+  )
+  BEGIN
+    RAISERROR(N'Error: El producto no existe.', 16, 1);
+    RETURN;
+  END
 
   -- Preparar query
   SET @json = JSON_QUERY((
@@ -60,5 +73,6 @@ GO
 
 -- Probar el procedimiento corregido
 EXEC spProductGetOne @json = N'{
-  "idProduct": 32
+  "idCompany": 1
+  , "idProduct": 32
 }';

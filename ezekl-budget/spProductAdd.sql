@@ -22,15 +22,6 @@ BEGIN
   INSERT INTO tbCompanyProduct (idCompany, idProduct)
   VALUES (@idCompany, @idProduct);
 
-  -- Crear cuentas
-  INSERT INTO tbProductAccountingAccount (idProduct, idAccountingAccount, effect, [percent])
-  SELECT @idProduct, idAccountingAccount, effect, [percent]
-  FROM OPENJSON(@json, '$.accounts') WITH (
-    idAccountingAccount INT
-    , effect INT
-    , [percent] DECIMAL(18,4)
-  );
-
   -- Preparar query
   SET @json = JSON_QUERY((
     SELECT @idProduct idProduct
