@@ -24,7 +24,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de archivos multimedia de productos
-router = APIRouter(prefix="/product-media-file", tags=["Archivos Multimedia de Productos"])
+router = APIRouter(prefix="/product/media-file", tags=["Archivos Multimedia de Productos"])
 
 
 @router.post(

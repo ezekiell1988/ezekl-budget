@@ -18,7 +18,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de configuración de productos
-router = APIRouter(prefix="/product-configuration", tags=["Configuración de Productos"])
+router = APIRouter(prefix="/product/configuration", tags=["Configuración de Productos"])
 
 
 @router.put(

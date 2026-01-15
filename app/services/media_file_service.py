@@ -5,7 +5,7 @@ Maneja la lógica de negocio para archivos multimedia independientes.
 
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import UploadFile
 from app.database.connection import execute_sp
 from app.utils.file_handler import (
@@ -18,6 +18,64 @@ from app.utils.file_handler import (
 
 # Configurar logging
 logger = logging.getLogger(__name__)
+
+
+async def get_media_files(
+    id_company: int,
+    search: Optional[str] = None,
+    sort: Optional[str] = "createAt_desc",
+    page: int = 1,
+    item_per_page: int = 10,
+    media_type: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Obtiene lista de archivos multimedia con paginación.
+    
+    Args:
+        id_company: ID de la compañía
+        search: Texto a buscar en nombre o mimetype
+        sort: Campo y dirección de ordenamiento
+        page: Número de página
+        item_per_page: Elementos por página
+        media_type: Filtro por tipo de medio (image, video, audio, document)
+        
+    Returns:
+        Diccionario con total y lista de archivos multimedia
+        
+    Raises:
+        Exception: Si hay error en la base de datos
+    """
+    try:
+        # Preparar JSON para el stored procedure
+        sp_json = {
+            "idCompany": id_company,
+            "page": page,
+            "itemPerPage": item_per_page,
+            "sort": sort
+        }
+        
+        if search:
+            sp_json["search"] = search
+        
+        if media_type:
+            sp_json["mediaType"] = media_type
+        
+        logger.info(f"Consultando archivos multimedia: página {page}")
+        logger.debug(f"Datos: {sp_json}")
+        
+        # Ejecutar stored procedure
+        result = await execute_sp("spMediaFileGet", sp_json)
+        
+        if not result:
+            logger.warning("No se recibió respuesta del stored procedure")
+            return {"total": 0, "data": []}
+        
+        logger.info(f"Archivos multimedia obtenidos: {result.get('total', 0)}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error al obtener archivos multimedia: {str(e)}")
+        raise
 
 
 async def create_media_file(
@@ -174,4 +232,45 @@ async def get_media_file_path(
         raise
     except Exception as e:
         logger.error(f"Error al obtener ruta del archivo multimedia: {str(e)}")
+        raise
+
+
+async def get_media_files_total(id_company: int) -> Dict[str, Any]:
+    """
+    Obtiene totales de archivos multimedia agrupados por tipo y año.
+    
+    Args:
+        id_company: ID de la compañía
+        
+    Returns:
+        Diccionario con totales generales, por tipo de medio y por año
+        
+    Raises:
+        Exception: Si hay error en la base de datos
+    """
+    try:
+        # Preparar JSON para el stored procedure
+        sp_json = {
+            "idCompany": id_company
+        }
+        
+        logger.info(f"Consultando totales de archivos multimedia para compañía {id_company}")
+        
+        # Ejecutar stored procedure
+        result = await execute_sp("spMediaFileGetTotal", sp_json)
+        
+        if not result:
+            logger.warning("No se recibió respuesta del stored procedure")
+            return {
+                "quantity": 0,
+                "totalSize": 0,
+                "mediaType": [],
+                "byYear": []
+            }
+        
+        logger.info(f"Totales obtenidos: {result.get('quantity', 0)} archivos")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error al obtener totales de archivos multimedia: {str(e)}")
         raise

@@ -18,7 +18,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Router para endpoints de cuentas contables de productos
-router = APIRouter(prefix="/product-accounting-account", tags=["Cuentas Contables de Productos"])
+router = APIRouter(prefix="/product/accounting-account", tags=["Cuentas Contables de Productos"])
 
 
 @router.put(
