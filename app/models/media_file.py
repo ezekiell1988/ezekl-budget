@@ -52,17 +52,11 @@ class MediaFileDeleteResponse(BaseModel):
         description="ID del archivo multimedia eliminado",
         examples=[1, 2, 100]
     )
-    
-    pathMediaFile: str = Field(
-        description="Ruta del archivo en el servidor para eliminar físicamente",
-        examples=["uploads/1_20260115123456.jpg"]
-    )
 
     class Config:
         """Configuración del modelo Pydantic."""
         json_schema_extra = {
             "example": {
-                "idMediaFile": 1,
-                "pathMediaFile": "uploads/1_20260115123456.jpg"
+                "idMediaFile": 1
             }
         }

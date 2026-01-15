@@ -84,11 +84,6 @@ class MediaFileDeleteResult(BaseModel):
         description="ID de la relación producto-archivo eliminada",
         examples=[1, 2, 100]
     )
-    
-    pathMediaFile: str = Field(
-        description="Ruta del archivo en el servidor para eliminar",
-        examples=["uploads/1_20260115123456.jpg"]
-    )
 
 
 class ProductMediaFileDeleteRequest(BaseModel):
@@ -126,8 +121,7 @@ class ProductMediaFileDeleteResponse(BaseModel):
                 "mediaFiles": [
                     {
                         "idMediaFile": 1,
-                        "idProductMediaFile": 1,
-                        "pathMediaFile": "uploads/1_20260115123456.jpg"
+                        "idProductMediaFile": 1
                     }
                 ]
             }

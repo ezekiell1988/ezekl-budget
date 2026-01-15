@@ -241,8 +241,7 @@ async def get_file(
     **Respuesta exitosa (200):**
     ```json
     {
-        "idMediaFile": 1,
-        "pathMediaFile": "uploads/1_20260115123456.jpg"
+        "idMediaFile": 1
     }
     ```
     
@@ -257,8 +256,7 @@ async def get_file(
             "content": {
                 "application/json": {
                     "example": {
-                        "idMediaFile": 1,
-                        "pathMediaFile": "uploads/1_20260115123456.jpg"
+                        "idMediaFile": 1
                     }
                 }
             }

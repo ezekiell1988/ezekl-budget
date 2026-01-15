@@ -310,8 +310,7 @@ async def upload_multiple_files(
         "mediaFiles": [
             {
                 "idMediaFile": 1,
-                "idProductMediaFile": 1,
-                "pathMediaFile": "uploads/1_20260115123456.jpg"
+                "idProductMediaFile": 1
             }
         ]
     }
@@ -331,8 +330,7 @@ async def upload_multiple_files(
                         "mediaFiles": [
                             {
                                 "idMediaFile": 1,
-                                "idProductMediaFile": 1,
-                                "pathMediaFile": "uploads/1_20260115123456.jpg"
+                                "idProductMediaFile": 1
                             }
                         ]
                     }
