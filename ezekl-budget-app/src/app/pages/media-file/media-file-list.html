@@ -1,0 +1,345 @@
+<!-- =====================================================
+     MEDIA FILE LIST PAGE - RESPONSIVE DUAL TEMPLATE
+     Móvil: Ionic Components
+     Desktop: Color-Admin Template
+     ===================================================== -->
+
+<!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
+@if (isMobile()) {
+<header [pageTitle]="getPageTitle()"></header>
+
+<ion-content class="ion-padding">
+  <!-- Totales -->
+  @if (totals) {
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Resumen</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-grid>
+        <ion-row>
+          <ion-col size="6">
+            <div class="stat-item">
+              <div class="stat-value">{{ totals.quantity }}</div>
+              <div class="stat-label">Total Archivos</div>
+            </div>
+          </ion-col>
+          <ion-col size="6">
+            <div class="stat-item">
+              <div class="stat-value">{{ formatSize(totals.totalSize) }}</div>
+              <div class="stat-label">Tamaño Total</div>
+            </div>
+          </ion-col>
+        </ion-row>
+        <ion-row>
+          @for (type of totals.mediaType; track type.mediaType) {
+          <ion-col size="6">
+            <ion-chip [color]="getFileColor(type.mediaType)">
+              <ion-label>{{ type.mediaType }}: {{ type.quantity }}</ion-label>
+            </ion-chip>
+          </ion-col>
+          }
+        </ion-row>
+      </ion-grid>
+    </ion-card-content>
+  </ion-card>
+  }
+
+  <!-- Filtros -->
+  <ion-card>
+    <ion-card-content>
+      <ion-searchbar
+        [(ngModel)]="searchText"
+        (ionInput)="onSearch($event)"
+        placeholder="Buscar archivos..."
+        animated="true"
+      ></ion-searchbar>
+      
+      <ion-select
+        [(ngModel)]="selectedMediaType"
+        (ionChange)="onMediaTypeChange($event)"
+        placeholder="Filtrar por tipo"
+        interface="popover"
+      >
+        <ion-select-option value="all">Todos</ion-select-option>
+        <ion-select-option value="image">Imágenes</ion-select-option>
+        <ion-select-option value="video">Videos</ion-select-option>
+        <ion-select-option value="audio">Audio</ion-select-option>
+        <ion-select-option value="document">Documentos</ion-select-option>
+      </ion-select>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Lista de archivos -->
+  @if (loading) {
+  <ion-card>
+    <ion-card-content>
+      <div class="ion-text-center">Cargando...</div>
+    </ion-card-content>
+  </ion-card>
+  } @else if (mediaFiles.length === 0) {
+  <ion-card>
+    <ion-card-content>
+      <div class="ion-text-center">No hay archivos disponibles</div>
+    </ion-card-content>
+  </ion-card>
+  } @else {
+  <ion-list>
+    @for (file of mediaFiles; track file.idMediaFile) {
+    <ion-item>
+      <ion-icon [name]="file.mediaType === 'image' ? 'imageOutline' : file.mediaType === 'video' ? 'videocamOutline' : file.mediaType === 'audio' ? 'musicalNoteOutline' : 'documentOutline'" slot="start"></ion-icon>
+      <ion-label>
+        <h2>{{ file.nameMediaFile }}</h2>
+        <p>{{ formatSize(file.sizeMediaFile) }} - {{ file.createAt | date:'short' }}</p>
+      </ion-label>
+      <ion-badge [color]="getFileColor(file.mediaType)" slot="end">{{ file.mediaType }}</ion-badge>
+      <ion-button fill="clear" slot="end" (click)="viewFile(file)">
+        <ion-icon name="eyeOutline"></ion-icon>
+      </ion-button>
+      <ion-button fill="clear" color="danger" slot="end" (click)="deleteFile(file)">
+        <ion-icon name="trashOutline"></ion-icon>
+      </ion-button>
+    </ion-item>
+    }
+  </ion-list>
+  }
+
+  <!-- Paginación -->
+  @if (totalPages > 1) {
+  <ion-card>
+    <ion-card-content>
+      <div class="ion-text-center">
+        <ion-button
+          fill="clear"
+          [disabled]="currentPage === 1"
+          (click)="changePage(currentPage - 1)"
+        >
+          Anterior
+        </ion-button>
+        <span>Página {{ currentPage }} de {{ totalPages }}</span>
+        <ion-button
+          fill="clear"
+          [disabled]="currentPage === totalPages"
+          (click)="changePage(currentPage + 1)"
+        >
+          Siguiente
+        </ion-button>
+      </div>
+    </ion-card-content>
+  </ion-card>
+  }
+</ion-content>
+
+<!-- Botón flotante para subir archivos -->
+<ion-fab vertical="bottom" horizontal="end" slot="fixed">
+  <ion-fab-button (click)="goToUpload()">
+    <ion-icon name="cloudUploadOutline"></ion-icon>
+  </ion-fab-button>
+</ion-fab>
+
+<app-footer translucent="true" [footerText]="'© ' + appSettings.nameCompany + ' BackOffice'" />
+}
+
+<!-- ========== VERSIÓN DESKTOP (COLOR-ADMIN) ========== -->
+@if (isDesktop()) {
+  <!-- begin breadcrumb -->
+  <ol class="breadcrumb float-xl-end">
+    <li class="breadcrumb-item"><a href="javascript:;">Inicio</a></li>
+    <li class="breadcrumb-item"><a href="javascript:;">Mantenimiento</a></li>
+    <li class="breadcrumb-item active">Archivos Multimedia</li>
+  </ol>
+  <!-- end breadcrumb -->
+  
+  <!-- begin page-header -->
+  <h1 class="page-header">Archivos Multimedia <small>Gestión de archivos del sistema</small></h1>
+  <!-- end page-header -->
+
+  <!-- begin row - Totales -->
+  @if (totals) {
+  <div class="row">
+    <!-- Total Files Widget -->
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats bg-teal">
+        <div class="stats-icon stats-icon-lg"><i class="fa fa-file fa-fw"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">TOTAL ARCHIVOS</div>
+          <div class="stats-number">{{ totals.quantity }}</div>
+          <div class="stats-progress progress">
+            <div class="progress-bar" style="width: 100%;"></div>
+          </div>
+          <div class="stats-desc">Archivos almacenados</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Size Widget -->
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats bg-blue">
+        <div class="stats-icon stats-icon-lg"><i class="fa fa-hdd fa-fw"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">TAMAÑO TOTAL</div>
+          <div class="stats-number">{{ formatSize(totals.totalSize) }}</div>
+          <div class="stats-progress progress">
+            <div class="progress-bar" style="width: 100%;"></div>
+          </div>
+          <div class="stats-desc">Espacio utilizado</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Media Types -->
+    @for (type of totals.mediaType.slice(0, 2); track type.mediaType) {
+    <div class="col-xl-3 col-md-6">
+      <div class="widget widget-stats" [ngClass]="'bg-' + (type.mediaType === 'image' ? 'indigo' : type.mediaType === 'video' ? 'red' : type.mediaType === 'audio' ? 'green' : 'orange')">
+        <div class="stats-icon stats-icon-lg"><i [class]="'fa ' + getFileIcon(type.mediaType) + ' fa-fw'"></i></div>
+        <div class="stats-content">
+          <div class="stats-title">{{ type.mediaType | uppercase }}</div>
+          <div class="stats-number">{{ type.quantity }}</div>
+          <div class="stats-progress progress">
+            <div class="progress-bar" [style.width.%]="(type.quantity / totals.quantity) * 100"></div>
+          </div>
+          <div class="stats-desc">{{ formatSize(type.totalSize) }}</div>
+        </div>
+      </div>
+    </div>
+    }
+  </div>
+  }
+  <!-- end row -->
+
+  <!-- begin row - Tabla de archivos -->
+  <div class="row">
+    <div class="col-xl-12">
+      <panel title="Lista de Archivos" [showHeader]="true">
+        <!-- Filtros -->
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Buscar archivos..."
+              [(ngModel)]="searchText"
+              (input)="onSearch($event)"
+            />
+          </div>
+          <div class="col-md-3">
+            <select
+              class="form-select"
+              [(ngModel)]="selectedMediaType"
+              (change)="onMediaTypeChange($event)"
+            >
+              <option value="all">Todos los tipos</option>
+              <option value="image">Imágenes</option>
+              <option value="video">Videos</option>
+              <option value="audio">Audio</option>
+              <option value="document">Documentos</option>
+            </select>
+          </div>
+          <div class="col-md-5 text-end">
+            <button class="btn btn-primary" (click)="goToUpload()">
+              <i class="fa fa-upload me-1"></i> Subir Archivo
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabla -->
+        @if (loading) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+        </div>
+        } @else if (mediaFiles.length === 0) {
+        <div class="alert alert-info">
+          <i class="fa fa-info-circle me-2"></i>
+          No hay archivos disponibles
+        </div>
+        } @else {
+        <div class="table-responsive">
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th width="50">#</th>
+                <th width="80">Tipo</th>
+                <th>Nombre</th>
+                <th width="120">Tamaño</th>
+                <th width="180">Fecha Creación</th>
+                <th width="150" class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (file of mediaFiles; track file.idMediaFile) {
+              <tr>
+                <td>{{ file.idMediaFile }}</td>
+                <td>
+                  <span class="badge" [ngClass]="'bg-' + getFileColor(file.mediaType)">
+                    <i [class]="'fa ' + getFileIcon(file.mediaType)"></i>
+                  </span>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    @if (file.mediaType === 'image') {
+                    <img
+                      [src]="mediaFileService.getMediaFileUrl(file.idMediaFile)"
+                      alt="{{ file.nameMediaFile }}"
+                      class="rounded me-2"
+                      style="width: 40px; height: 40px; object-fit: cover;"
+                    />
+                    }
+                    <span>{{ file.nameMediaFile }}</span>
+                  </div>
+                </td>
+                <td>{{ formatSize(file.sizeMediaFile) }}</td>
+                <td>{{ file.createAt | date:'short' }}</td>
+                <td class="text-center">
+                  <button
+                    class="btn btn-sm btn-info me-1"
+                    (click)="viewFile(file)"
+                    title="Ver archivo"
+                  >
+                    <i class="fa fa-eye"></i>
+                  </button>
+                  <button
+                    class="btn btn-sm btn-danger"
+                    (click)="deleteFile(file)"
+                    title="Eliminar"
+                  >
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación -->
+        @if (totalPages > 1) {
+        <nav aria-label="Page navigation">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" [class.disabled]="currentPage === 1">
+              <a class="page-link" (click)="changePage(currentPage - 1)" href="javascript:;">
+                Anterior
+              </a>
+            </li>
+            @for (page of [].constructor(totalPages); track $index; let i = $index) {
+            <li class="page-item" [class.active]="currentPage === i + 1">
+              <a class="page-link" (click)="changePage(i + 1)" href="javascript:;">
+                {{ i + 1 }}
+              </a>
+            </li>
+            }
+            <li class="page-item" [class.disabled]="currentPage === totalPages">
+              <a class="page-link" (click)="changePage(currentPage + 1)" href="javascript:;">
+                Siguiente
+              </a>
+            </li>
+          </ul>
+        </nav>
+        }
+        }
+      </panel>
+    </div>
+  </div>
+  <!-- end row -->
+}

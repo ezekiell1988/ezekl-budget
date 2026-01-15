@@ -1,0 +1,187 @@
+<!-- =====================================================
+     MEDIA FILE UPLOAD PAGE - RESPONSIVE DUAL TEMPLATE
+     Móvil: Ionic Components
+     Desktop: Color-Admin Template
+     ===================================================== -->
+
+<!-- ========== VERSIÓN MÓVIL (IONIC) ========== -->
+@if (isMobile()) {
+<header [pageTitle]="getPageTitle()"></header>
+
+<ion-content class="ion-padding">
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Subir Archivo Multimedia</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <!-- Área de selección de archivo -->
+      <div class="upload-area ion-text-center ion-padding">
+        <ion-icon name="cloudUploadOutline" size="large" color="primary"></ion-icon>
+        <h3>Selecciona un archivo</h3>
+        <p>Imágenes, videos, audio o documentos</p>
+        
+        <input
+          type="file"
+          id="file-input-mobile"
+          (change)="onFileSelected($event)"
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+          style="display: none;"
+        />
+        
+        <ion-button (click)="document.getElementById('file-input-mobile')?.click()">
+          <ion-icon name="cloudUploadOutline" slot="start"></ion-icon>
+          Seleccionar Archivo
+        </ion-button>
+      </div>
+
+      <!-- Información del archivo seleccionado -->
+      @if (selectedFile) {
+      <ion-list>
+        <ion-item>
+          <ion-label>
+            <h2>Archivo Seleccionado</h2>
+            <p>{{ getFileInfo() }}</p>
+          </ion-label>
+        </ion-item>
+      </ion-list>
+      }
+
+      <!-- Estado de subida -->
+      @if (uploading) {
+      <div class="ion-text-center ion-padding">
+        <ion-text color="primary">
+          <p>Subiendo archivo...</p>
+        </ion-text>
+      </div>
+      }
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Botones de acción -->
+  <div class="ion-padding">
+    <ion-button
+      expand="block"
+      (click)="uploadFile()"
+      [disabled]="!selectedFile || uploading"
+    >
+      <ion-icon name="checkmarkOutline" slot="start"></ion-icon>
+      Subir Archivo
+    </ion-button>
+    
+    <ion-button
+      expand="block"
+      color="medium"
+      (click)="goBack()"
+      [disabled]="uploading"
+    >
+      <ion-icon name="arrowBackOutline" slot="start"></ion-icon>
+      Cancelar
+    </ion-button>
+  </div>
+</ion-content>
+
+<app-footer translucent="true" [footerText]="'© ' + appSettings.nameCompany + ' BackOffice'" />
+}
+
+<!-- ========== VERSIÓN DESKTOP (COLOR-ADMIN) ========== -->
+@if (isDesktop()) {
+  <!-- begin breadcrumb -->
+  <ol class="breadcrumb float-xl-end">
+    <li class="breadcrumb-item"><a href="javascript:;" (click)="goBack()">Mantenimiento</a></li>
+    <li class="breadcrumb-item"><a href="javascript:;" (click)="goBack()">Archivos</a></li>
+    <li class="breadcrumb-item active">Subir Archivo</li>
+  </ol>
+  <!-- end breadcrumb -->
+  
+  <!-- begin page-header -->
+  <h1 class="page-header">Subir Archivo <small>Agregar nuevo archivo multimedia</small></h1>
+  <!-- end page-header -->
+
+  <!-- begin row -->
+  <div class="row">
+    <div class="col-xl-8 offset-xl-2">
+      <panel title="Subir Archivo Multimedia" [showHeader]="true">
+        <form>
+          <!-- Upload Area -->
+          <div class="upload-area text-center p-5 mb-4 border border-2 border-dashed rounded" style="background-color: #f8f9fa;">
+            <i class="fa fa-cloud-upload-alt fa-4x text-primary mb-3"></i>
+            <h4>Arrastra un archivo aquí o haz clic para seleccionar</h4>
+            <p class="text-muted">Imágenes, videos, audio o documentos</p>
+            
+            <input
+              type="file"
+              id="file-input-desktop"
+              class="form-control d-none"
+              (change)="onFileSelected($event)"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+            />
+            
+            <button
+              type="button"
+              class="btn btn-primary mt-3"
+              (click)="document.getElementById('file-input-desktop')?.click()"
+            >
+              <i class="fa fa-folder-open me-2"></i>
+              Seleccionar Archivo
+            </button>
+          </div>
+
+          <!-- File Info -->
+          @if (selectedFile) {
+          <div class="alert alert-info">
+            <h5 class="alert-heading">
+              <i class="fa fa-file me-2"></i>
+              Archivo Seleccionado
+            </h5>
+            <p class="mb-0">{{ getFileInfo() }}</p>
+          </div>
+          }
+
+          <!-- Upload Progress -->
+          @if (uploading) {
+          <div class="mb-4">
+            <div class="d-flex justify-content-between mb-2">
+              <span>Subiendo archivo...</span>
+              <span>{{ uploadProgress }}%</span>
+            </div>
+            <div class="progress">
+              <div
+                class="progress-bar progress-bar-striped progress-bar-animated"
+                role="progressbar"
+                [style.width.%]="uploadProgress"
+              ></div>
+            </div>
+          </div>
+          }
+
+          <!-- Action Buttons -->
+          <div class="row mt-4">
+            <div class="col-md-6">
+              <button
+                type="button"
+                class="btn btn-secondary w-100"
+                (click)="goBack()"
+                [disabled]="uploading"
+              >
+                <i class="fa fa-times me-2"></i>
+                Cancelar
+              </button>
+            </div>
+            <div class="col-md-6">
+              <button
+                type="button"
+                class="btn btn-primary w-100"
+                (click)="uploadFile()"
+                [disabled]="!selectedFile || uploading"
+              >
+                <i class="fa fa-upload me-2"></i>
+                Subir Archivo
+              </button>
+            </div>
+          </div>
+        </form>
+      </panel>
+    </div>
+  </div>
+  <!-- end row -->
+}

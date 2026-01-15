@@ -703,6 +703,79 @@ this.logger.warn('Advertencia');              // En prod también
 - [ ] Probado en móvil y desktop
 - [ ] Rutas configuradas
 - [ ] Funcionalidad completa
+- [ ] **Compilación exitosa con `ng build`**
+
+---
+
+## 🔨 Paso 9: Compilación y Verificación Final
+
+### ¿Por qué compilar?
+
+Después de completar la migración, es **CRÍTICO** compilar el proyecto para:
+- ✅ Detectar errores de TypeScript
+- ✅ Verificar imports correctos
+- ✅ Validar sintaxis de templates
+- ✅ Confirmar que no hay dependencias faltantes
+- ✅ Asegurar que el build de producción funciona
+
+### Comandos de Compilación
+
+#### Compilación de Desarrollo (más rápida)
+```bash
+cd ezekl-budget-app
+ng build
+```
+
+#### Compilación de Producción (optimizada)
+```bash
+cd ezekl-budget-app
+ng build --configuration production
+```
+
+#### Compilación con modo watch (durante desarrollo)
+```bash
+cd ezekl-budget-app
+ng build --watch
+```
+
+### Errores Comunes de Compilación
+
+#### 1. Imports faltantes
+```
+Error: Cannot find module './models'
+```
+**Solución**: Verificar que el archivo esté exportado en `index.ts`
+
+#### 2. Tipos incompatibles
+```
+Error: Type 'string' is not assignable to type 'number'
+```
+**Solución**: Revisar interfaces y modelos
+
+#### 3. Template syntax errors
+```
+Error: Unexpected token '@' in template
+```
+**Solución**: Verificar sintaxis de control flow (`@if`, `@for`)
+
+#### 4. Dependencias faltantes
+```
+Error: Module not found: @ionic/angular
+```
+**Solución**: Ejecutar `npm install`
+
+### Checklist de Compilación Exitosa
+
+✅ No errores en consola  
+✅ Carpeta `dist/` generada  
+✅ Warnings mínimos (solo informativos)  
+✅ Tamaño del bundle razonable  
+
+### Siguiente Paso Después de Compilar
+
+Si la compilación es exitosa:
+1. **Desarrollo**: Ejecutar `ng serve` y probar en navegador
+2. **Producción**: Desplegar archivos de `dist/` al servidor
 
 ---
 
@@ -713,5 +786,6 @@ Ver `home.ts` y `home.html` como ejemplo completo de implementación dual-platfo
 ---
 
 **Fecha de creación**: Enero 2026  
-**Versión**: 1.0  
+**Versión**: 1.1  
+**Última actualización**: 15 de enero de 2026  
 **Autor**: Equipo de Desarrollo ezekl-budget

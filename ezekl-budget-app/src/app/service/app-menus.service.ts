@@ -53,6 +53,21 @@ export class AppMenuService {
       ],
     },
     {
+      icon: "fa fa-cogs",
+      iconMobile: "settings-outline",
+      title: "Mantenimiento",
+      url: "/maintenance",
+      caret: "true",
+      submenu: [
+        {
+          url: "/media-file",
+          title: "Archivos",
+          icon: "fa fa-file-alt",
+          iconMobile: "document-outline",
+        },
+      ],
+    },
+    {
       icon: "fa fa-align-left",
       iconMobile: "list-outline",
       title: "Nivel de Menú",

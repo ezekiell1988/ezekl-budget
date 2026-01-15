@@ -6,6 +6,8 @@ import {
   AddressPage,
   VoiceShoppingPage,
   VoiceReviewPage,
+  MediaFileListPage,
+  MediaFileUploadPage,
 } from "./pages";
 import { AuthGuard } from "./shared/guards";
 
@@ -36,6 +38,18 @@ export const routes: Routes = [
     path: "voice-review",
     component: VoiceReviewPage,
     data: { title: "Repaso con Voz" },
+    canActivate: [AuthGuard],
+  },
+  {
+    path: "media-file",
+    component: MediaFileListPage,
+    data: { title: "Archivos Multimedia" },
+    canActivate: [AuthGuard],
+  },
+  {
+    path: "media-file/upload",
+    component: MediaFileUploadPage,
+    data: { title: "Subir Archivo" },
     canActivate: [AuthGuard],
   },
   {
