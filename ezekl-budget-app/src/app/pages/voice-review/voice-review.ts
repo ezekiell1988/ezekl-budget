@@ -839,11 +839,26 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
   private startSpeech() {
     if (!this.speechSynthesis || !this.currentQuestion) return;
 
-    // Si ya está hablando, no hacer nada
+    // Si ya está hablando, detener primero para reiniciar
     if (this.speechSynthesis.speaking) {
-      this.logger.debug('Already speaking, ignoring startSpeech');
+      this.logger.debug('Already speaking, stopping first');
+      this.speechSynthesis.cancel();
+      
+      // Esperar un momento antes de reiniciar
+      setTimeout(() => {
+        this.performStartSpeech();
+      }, 100);
       return;
     }
+
+    this.performStartSpeech();
+  }
+
+  /**
+   * Realizar inicio de lectura de voz
+   */
+  private performStartSpeech() {
+    if (!this.speechSynthesis || !this.currentQuestion) return;
 
     // Crear nuevo utterance
     const textToSpeak = this.buildTextToSpeak();
@@ -886,12 +901,18 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
       }
     };
 
-    this.currentUtterance.onerror = (event) => {
-      this.logger.error('Error en speech synthesis:', event);
+    this.currentUtterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+      // El error "interrupted" es esperado cuando se cancela la reproducción (ej: al navegar hacia atrás)
+      if (event.error === 'interrupted' || event.error === 'canceled') {
+        this.logger.debug('Speech synthesis interrumpida o cancelada:', event.error);
+      } else {
+        this.logger.error('Error en speech synthesis:', event);
+        this.showToast('Error al reproducir voz', 'danger');
+      }
+      
       this.isSpeaking = false;
       this.currentUtterance = null;
       this.cdr.detectChanges();
-      this.showToast('Error al reproducir voz', 'danger');
     };
 
     // Iniciar
@@ -918,10 +939,18 @@ export class VoiceReviewPage extends ResponsiveComponent implements OnInit, OnDe
   stopSpeech() {
     if (!this.speechSynthesis) return;
 
+    this.logger.debug('Stopping speech');
     this.speechSynthesis.cancel();
     this.isSpeaking = false;
     this.currentUtterance = null;
     this.cdr.detectChanges();
+    
+    // Pequeño delay para asegurar que el estado se resetee completamente
+    setTimeout(() => {
+      if (this.speechSynthesis) {
+        this.speechSynthesis.cancel(); // Segunda cancelación para asegurar limpieza completa
+      }
+    }, 50);
   }
 
   /**
