@@ -28,7 +28,7 @@ router = APIRouter(prefix="/companies", tags=["Compañías"])
 
 
 @router.get(
-    "",
+    ".json",
     response_model=CompanyListResponse,
     summary="Obtener compañías paginadas",
     description="""Obtiene una lista paginada de compañías.
@@ -203,7 +203,7 @@ async def get_companies(
 
 
 @router.get(
-    "/{company_id}",
+    "/{company_id}/company.json",
     response_model=Company,
     summary="Obtener compañía por ID",
     description="""Obtiene una compañía específica por su ID.

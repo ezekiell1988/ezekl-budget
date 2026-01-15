@@ -135,7 +135,7 @@ async def get_products():
 
 
 @router.get(
-    "/{idProduct}",
+    "/{idProduct}/product.json",
     response_model=Dict,
     summary="Obtener detalle completo de un producto",
     description="""Obtiene el detalle completo de un producto por su ID.

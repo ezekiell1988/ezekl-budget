@@ -11,6 +11,11 @@ from .queue import router as queue_router
 from .accounting_account import router as accounting_account_router
 from .company import router as company_router
 from .product import router as product_router
+from .product_configuration import router as product_configuration_router
+from .product_accounting_account import router as product_accounting_account_router
+from .product_delivery_type import router as product_delivery_type_router
+from .product_media_file import router as product_media_file_router
+from .media_file import router as media_file_router
 from .whatsapp import router as whatsapp_router
 from .ai import router as ai_router
 from .copilot import router as copilot_router
@@ -26,6 +31,11 @@ router.include_router(system_router)
 router.include_router(auth_router)
 router.include_router(auth_microsoft_router)
 router.include_router(product_router)
+router.include_router(product_configuration_router)
+router.include_router(product_accounting_account_router)
+router.include_router(product_delivery_type_router)
+router.include_router(product_media_file_router)
+router.include_router(media_file_router)
 router.include_router(email_router)
 router.include_router(queue_router)
 router.include_router(accounting_account_router)

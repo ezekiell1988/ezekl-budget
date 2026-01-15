@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     smtp_password: str
     smtp_from: str
     
+    # Configuración de archivos multimedia
+    media_file_base_dir: str = "mediaFile"
+    
     @property
     def is_production(self) -> bool:
         """Detecta si la aplicación está corriendo en producción basado en ENVIRONMENT."""

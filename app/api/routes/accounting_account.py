@@ -27,7 +27,7 @@ router = APIRouter(prefix="/accounting-accounts", tags=["Cuentas Contables"])
 
 
 @router.get(
-    "",
+    ".json",
     response_model=AccountingAccountResponse,
     summary="Obtener cuentas contables con estructura jerárquica",
     description="""Obtiene una lista de cuentas contables del catálogo con su estructura jerárquica completa.
@@ -218,7 +218,7 @@ async def get_accounting_accounts(
 
 
 @router.get(
-    "/{account_id}",
+    "/{account_id}/accounting-account.json",
     summary="Obtener cuenta contable por ID",
     description="""Obtiene una cuenta contable específica por su ID.
     
